@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"github.com/fatih/color"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -76,6 +77,7 @@ func (o *Options) configureOutput() {
 	}
 	if o.NoColor {
 		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
+		color.NoColor = true
 	}
 	if o.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)

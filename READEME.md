@@ -3,7 +3,21 @@ pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的扫描URL地址。这是一个非
 
 ## 特征
 
-![img.png](image/img.png)
+```console
+papathScan_linux -u http://www.google.com/ -ps /docs
+
+               __   __    ____
+   ___  ___ _ / /_ / /   / __/____ ___ _ ___
+  / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+/_/
+
+                        wjlin0.com
+
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[INF] 状态码200 http://www.google.com:80/docs 文章标题: Sign in - Google Accounts 页面长度:144418
+```
 
 - 快速发现路径
 - 可远程加载目标或远程加载字典
@@ -47,8 +61,52 @@ Flags:
 ```
 ## 安装
 
-下载准备运行的二进制文件或使用 GO 安装
+下载准备运行的[二进制文件](https://)或使用 GO 安装
 ### GO
 ```shell
-go install -v 
+go install -v github.com/wjlin0/pathScan
 ```
+## 详细模式
+```console
+pathScan_linux -u http://www.google.com/ -ps /docs,/api/user -vb
+
+               __   __    ____
+   ___  ___ _ / /_ / /   / __/____ ___ _ ___
+  / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+/_/
+
+                        wjlin0.com
+
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[WRN] 状态码404 http://www.google.com:80/api/user 文章标题: Error 404 (Not Found)!!1 页面长度:1569
+[INF] 状态码200 http://www.google.com:80/docs 文章标题: Sign in - Google Accounts 页面长度:144550
+```
+## 恢复扫描
+- 注意使用 回复扫描 其他参数均为上一次启动参数
+```console
+pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
+
+               __   __    ____
+   ___  ___ _ / /_ / /   / __/____ ___ _ ___
+  / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+/_/
+
+                        wjlin0.com
+
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[WRN] 状态码404 http://www.google.com:80/lyfhtxy 文章标题: Error 404 (Not Found)!!1 页面长度:1568
+[WRN] 状态码404 http://www.google.com:80/en/netdu 文章标题: Error 404 (Not Found)!!1 页面长度:1569
+[WRN] 状态码404 http://www.google.com:80/a_zbzn 文章标题: Error 404 (Not Found)!!1 页面长度:1567
+```
+## 配置文件
+pathScan 支持默认配置文件位于$HOME/.config/pathScan/config.yaml，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
+
+## 主机排除
+pathScan 自动探测主机存货情况并排除访问失败的URL
+## 感谢
+
+- [projectdiscovery.io](https://projectdiscovery.io/#/)
