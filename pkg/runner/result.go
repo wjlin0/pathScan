@@ -1,6 +1,6 @@
 package runner
 
-import "pathScan/pkg/result"
+import "github.com/wjlin0/pathScan/pkg/result"
 
 func (r *Runner) isTargetIn(target string) bool {
 	for _, r_ := range r.Cfg.Results {

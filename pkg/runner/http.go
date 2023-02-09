@@ -3,10 +3,10 @@ package runner
 import (
 	"github.com/fatih/color"
 	"github.com/projectdiscovery/gologger"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
-	"pathScan/pkg/result"
-	"pathScan/pkg/util"
 	"regexp"
 	"strconv"
 )
