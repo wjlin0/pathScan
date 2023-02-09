@@ -61,7 +61,7 @@ Flags:
 ```
 ## 安装
 
-下载准备运行的[二进制文件](https://)或使用 GO 安装
+下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)或使用 GO 安装
 ### GO
 ```shell
 go install -v github.com/wjlin0/pathScan
