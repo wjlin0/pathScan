@@ -4,7 +4,7 @@ pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的扫描URL地址。这是一个非
 ## 特征
 
 ```console
-papathScan_linux -u http://www.google.com/ -ps /docs
+pathScan -u http://www.google.com/ -ps /docs
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
@@ -31,7 +31,7 @@ pathScan -h
 ```
 ```yaml
 Usage:
-  ./pathScan_linux [flags]
+  ./pathScan [flags]
 
 Flags:
 输入:
@@ -68,7 +68,7 @@ go install -v github.com/wjlin0/pathScan
 ```
 ## 详细模式
 ```console
-pathScan_linux -u http://www.google.com/ -ps /docs,/api/user -vb
+pathScan -u http://www.google.com/ -ps /docs,/api/user -vb
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
