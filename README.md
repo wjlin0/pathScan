@@ -66,6 +66,25 @@ Flags:
 ```shell
 go install -v github.com/wjlin0/pathScan
 ```
+## 远程加载
+```console
+pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/pathScan/main/dict/api-user.txt
+
+               __   __    ____
+   ___  ___ _ / /_ / /   / __/____ ___ _ ___
+  / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+/_/
+
+                        wjlin0.com
+
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[INF] 从远程加载字典 完成...
+[INF] 状态码200 http://www.google.com:80/apis 文章标题: Google Code 页面长度:5325
+[INF] 状态码200 http://www.google.com:80/apis/ 文章标题: Google Code 页面长度:5325```
+```
+
 ## 详细模式
 ```console
 pathScan -u http://www.google.com/ -ps /docs,/api/user -vb
