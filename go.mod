@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/fatih/color v1.14.1
 	github.com/pkg/errors v0.9.1
+	github.com/projectdiscovery/clistats v0.0.12
 	github.com/projectdiscovery/fileutil v0.0.3
 	github.com/projectdiscovery/goflags v0.1.6
 	github.com/projectdiscovery/gologger v1.1.7
@@ -31,7 +32,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/projectdiscovery/clistats v0.0.12 // indirect
 	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/utils v0.0.6 // indirect
