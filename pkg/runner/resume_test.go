@@ -30,3 +30,11 @@ func TestParserResumeCfg(t *testing.T) {
 	}
 	fmt.Println(cfg)
 }
+
+func TestResumeCfg_CleanupResumeConfig(t *testing.T) {
+	cfg, err := ParserResumeCfg("C:\\Users\\wjl\\.config\\path-scan-go\\lWMQ9NsA6bnCbXzlHupDXUUPtXudGW.cfg")
+	if err != nil {
+		return
+	}
+	cfg.CleanupResumeConfig()
+}

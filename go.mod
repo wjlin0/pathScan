@@ -1,4 +1,4 @@
-module github.com/wjlin0/pathScan
+module pathScan
 
 go 1.19
 
@@ -8,7 +8,9 @@ require (
 	github.com/projectdiscovery/fileutil v0.0.3
 	github.com/projectdiscovery/goflags v0.1.6
 	github.com/projectdiscovery/gologger v1.1.7
+	github.com/projectdiscovery/ratelimit v0.0.6
 	github.com/remeh/sizedwaitgroup v1.0.0
+	golang.org/x/net v0.6.0
 )
 
 require (
@@ -29,6 +31,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
+	github.com/projectdiscovery/clistats v0.0.12 // indirect
+	github.com/projectdiscovery/freeport v0.0.4 // indirect
 	github.com/projectdiscovery/stringsutil v0.0.2 // indirect
 	github.com/projectdiscovery/utils v0.0.6 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
@@ -37,7 +41,6 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect

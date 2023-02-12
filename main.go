@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
-	"github.com/wjlin0/pathScan/pkg/runner"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"pathScan/pkg/runner"
 )
 
 func main() {
@@ -25,14 +25,14 @@ func main() {
 			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
 			err := run.Cfg.MarshalResume(filename)
 			if err != nil {
-				gologger.Error().Msg("无法创建 resume 文件: %s" + err.Error())
+				gologger.Error().Msgf("无法创建 resume 文件: %s", err.Error())
 			}
 			os.Exit(1)
 		}
 	}()
 	err = run.Run()
 	if err != nil {
-		gologger.Fatal().Msg("无法 运行: %s" + err.Error())
+		gologger.Fatal().Msgf("无法 运行: %s", err.Error())
 	}
 	run.Cfg.CleanupResumeConfig()
 }

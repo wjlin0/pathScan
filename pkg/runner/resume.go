@@ -6,10 +6,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
-	"github.com/wjlin0/pathScan/pkg/result"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"pathScan/pkg/result"
 	"strconv"
 	"sync"
 	"time"
@@ -19,8 +19,8 @@ const defaultResumeFileName = `resume.cfg`
 
 type ResumeCfg struct {
 	Rwm     *sync.RWMutex
-	Options *Options         `json:"options"`
-	Results []*result.Result `json:"results"`
+	Options *Options       `json:"options"`
+	Results *result.Result `json:"results"`
 }
 
 func ParserResumeCfg(filename string) (*ResumeCfg, error) {
@@ -44,9 +44,12 @@ func ParserResumeCfg(filename string) (*ResumeCfg, error) {
 	return cfg, nil
 }
 func (cfg *ResumeCfg) MarshalResume(filename string) error {
-	cfg.Rwm.RLock()
-	defer cfg.Rwm.RUnlock()
-	gologger.Info().Str("len", strconv.Itoa(len(cfg.Results))).Msgf("已完成扫描结果")
+	cfg.Rwm.Lock()
+	defer cfg.Rwm.Unlock()
+	gologger.Info().Str("len", strconv.Itoa(cfg.Results.GetPathsCount())).Msgf("已完成扫描结果")
+	//newResult := result.NewResult()
+	//newResult.Skipped = cfg.Results.TargetPaths
+	//cfg.Results = newResult
 	data, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return err
@@ -73,13 +76,14 @@ func DefaultResumeFolderPath() string {
 	if err != nil {
 		return defaultResumeFileName
 	}
-	return filepath.Join(home, ".config", "path-scan-go")
+	return filepath.Join(home, ".config", "pathScan", "resume")
 }
 func DefaultResumeFilePath(filename string) string {
 	return filepath.Join(DefaultResumeFolderPath(), filename)
 }
 func (cfg *ResumeCfg) CleanupResumeConfig() {
 	if fileutil.FileExists(cfg.Options.ResumeCfg) {
+
 		_ = os.Remove(cfg.Options.ResumeCfg)
 	}
 }

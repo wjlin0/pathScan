@@ -9,7 +9,7 @@ pathScan -u http://www.google.com/ -ps /docs
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
 /_/
 
                         wjlin0.com
@@ -21,10 +21,10 @@ pathScan -u http://www.google.com/ -ps /docs
 
 - 快速发现路径
 - 可远程加载目标或远程加载字典
-- 丰富的内置字典
+- 丰富的内置字典,自动下载字典
 - 可恢复上次扫描进度
 - 支持使用HTTP/SOCKS代理
-- 智能识别目标地址 (example.com 和http://example.com/ 以及http://example.com 都不会报错)
+- 随机UserAgent
 ## 用法
 ```shell
 pathScan -h
@@ -35,29 +35,32 @@ Usage:
 
 Flags:
 输入:
-   -u, -url string[]        目标(以逗号分割)
-   -uf, -url-file string[]  从文件中,读取目标
-   -ur, -url-remote string  从远程加载目标
-   -resume string           使用resume.cfg恢复扫描
+  -u, -url string[]        目标(以逗号分割)
+  -uf, -url-file string[]  从文件中,读取目标
+  -ur, -url-remote string  从远程加载目标
+  -resume string           使用resume.cfg恢复扫描
 
 扫描字典:
-   -ps, -path string[]       路径(以逗号分割)
-   -pf, -path-file string[]  从文件中,读取路径
-   -pr, -path-remote string  从远程加载字典
+  -ps, -path string[]       路径(以逗号分割)
+  -pf, -path-file string[]  从文件中,读取路径
+  -pr, -path-remote string  从远程加载字典
 
 输出:
-   -o, -output string  输出文件路径（可忽略）
-   -nc, -no-color      无颜色输出
-   -vb, -verbose       详细输出模式
-   -sl, -silent        只输出状态码为200
+  -o, -output string  输出文件路径（可忽略）
+  -nc, -no-color      无颜色输出
+  -vb, -verbose       详细输出模式
+  -sl, -silent        只输出状态码为200
+  -pb, -progressbar   启用进度条
 
 配置:
-   -rs, -retries int        重试3次 (default 3)
-   -p, -proxy string        代理
-   -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
+  -rs, -retries int        重试3次 (default 3)
+  -p, -proxy string        代理
+  -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
+  -st, -scan-target        只进行目标存活扫描
 
 速率:
-   -rl, -rate-limit int  线程(默认150) (default 150)
+  -rl, -rate-limit int  线程 (default 300)
+  -rh, -rate-http int   允许每秒钟最大http请求数 (default 100)
 ```
 ## 安装
 
@@ -73,7 +76,7 @@ pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
 /_/
 
                         wjlin0.com
@@ -82,7 +85,7 @@ pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/
 开发者不承担任何责任，也不对任何误用或损坏负责.
 [INF] 从远程加载字典 完成...
 [INF] 状态码200 http://www.google.com:80/apis 文章标题: Google Code 页面长度:5325
-[INF] 状态码200 http://www.google.com:80/apis/ 文章标题: Google Code 页面长度:5325```
+[INF] 状态码200 http://www.google.com:80/apis/ 文章标题: Google Code 页面长度:5325
 ```
 
 ## 详细模式
@@ -92,7 +95,7 @@ pathScan -u http://www.google.com/ -ps /docs,/api/user -vb
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
 /_/
 
                         wjlin0.com
@@ -110,7 +113,7 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.0
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
 /_/
 
                         wjlin0.com

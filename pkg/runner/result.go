@@ -1,41 +1,24 @@
 package runner
 
-import "github.com/wjlin0/pathScan/pkg/result"
+import (
+	"github.com/projectdiscovery/gologger"
+	"net/url"
+	"pathScan/pkg/result"
+)
 
-func (r *Runner) isTargetIn(target string) bool {
-	for _, r_ := range r.Cfg.Results {
-		if r_.TargetPath() == target {
-			return true
-		}
+func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
+	path, err := url.JoinPath(re.Target, re.Path)
+	if err != nil {
+		path = re.Target
 	}
-	return false
-}
-func (r *Runner) IsTargetEnd(target string) bool {
-	r.Cfg.Rwm.RLock()
-	defer r.Cfg.Rwm.RUnlock()
-	if !r.isTargetIn(target) {
-		return false
+	if re.Status == 200 && r.Cfg.Options.Silent {
+		gologger.Silent().Msg(path)
 	}
-	for _, r_ := range r.Cfg.Results {
-		if r_.TargetPath() == target {
-			if r_.Ended == true {
-				return true
-			}
-		}
-	}
-	return false
-}
+	if re.Status == 200 {
+		gologger.Info().Msgf("状态码 %d %s 文章标题 %s 页面长度 %d\n", re.Status, path, re.Title, re.BodyLen)
+	} else {
+		gologger.Verbose().Msgf("状态码 %d %s 文章标题 %s 页面长度 %d\n", re.Status, path, re.Title, re.BodyLen)
 
-func (r *Runner) GetTargetByTarget(target string) (*result.Result, bool) {
-	r.Cfg.Rwm.RLock()
-	defer r.Cfg.Rwm.RUnlock()
-	if !r.isTargetIn(target) {
-		return nil, false
 	}
-	for _, r_ := range r.Cfg.Results {
-		if r_.TargetPath() == target {
-			return r_, true
-		}
-	}
-	return nil, false
+
 }

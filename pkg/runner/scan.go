@@ -6,6 +6,7 @@ import (
 )
 
 func (r *Runner) checkAlive(target string) bool {
+	r.limiter.Take()
 	resp, err := r.client.Get(target)
 	if err != nil {
 		gologger.Debug().Msgf("%s 请求 失败", target)

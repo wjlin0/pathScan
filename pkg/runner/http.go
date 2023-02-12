@@ -1,78 +1,62 @@
 package runner
 
 import (
-	"github.com/fatih/color"
-	"github.com/projectdiscovery/gologger"
-	"github.com/wjlin0/pathScan/pkg/result"
-	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
+	"net/url"
+	"pathScan/pkg/result"
 	"regexp"
-	"strconv"
 )
 
-func (r *Runner) getResult() {
-	for rc := range r.resultChan {
-		msg := "状态码" + strconv.Itoa(rc.Status) + " " + rc.TargetPath()
-		if rc.Title != "" {
-			msg += " 文章标题: " + color.GreenString(rc.Title)
-		}
-		if rc.BodyLen != 0 {
-			msg += " 页面长度:" + strconv.Itoa(rc.BodyLen)
-		}
-		if rc.Status == 200 {
-			gologger.Info().Msg(msg)
-		} else if rc.Status < 500 && rc.Status >= 400 {
-			gologger.Warning().Msg(msg)
-		}
-		if r.isTargetIn(rc.TargetPath()) {
-			continue
-		} else {
-			r.Cfg.Rwm.RLock()
-			if rc.Ended {
-				r.Cfg.Results = append(r.Cfg.Results, rc)
-			}
-			r.Cfg.Rwm.RUnlock()
-		}
-	}
+func (r *Runner) ConnectTarget(target string) (bool, error) {
 
+	request, err := http.NewRequest("GET", target, nil)
+	if err != nil {
+		return false, err
+	}
+	request.Header.Set("User-Agent", r.GetUserAgent())
+	_, err = r.client.Do(request)
+	if err != nil {
+		return false, err
+	}
+	return true, err
 }
-func (r *Runner) handlerRun(u *result.Result) {
-	defer r.wg2.Done()
+
+func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
 	defer r.wg.Done()
 	reg := regexp.MustCompile(`<title>(.*?)</title>`)
-	request, err := http.NewRequest("GET", u.TargetPath(), nil)
+	_url, err := url.JoinPath(target, path)
 	if err != nil {
-
-		r.resultChan <- u
-		return
+		return nil, err
 	}
-
-	//fmt.Println(u.TargetPath())
-	resp, err := util.ReconDial(r.client, request, 1, r.Cfg.Options.Retries)
-	u.Start()
+	req, err := http.NewRequest("GET", _url, nil)
 	if err != nil {
-		gologger.Warning().Msgf("%s -> %s ", u.TargetPath(), " 重试次数超过 3次")
-		r.resultChan <- u
-		return
+		return nil, err
 	}
-	u.Status = resp.StatusCode
-
+	req.Header.Set("User-Agent", r.GetUserAgent())
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	u.BodyLen = len(string(body))
 	t := reg.FindAllStringSubmatch(string(body), -1)
-
+	title := ""
 	if len(t) == 0 {
-		u.Title = ""
 	} else if len(t[0]) <= 1 {
-		u.Title = ""
 	} else if len(t[0]) == 2 {
-		u.Title = t[0][1]
+		title = t[0][1]
 	}
 	if len(body) == 0 {
-		u.Title = "该请求内容为0"
+		title = "该请求内容为0"
 	}
-	u.End()
-	r.resultChan <- u
+	re := &result.TargetResult{
+		Target:  target,
+		Path:    path,
+		Title:   title,
+		Status:  resp.StatusCode,
+		BodyLen: len(string(body)),
+	}
+
+	return re, nil
 }
