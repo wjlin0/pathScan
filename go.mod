@@ -1,4 +1,4 @@
-module pathScan
+module github.com/wjlin0/pathScan
 
 go 1.19
 

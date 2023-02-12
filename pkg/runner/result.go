@@ -2,8 +2,8 @@ package runner
 
 import (
 	"github.com/projectdiscovery/gologger"
+	"github.com/wjlin0/pathScan/pkg/result"
 	"net/url"
-	"pathScan/pkg/result"
 )
 
 func (r *Runner) handlerOutputTarget(re *result.TargetResult) {

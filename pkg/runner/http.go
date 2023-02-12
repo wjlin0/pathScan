@@ -1,10 +1,10 @@
 package runner
 
 import (
+	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
 	"net/http"
 	"net/url"
-	"pathScan/pkg/result"
 	"regexp"
 )
 

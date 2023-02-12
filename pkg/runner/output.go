@@ -2,8 +2,8 @@ package runner
 
 import (
 	"bufio"
+	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
-	"pathScan/pkg/result"
 	"strconv"
 	"strings"
 )

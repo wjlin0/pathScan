@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/projectdiscovery/fileutil"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"pathScan/pkg/util"
 )
 
 func DownloadDict() error {
