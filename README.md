@@ -1,7 +1,7 @@
-#
-pathScan ��һ����Go��д��·��ɨ�蹤�ߣ������������ٿɿ���ɨ��URL��ַ������һ���ǳ��򵥵Ĺ��ߡ�
+# PathScan
+pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的扫描URL地址。这是一个非常简单的工具。
 
-## ����
+## 特征
 
 ```console
 pathScan -u http://www.google.com/ -ps /docs
@@ -14,19 +14,19 @@ pathScan -u http://www.google.com/ -ps /docs
 
                         wjlin0.com
 
-���á���ҪΪ�Լ�����Ϊ����
-�����߲��е��κ����Σ�Ҳ�����κ����û��𻵸���.
-[INF] ״̬��200 http://www.google.com:80/docs ���±���: Sign in - Google Accounts ҳ�泤��:144418
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[INF] 状态码200 http://www.google.com:80/docs 文章标题: Sign in - Google Accounts 页面长度:144418
 ```
 
-- ���ٷ���·��
-- ��Զ�̼���Ŀ���Զ�̼����ֵ�
-- �ḻ�������ֵ�,�Զ������ֵ�
-- �ɻָ��ϴ�ɨ�����
-- ֧��ʹ��HTTP/SOCKS����
-- ���UserAgent
+- 快速发现路径
+- 可远程加载目标或远程加载字典
+- 丰富的内置字典,自动下载字典
+- 可恢复上次扫描进度
+- 支持使用HTTP/SOCKS代理
+- 随机UserAgent
 
-## �÷�
+## 用法
 ```shell
 pathScan -h
 ```
@@ -35,45 +35,45 @@ Usage:
   ./pathScan [flags]
 
 Flags:
-����:
-  -u, -url string[]        Ŀ��(�Զ��ŷָ�)
-  -uf, -url-file string[]  ���ļ���,��ȡĿ��
-  -ur, -url-remote string  ��Զ�̼���Ŀ��
-  -resume string           ʹ��resume.cfg�ָ�ɨ��
+输入:
+  -u, -url string[]        目标(以逗号分割)
+  -uf, -url-file string[]  从文件中,读取目标
+  -ur, -url-remote string  从远程加载目标
+  -resume string           使用resume.cfg恢复扫描
 
-ɨ���ֵ�:
-  -ps, -path string[]       ·��(�Զ��ŷָ�)
-  -pf, -path-file string[]  ���ļ���,��ȡ·��
-  -pr, -path-remote string  ��Զ�̼����ֵ�
+扫描字典:
+  -ps, -path string[]       路径(以逗号分割)
+  -pf, -path-file string[]  从文件中,读取路径
+  -pr, -path-remote string  从远程加载字典
 
-���:
-  -o, -output string  ����ļ�·�����ɺ��ԣ�
-  -nc, -no-color      ����ɫ���
-  -vb, -verbose       ��ϸ���ģʽ
-  -sl, -silent        ֻ���״̬��Ϊ200
-  -pb, -progressbar   ���ý�����
+输出:
+  -o, -output string  输出文件路径（可忽略）
+  -nc, -no-color      无颜色输出
+  -vb, -verbose       详细输出模式
+  -sl, -silent        只输出状态码为200
+  -pb, -progressbar   启用进度条
 
-����:
-  -rs, -retries int        ����3�� (default 3)
-  -p, -proxy string        ����
-  -pa, -proxy-auth string  ������֤����ð�ŷָusername:password��
-  -st, -scan-target        ֻ����Ŀ����ɨ��
+配置:
+  -rs, -retries int        重试3次 (default 3)
+  -p, -proxy string        代理
+  -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
+  -st, -scan-target        只进行目标存活扫描
 
-����:
-  -rl, -rate-limit int  �߳� (default 300)
-  -rh, -rate-http int   ����ÿ�������http������ (default 100)
+速率:
+  -rl, -rate-limit int  线程 (default 300)
+  -rh, -rate-http int   允许每秒钟最大http请求数 (default 100)
 ```
-## ��װ
+## 安装
 
-����׼�����е�[�������ļ�](https://github.com/wjlin0/pathScan/releases/latest)��ʹ�� GO ��װ
+下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)或使用 GO 安装
 ### GO
 ```shell
 go install -v github.com/wjlin0/pathScan@latest
 ```
 ### Docker
-������ - ��������
+待补充 - 后续见面
 
-## Զ�̼���
+## 远程加载
 ```console
 pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/pathScan/main/dict/api-user.txt
 
@@ -85,20 +85,20 @@ pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/
 
                         wjlin0.com
 
-���á���ҪΪ�Լ�����Ϊ����
-�����߲��е��κ����Σ�Ҳ�����κ����û��𻵸���.
-[INF] ��Զ�̼����ֵ� ���...
-[INF] ״̬��200 http://www.google.com:80/apis ���±���: Google Code ҳ�泤��:5325
-[INF] ״̬��200 http://www.google.com:80/apis/ ���±���: Google Code ҳ�泤��:5325
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[INF] 从远程加载字典 完成...
+[INF] 状态码200 http://www.google.com:80/apis 文章标题: Google Code 页面长度:5325
+[INF] 状态码200 http://www.google.com:80/apis/ 文章标题: Google Code 页面长度:5325
 ```
-## ��ͨ���м���Ŀ��
-������ - ��������
+## 从通道中加载目标
+待补充 - 后续见面
 
-## ��ϸģʽ
+## 详细模式
 ```console
 pathScan -u https://google.com -vb
 
-[DBG] Զ���ֵ����سɹ�-> /root/.config/pathScan/dict
+[DBG] 远程字典下载成功-> /root/.config/pathScan/dict
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
@@ -108,25 +108,25 @@ pathScan -u https://google.com -vb
 
                         wjlin0.com
 
-���á���ҪΪ�Լ�����Ϊ����
-�����߲��е��κ����Σ�Ҳ�����κ����û��𻵸���.
-[DBG] ���� https://google.com ���
-[INF] ���Ŀ������ -> 1
-[INF] �������� -> 18408
-[VER] ״̬�� 301 https://google.com/developer ���±���  ҳ�泤�� 229
-[VER] ״̬�� 301 https://google.com/profiles/testing/testing.info ���±���  ҳ�泤�� 249
-[VER] ״̬�� 301 https://google.com/technology ���±���  ҳ�泤�� 230
-[VER] ״̬�� 301 https://google.com/survey ���±���  ҳ�泤�� 226
-[VER] ״̬�� 404 https://google.com/js/tinymce/ ���±��� Error 404 (Not Found)!!1 ҳ�泤�� 1572
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[DBG] 发现 https://google.com 存活
+[INF] 存活目标总数 -> 1
+[INF] 请求总数 -> 18408
+[VER] 状态码 301 https://google.com/developer 文章标题  页面长度 229
+[VER] 状态码 301 https://google.com/profiles/testing/testing.info 文章标题  页面长度 249
+[VER] 状态码 301 https://google.com/technology 文章标题  页面长度 230
+[VER] 状态码 301 https://google.com/survey 文章标题  页面长度 226
+[VER] 状态码 404 https://google.com/js/tinymce/ 文章标题 Error 404 (Not Found)!!1 页面长度 1572
 ```
-## ֻ���200ģʽ
+## 只输出200模式
 ```console
 pathScan -u https://google.com -sl
 https://google.com
 https://google.com/partners
 ```
-## �ָ�ɨ��
-- ע��ʹ�� �ظ�ɨ�� ����������Ϊ��һ����������
+## 恢复扫描
+- 注意使用 回复扫描 其他参数均为上一次启动参数
 ```console
 pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 
@@ -138,16 +138,16 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 
                         wjlin0.com
 
-���á���ҪΪ�Լ�����Ϊ����
-�����߲��е��κ����Σ�Ҳ�����κ����û��𻵸���.
-[WRN] ״̬��404 http://www.google.com:80/lyfhtxy ���±���: Error 404 (Not Found)!!1 ҳ�泤��:1568
-[WRN] ״̬��404 http://www.google.com:80/en/netdu ���±���: Error 404 (Not Found)!!1 ҳ�泤��:1569
-[WRN] ״̬��404 http://www.google.com:80/a_zbzn ���±���: Error 404 (Not Found)!!1 ҳ�泤��:1567
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[WRN] 状态码404 http://www.google.com:80/lyfhtxy 文章标题: Error 404 (Not Found)!!1 页面长度:1568
+[WRN] 状态码404 http://www.google.com:80/en/netdu 文章标题: Error 404 (Not Found)!!1 页面长度:1569
+[WRN] 状态码404 http://www.google.com:80/a_zbzn 文章标题: Error 404 (Not Found)!!1 页面长度:1567
 ```
-## �����ļ�
-pathScan ֧��Ĭ�������ļ�λ��$HOME/.config/pathScan/config.yaml�����������������ļ��ж����κα�־������Ĭ��ֵ�԰�������ɨ�衣
+## 配置文件
+pathScan 支持默认配置文件位于$HOME/.config/pathScan/config.yaml，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 
-## ����������
+## 仅主机发现
 ```console
 pathScan -u https://google.com -st
 
@@ -159,10 +159,10 @@ pathScan -u https://google.com -st
 
                         wjlin0.com
 
-���á���ҪΪ�Լ�����Ϊ����
-�����߲��е��κ����Σ�Ҳ�����κ����û��𻵸���.
-[INF] ���� https://google.com ���
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+[INF] 发现 https://google.com 存活
 ```
-## ��л
+## 感谢
 
 - [projectdiscovery.io](https://projectdiscovery.io/#/)

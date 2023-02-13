@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/fileutil"
@@ -85,7 +86,11 @@ func (r *Runner) GetUserAgent() string {
 	return r.userAgent[rand.Intn(len(r.userAgent))]
 }
 func newClient(options *Options) *http.Client {
-	t := &http.Transport{}
+	t := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
 	if options.Proxy != "" {
 		proxyUrl, _ := url.Parse(options.Proxy)
 		if options.ProxyAuth != "" {
@@ -140,6 +145,7 @@ func (r *Runner) Run() error {
 	pathUrls := r.paths
 	Retries := r.Cfg.Options.Retries
 	showBanner()
+
 	r.DiscoveryHost(targets)
 
 	if r.Cfg.Options.OnlyTargets {
@@ -163,6 +169,7 @@ func (r *Runner) Run() error {
 			gologger.Warning().Msgf("Couldn't start statistics: %s\n", err)
 		}
 	}
+
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
 
 		for _, p := range pathUrls {
