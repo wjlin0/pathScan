@@ -9,24 +9,26 @@ import (
 )
 
 type Options struct {
-	Url               goflags.StringSlice `json:"url,omitempty"`
-	UrlFile           goflags.StringSlice `json:"url_file,omitempty"`
-	UrlRemote         string              `json:"url_remote,omitempty"`
-	Path              goflags.StringSlice `json:"path,omitempty"`
-	PathFile          goflags.StringSlice `json:"path_file,omitempty"`
-	PathRemote        string              `json:"path_remote,omitempty"`
-	ResumeCfg         string              `json:"resume_cfg,omitempty"`
-	Output            string              `json:"output,omitempty"`
-	Rate              int                 `json:"rate,omitempty"`
-	RateHttp          int                 `json:"rate_http,omitempty"`
-	Retries           int                 `json:"retries,omitempty"`
-	Proxy             string              `json:"proxy,omitempty"`
-	ProxyAuth         string              `json:"proxy_auth,omitempty"`
-	NoColor           bool                `json:"no_color"`
-	Verbose           bool                `json:"verbose"`
-	Silent            bool                `json:"silent"`
-	OnlyTargets       bool                `json:"only_targets"`
-	EnableProgressBar bool                `json:"enable_progress_bar"`
+	Url                goflags.StringSlice `json:"url,omitempty"`
+	UrlFile            goflags.StringSlice `json:"url_file,omitempty"`
+	UrlRemote          string              `json:"url_remote,omitempty"`
+	Path               goflags.StringSlice `json:"path,omitempty"`
+	PathFile           goflags.StringSlice `json:"path_file,omitempty"`
+	PathRemote         string              `json:"path_remote,omitempty"`
+	ResumeCfg          string              `json:"resume_cfg,omitempty"`
+	Output             string              `json:"output,omitempty"`
+	Rate               int                 `json:"rate,omitempty"`
+	RateHttp           int                 `json:"rate_http,omitempty"`
+	Retries            int                 `json:"retries,omitempty"`
+	Proxy              string              `json:"proxy,omitempty"`
+	ProxyAuth          string              `json:"proxy_auth,omitempty"`
+	NoColor            bool                `json:"no_color"`
+	Verbose            bool                `json:"verbose"`
+	Silent             bool                `json:"silent"`
+	OnlyTargets        bool                `json:"only_targets"`
+	EnableProgressBar  bool                `json:"enable_progress_bar"`
+	Skip404And302      bool                `json:"skip_404_and_302"`
+	ErrUseLastResponse bool                `json:"err_use_last_response,omitempty"`
 }
 
 func ParserOptions() *Options {
@@ -50,15 +52,17 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Silent, "silent", "sl", false, "只输出状态码为200"),
 		set.BoolVarP(&options.EnableProgressBar, "progressbar", "pb", false, "启用进度条"),
+		set.BoolVar(&options.Skip404And302, "skip", false, "跳过404、302输出默认跳过"),
 	)
 	set.CreateGroup("config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
+		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许HTTP最新请求"),
 	)
 	set.CreateGroup("rate", "速率",
-		set.IntVarP(&options.Rate, "rate-limit", "rl", 300, "线程"),
+		set.IntVarP(&options.Rate, "rate-limit", "rl", 30, "线程"),
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
 	)
 	_ = set.Parse()
@@ -74,7 +78,6 @@ func (o *Options) configureOutput() {
 	if o.Verbose {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
-
 	if o.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
 	}

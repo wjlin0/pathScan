@@ -23,7 +23,6 @@ func (r *Runner) ConnectTarget(target string) (bool, error) {
 }
 
 func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
-	defer r.wg.Done()
 	reg := regexp.MustCompile(`<title>(.*?)</title>`)
 	_url, err := url.JoinPath(target, path)
 	if err != nil {
@@ -38,6 +37,8 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	if err != nil {
 		return nil, err
 	}
+	location := resp.Header.Get("Location")
+
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	t := reg.FindAllStringSubmatch(string(body), -1)
@@ -51,11 +52,12 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 		title = "该请求内容为0"
 	}
 	re := &result.TargetResult{
-		Target:  target,
-		Path:    path,
-		Title:   title,
-		Status:  resp.StatusCode,
-		BodyLen: len(string(body)),
+		Target:   target,
+		Path:     path,
+		Title:    title,
+		Status:   resp.StatusCode,
+		BodyLen:  len(string(body)),
+		Location: location,
 	}
 
 	return re, nil

@@ -65,9 +65,10 @@ func NewRun(options *Options) (*Runner, error) {
 		return nil, err
 	}
 	run.Cfg.Options.configureOutput()
+	run.newClient()
+
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
-	run.client = newClient(run.Cfg.Options)
-	run.wg = sizedwaitgroup.New(run.Cfg.Options.Rate)
+	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
 	run.targets = run.getAllTargets()
 	run.paths = run.getAllPaths()
 	run.userAgent = []string{"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_3 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5", "Mozilla/5.0 (Linux;u;Android 4.2.2;zh-cn;) AppleWebKit/534.46 (KHTML,like Gecko)Version/5.1 Mobile Safari/10600.6.3 (compatible; Baiduspider/2.0;+http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (compatible; Baiduspider-render/2.0; +http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (iPhone;CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko)Version/9.0 Mobile/13B143 Safari/601.1 (compatible; Baiduspider-render/2.0;Smartapp; +http://www.baidu.com/search/spider.html)"}
@@ -85,14 +86,18 @@ func (r *Runner) GetUserAgent() string {
 	rand.Seed(time.Now().Unix())
 	return r.userAgent[rand.Intn(len(r.userAgent))]
 }
-func newClient(options *Options) *http.Client {
+func (r *Runner) newClient() *http.Client {
+	options := r.Cfg.Options
 	t := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 	}
 	if options.Proxy != "" {
-		proxyUrl, _ := url.Parse(options.Proxy)
+		proxyUrl, err := url.Parse(options.Proxy)
+		if err != nil {
+			gologger.Error().Msg(err.Error())
+		}
 		if options.ProxyAuth != "" {
 			proxyUrl.User = url.UserPassword(strings.Split(options.ProxyAuth, ":")[0], strings.Split(options.ProxyAuth, ":")[1])
 		}
@@ -101,36 +106,34 @@ func newClient(options *Options) *http.Client {
 	client := &http.Client{
 		Timeout:   5 * time.Second,
 		Transport: t,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
 	}
+	if options.ErrUseLastResponse {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	r.client = client
 	return client
 }
 
 func (r *Runner) DiscoveryHost(targets []string) {
 
-	var wg sync.WaitGroup
+	wg := sizedwaitgroup.New(r.Cfg.Options.Rate)
 	for _, target := range targets {
-		wg.Add(1)
+		wg.Add()
 		go func(target string) {
 			defer wg.Done()
 			if r.Cfg.Results.HasTarget(target) {
 				return
 			}
-			r.limiter.Take()
 			exit, err := r.ConnectTarget(target)
 			if exit && err == nil {
 				r.Cfg.Results.AddTarget(target)
 				if r.Cfg.Options.Silent {
 					gologger.Silent().Msg(target)
 				}
-				if r.Cfg.Options.OnlyTargets {
-					gologger.Info().Msgf("发现 %s 存活", target)
-				} else {
-					gologger.Debug().Msgf("发现 %s 存活", target)
-				}
-			} else {
+				gologger.Info().Msgf("发现 %s 存活", target)
+			} else if err != nil {
 				gologger.Debug().Msgf("%s", err.Error())
 			}
 
@@ -185,8 +188,11 @@ func (r *Runner) Run() error {
 					r.limiter.Take()
 					targetResult, err := r.GoTargetPath(target, path)
 					if targetResult != nil && err == nil {
+						if r.Cfg.Results.HasPath(targetResult.Target, targetResult.Path) {
+							return
+						}
 						r.Cfg.Results.AddPathByResult(targetResult)
-						r.Cfg.Results.AddSkipped(targetResult.Target, targetResult.Path, targetResult.Title, targetResult.Status, targetResult.BodyLen)
+						r.Cfg.Results.AddSkipped(targetResult.Target, targetResult.Path, targetResult.Title, targetResult.Location, targetResult.Status, targetResult.BodyLen)
 						r.handlerOutputTarget(targetResult)
 					}
 				}(t, p)

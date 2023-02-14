@@ -2,21 +2,31 @@ package result
 
 import (
 	"fmt"
+	"net/url"
 	"sync"
 )
 
 type TargetResult struct {
-	Target  string `json:"target,omitempty"`
-	Path    string `json:"path,omitempty"`
-	Title   string `json:"title,omitempty"`
-	Status  int    `json:"status,omitempty"`
-	BodyLen int    `json:"body_len,omitempty"`
+	Target   string `json:"target,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Status   int    `json:"status,omitempty"`
+	BodyLen  int    `json:"body_len,omitempty"`
+	Location string `json:"location,omitempty"`
 }
 type Result struct {
 	sync.RWMutex
 	TargetPaths map[string]map[string]*TargetResult `json:"target_paths,omitempty"`
 	Targets     map[string]struct{}                 `json:"targets,omitempty"`
 	Skipped     map[string]map[string]*TargetResult `json:"skipped,omitempty"`
+}
+
+func (tr *TargetResult) ToString() string {
+	path, err := url.JoinPath(tr.Target, tr.Path)
+	if err != nil {
+		return tr.Target
+	}
+	return path
 }
 
 func NewResult() *Result {
@@ -61,15 +71,16 @@ func (r *Result) AddPathByResult(result *TargetResult) {
 		r.TargetPaths[k] = make(map[string]*TargetResult)
 	}
 	r.TargetPaths[k][v] = &TargetResult{
-		Target:  k,
-		Path:    v,
-		Title:   result.Title,
-		Status:  result.Status,
-		BodyLen: result.BodyLen,
+		Target:   k,
+		Path:     v,
+		Title:    result.Title,
+		Status:   result.Status,
+		BodyLen:  result.BodyLen,
+		Location: result.Location,
 	}
 	r.Targets[k] = struct{}{}
 }
-func (r *Result) AddPath(k, v, title string, status, bodyLen int) {
+func (r *Result) AddPath(k, v, title, location string, status, bodyLen int) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -77,11 +88,12 @@ func (r *Result) AddPath(k, v, title string, status, bodyLen int) {
 		r.TargetPaths[k] = make(map[string]*TargetResult)
 	}
 	r.TargetPaths[k][v] = &TargetResult{
-		Target:  k,
-		Path:    v,
-		Title:   title,
-		Status:  status,
-		BodyLen: bodyLen,
+		Target:   k,
+		Path:     v,
+		Title:    title,
+		Status:   status,
+		BodyLen:  bodyLen,
+		Location: location,
 	}
 	r.Targets[k] = struct{}{}
 }
@@ -159,7 +171,7 @@ func (r *Result) Len() int {
 	return len(r.Targets)
 }
 
-func (r *Result) AddSkipped(k, v, title string, status, bodyLen int) {
+func (r *Result) AddSkipped(k, v, title, location string, status, bodyLen int) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -167,11 +179,12 @@ func (r *Result) AddSkipped(k, v, title string, status, bodyLen int) {
 		r.Skipped[k] = make(map[string]*TargetResult)
 	}
 	r.Skipped[k][v] = &TargetResult{
-		Target:  k,
-		Path:    v,
-		Title:   title,
-		Status:  status,
-		BodyLen: bodyLen,
+		Target:   k,
+		Path:     v,
+		Title:    title,
+		Status:   status,
+		BodyLen:  bodyLen,
+		Location: location,
 	}
 }
 func (r *Result) AddSkippedByResult(result *TargetResult) {
@@ -182,15 +195,17 @@ func (r *Result) AddSkippedByResult(result *TargetResult) {
 	title := result.Title
 	status := result.Status
 	bodyLen := result.BodyLen
+	location := result.Location
 	if _, ok := r.Skipped[k]; !ok {
 		r.Skipped[k] = make(map[string]*TargetResult)
 	}
 	r.Skipped[k][v] = &TargetResult{
-		Target:  k,
-		Path:    v,
-		Title:   title,
-		Status:  status,
-		BodyLen: bodyLen,
+		Target:   k,
+		Path:     v,
+		Title:    title,
+		Status:   status,
+		BodyLen:  bodyLen,
+		Location: location,
 	}
 }
 func (r *Result) HasSkipped(target, path string) (*TargetResult, bool) {
