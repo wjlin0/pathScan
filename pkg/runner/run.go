@@ -174,7 +174,6 @@ func (r *Runner) Run() error {
 	}
 
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
-
 		for _, p := range pathUrls {
 			for t := range r.Cfg.Results.GetTargets() {
 				r.wg.Add()
@@ -434,9 +433,16 @@ func (r *Runner) handlerOutput(scanResults *result.Result) {
 
 	switch {
 	case scanResults.HasPaths():
+		header := true
 		for scan, v := range scanResults.GetPathsByTarget() {
 			if file != nil {
-				err = WriteTargetOutput(scan, v, file)
+				if r.Cfg.Options.Csv {
+					err = WriteTargetCsv(v, header, file)
+					header = false
+				} else {
+					err = WriteTargetOutput(scan, v, file)
+				}
+
 			}
 			if err != nil {
 				gologger.Error().Msgf("无法写入文件 %s: %s\n", scan, err)

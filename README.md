@@ -9,14 +9,13 @@ pathScan -u http://www.google.com/ -ps /docs
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.2
 /_/
 
                         wjlin0.com
 
 慎用。你要为自己的行为负责
 开发者不承担任何责任，也不对任何误用或损坏负责.
-[INF] 状态码200 http://www.google.com:80/docs 文章标题: Sign in - Google Accounts 页面长度:144418
 ```
 
 - 快速发现路径
@@ -24,7 +23,8 @@ pathScan -u http://www.google.com/ -ps /docs
 - 丰富的内置字典,自动下载字典
 - 可恢复上次扫描进度
 - 支持使用HTTP/SOCKS代理
-- 随机UserAgent
+- 随机UserAgent、证书跳过验证
+- Csv输出
 
 ## 用法
 ```shell
@@ -48,20 +48,26 @@ Flags:
 
 输出:
   -o, -output string  输出文件路径（可忽略）
+  -c, -csv            csv格式输出
   -nc, -no-color      无颜色输出
   -vb, -verbose       详细输出模式
   -sl, -silent        只输出状态码为200
   -pb, -progressbar   启用进度条
+  -skip               跳过404、302输出默认跳过
 
 配置:
   -rs, -retries int        重试3次 (default 3)
   -p, -proxy string        代理
   -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
   -st, -scan-target        只进行目标存活扫描
+  -nn, -not-new            不允许HTTP最新请求
 
 速率:
-  -rl, -rate-limit int  线程 (default 300)
+  -rl, -rate-limit int  线程 (default 30)
   -rh, -rate-http int   允许每秒钟最大http请求数 (default 100)
+
+清理:
+  -clear  清理历史任务
 ```
 ## 安装
 
@@ -80,7 +86,7 @@ pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.2
 /_/
 
                         wjlin0.com
@@ -103,7 +109,7 @@ pathScan -u https://google.com -vb
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.2
 /_/
 
                         wjlin0.com
@@ -133,7 +139,7 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.2
 /_/
 
                         wjlin0.com
@@ -144,6 +150,22 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 [WRN] 状态码404 http://www.google.com:80/en/netdu 文章标题: Error 404 (Not Found)!!1 页面长度:1569
 [WRN] 状态码404 http://www.google.com:80/a_zbzn 文章标题: Error 404 (Not Found)!!1 页面长度:1567
 ```
+## Csv格式输出
+```console
+pathScan -u https://www.baidu.com -csv -output 1.csv
+
+               __   __    ____
+   ___  ___ _ / /_ / /   / __/____ ___ _ ___
+  / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.2
+/_/
+
+                        wjlin0.com
+
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+```
+
 ## 配置文件
 pathScan 支持默认配置文件位于$HOME/.config/pathScan/config.yaml，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 
@@ -154,7 +176,7 @@ pathScan -u https://google.com -st
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.1
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.2
 /_/
 
                         wjlin0.com

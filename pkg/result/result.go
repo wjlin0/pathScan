@@ -7,12 +7,12 @@ import (
 )
 
 type TargetResult struct {
-	Target   string `json:"target,omitempty"`
-	Path     string `json:"path,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Status   int    `json:"status,omitempty"`
-	BodyLen  int    `json:"body_len,omitempty"`
-	Location string `json:"location,omitempty"`
+	Target   string `json:"target,omitempty" csv:"target"`
+	Path     string `json:"path,omitempty"  csv:"path"`
+	Title    string `json:"title,omitempty" csv:"title"`
+	Status   int    `json:"status,omitempty" csv:"status"`
+	BodyLen  int    `json:"body_len,omitempty" csv:"body_len"`
+	Location string `json:"location,omitempty" csv:"location"`
 }
 type Result struct {
 	sync.RWMutex

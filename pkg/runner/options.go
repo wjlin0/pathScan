@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
+	"os"
 )
 
 type Options struct {
@@ -29,6 +30,8 @@ type Options struct {
 	EnableProgressBar  bool                `json:"enable_progress_bar"`
 	Skip404And302      bool                `json:"skip_404_and_302"`
 	ErrUseLastResponse bool                `json:"err_use_last_response,omitempty"`
+	Csv                bool                `json:"csv,omitempty"`
+	ClearResume        bool                `json:"clear_resume,omitempty"`
 }
 
 func ParserOptions() *Options {
@@ -48,6 +51,7 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("output", "输出",
 		set.StringVarP(&options.Output, "output", "o", "", "输出文件路径（可忽略）"),
+		set.BoolVarP(&options.Csv, "csv", "c", false, "csv格式输出"),
 		set.BoolVarP(&options.NoColor, "no-color", "nc", false, "无颜色输出"),
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Silent, "silent", "sl", false, "只输出状态码为200"),
@@ -65,7 +69,16 @@ func ParserOptions() *Options {
 		set.IntVarP(&options.Rate, "rate-limit", "rl", 30, "线程"),
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
 	)
+	set.CreateGroup("clear", "清理",
+		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
+	)
 	_ = set.Parse()
+	if options.ClearResume {
+		_ = os.RemoveAll(DefaultResumeFolderPath())
+
+		os.Exit(0)
+	}
+
 	return options
 }
 
