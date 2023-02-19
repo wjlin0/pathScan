@@ -77,7 +77,10 @@ Flags:
 go install -v github.com/wjlin0/pathScan@latest
 ```
 ### Docker
-待补充 - 后续见面
+```shell
+docker pull wjlin0/path_scan:latest
+docker run --rm --name pathScan -it wjlin0/path_scan:latest  -u http://baidu.com -vb
+```
 
 ## 远程加载
 ```console
