@@ -91,7 +91,10 @@ go install -v github.com/wjlin0/pathScan@latest
 docker pull wjlin0/path_scan:latest
 docker run --rm --name pathScan -it wjlin0/path_scan:latest  -u http://baidu.com -vb
 ```
-
+### 自行编译
+```shell
+cd pathScan && go build
+```
 ## 远程加载
 ```console
 pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/pathScan/main/dict/api-user.txt
@@ -180,7 +183,7 @@ pathScan -u https://www.baidu.com -csv -output 1.csv
 ```
 
 ## 配置文件
-pathScan 支持默认配置文件位于$HOME/.config/pathScan/config.yaml，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
+pathScan 支持默认配置文件位于`$HOME/.config/pathScan/config.yaml`，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 
 ## 仅主机发现
 ```console
