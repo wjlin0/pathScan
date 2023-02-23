@@ -108,12 +108,6 @@ func (r *Result) GetPathsCount() int {
 	}
 	return num
 }
-func (r *Result) GetPathCount(target string) int {
-	r.RLock()
-	defer r.RUnlock()
-
-	return len(r.TargetPaths[target])
-}
 func (r *Result) HasPath(k string, v string) bool {
 	r.RLock()
 	defer r.RUnlock()

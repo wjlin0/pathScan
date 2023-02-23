@@ -26,6 +26,16 @@ pathScan -u http://www.google.com/ -ps /docs
 - 随机UserAgent、证书跳过验证
 - Csv输出
 
+## 技术栈
+- net/http 实现
+- channel 安全通道传输
+- sync.RWMutex 高并发下的读写锁实现
+- go goroutine 轻量线程
+- remeh/sizedwaitgroup 控制并发量
+- projectdiscovery/logger 等级输出
+- projectdiscovery/goflags 参数管理实现
+- projectdiscovery/ratelimit 每秒最多并发量线程控制
+
 ## 用法
 ```shell
 pathScan -h
