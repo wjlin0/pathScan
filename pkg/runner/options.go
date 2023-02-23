@@ -28,7 +28,7 @@ type Options struct {
 	Silent             bool                `json:"silent"`
 	OnlyTargets        bool                `json:"only_targets"`
 	EnableProgressBar  bool                `json:"enable_progress_bar"`
-	Skip               bool                `json:"skip_404_and_302"`
+	Skip               bool                `json:"skip"`
 	ErrUseLastResponse bool                `json:"err_use_last_response,omitempty"`
 	Csv                bool                `json:"csv,omitempty"`
 	ClearResume        bool                `json:"clear_resume,omitempty"`

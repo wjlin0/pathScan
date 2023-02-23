@@ -179,9 +179,8 @@ func (r *Runner) Run() error {
 				r.wg.Add()
 				go func(target, path string) {
 					defer r.wg.Done()
-					skipped, ok := r.Cfg.Results.HasSkipped(target, path)
+					_, ok := r.Cfg.Results.HasSkipped(target, path)
 					if ok {
-						r.Cfg.Results.AddPathByResult(skipped)
 						return
 					}
 					r.limiter.Take()

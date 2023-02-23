@@ -37,6 +37,9 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode == 404 {
+		return nil, nil
+	}
 	location := resp.Header.Get("Location")
 
 	defer resp.Body.Close()
@@ -51,6 +54,7 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	if len(body) == 0 {
 		title = "该请求内容为0"
 	}
+
 	re := &result.TargetResult{
 		Target:   target,
 		Path:     path,
