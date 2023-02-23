@@ -15,8 +15,8 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 	builder := &strings.Builder{}
 	builder.WriteString(path)
 	statusCode := re.Status
-	skip := r.Cfg.Options.Skip
-	if skip && statusCode != 200 && !r.Cfg.Options.Verbose {
+	skipCode := r.Cfg.Options.SkipCode
+	if skipCode && statusCode != 200 {
 		return
 	}
 	if !r.Cfg.Options.Silent {

@@ -119,8 +119,16 @@ func (r *Runner) newClient() *http.Client {
 func (r *Runner) DiscoveryHost(targets []string) {
 
 	wg := sizedwaitgroup.New(r.Cfg.Options.Rate)
+	if r.Cfg.Options.SkipHost {
+		gologger.Debug().Msg("跳过主机验证")
+		for _, target := range targets {
+			r.Cfg.Results.AddTarget(target)
+		}
+	}
 	for _, target := range targets {
+
 		wg.Add()
+
 		go func(target string) {
 			defer wg.Done()
 			if r.Cfg.Results.HasTarget(target) {
@@ -178,6 +186,11 @@ func (r *Runner) Run() error {
 			for t := range r.Cfg.Results.GetTargets() {
 				r.wg.Add()
 				go func(target, path string) {
+					defer func() {
+						if r.Cfg.Options.EnableProgressBar {
+							r.stats.IncrementCounter("packets", 1)
+						}
+					}()
 					defer r.wg.Done()
 					_, ok := r.Cfg.Results.HasSkipped(target, path)
 					if ok {
@@ -194,9 +207,7 @@ func (r *Runner) Run() error {
 						r.handlerOutputTarget(targetResult)
 					}
 				}(t, p)
-				if r.Cfg.Options.EnableProgressBar {
-					r.stats.IncrementCounter("packets", 1)
-				}
+
 			}
 		}
 	}
@@ -306,14 +317,7 @@ func (r *Runner) getAllTargets() []string {
 	for k, _ := range at {
 		t = append(t, k)
 	}
-	if t == nil {
-		e := "不存在目标"
-		if err != nil {
-			e += ":" + err.Error()
-		}
-		gologger.Error().Msg(e)
-		return nil
-	}
+
 	return t
 }
 

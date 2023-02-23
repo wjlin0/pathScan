@@ -28,7 +28,8 @@ type Options struct {
 	Silent             bool                `json:"silent"`
 	OnlyTargets        bool                `json:"only_targets"`
 	EnableProgressBar  bool                `json:"enable_progress_bar"`
-	Skip               bool                `json:"skip"`
+	SkipCode           bool                `json:"skip_code"`
+	SkipHost           bool                `json:"skip_host"`
 	ErrUseLastResponse bool                `json:"err_use_last_response,omitempty"`
 	Csv                bool                `json:"csv,omitempty"`
 	ClearResume        bool                `json:"clear_resume,omitempty"`
@@ -57,22 +58,21 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Silent, "silent", "sl", false, "管道模式"),
 		set.BoolVarP(&options.EnableProgressBar, "progressbar", "pb", false, "启用进度条"),
-		set.BoolVar(&options.Skip, "skip", false, "跳过其他状态输出"),
 		set.BoolVarP(&options.Version, "version", "v", false, "输出版本"),
 	)
 	set.CreateGroup("config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
+		set.BoolVarP(&options.SkipCode, "skip-code", "sc", false, "跳过其他状态输出"),
+		set.BoolVarP(&options.SkipHost, "skip-host", "sh", false, "跳过目标验证"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许HTTP最新请求"),
+		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
 	)
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.Rate, "rate-limit", "rl", 30, "线程"),
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
-	)
-	set.CreateGroup("clear", "清理",
-		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
 	)
 	_ = set.Parse()
 	if options.Version {
