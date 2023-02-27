@@ -1,7 +1,6 @@
 package result
 
 import (
-	"fmt"
 	"net/url"
 	"sync"
 )
@@ -18,7 +17,7 @@ type Result struct {
 	sync.RWMutex
 	TargetPaths map[string]map[string]*TargetResult `json:"target_paths,omitempty"`
 	Targets     map[string]struct{}                 `json:"targets,omitempty"`
-	Skipped     map[string]map[string]*TargetResult `json:"skipped,omitempty"`
+	Skipped     map[string]map[string]struct{}      `json:"skipped,omitempty"`
 }
 
 func (tr *TargetResult) ToString() string {
@@ -32,14 +31,12 @@ func (tr *TargetResult) ToString() string {
 func NewResult() *Result {
 	targetPaths := make(map[string]map[string]*TargetResult)
 	targets := make(map[string]struct{})
-	skipped := make(map[string]map[string]*TargetResult)
+	skipped := make(map[string]map[string]struct{})
 	return &Result{TargetPaths: targetPaths, Targets: targets, Skipped: skipped}
 }
 func (r *Result) GetTargets() chan string {
 	r.RLock()
-
 	out := make(chan string)
-
 	go func() {
 		defer close(out)
 		defer r.RUnlock()
@@ -165,56 +162,25 @@ func (r *Result) Len() int {
 	return len(r.Targets)
 }
 
-func (r *Result) AddSkipped(k, v, title, location string, status, bodyLen int) {
+func (r *Result) AddSkipped(k, v string) {
 	r.Lock()
 	defer r.Unlock()
 
 	if _, ok := r.Skipped[k]; !ok {
-		r.Skipped[k] = make(map[string]*TargetResult)
+		r.Skipped[k] = make(map[string]struct{})
 	}
-	r.Skipped[k][v] = &TargetResult{
-		Target:   k,
-		Path:     v,
-		Title:    title,
-		Status:   status,
-		BodyLen:  bodyLen,
-		Location: location,
-	}
+	r.Skipped[k][v] = struct{}{}
 }
-func (r *Result) AddSkippedByResult(result *TargetResult) {
-	r.Lock()
-	defer r.Unlock()
-	k := result.Target
-	v := result.Path
-	title := result.Title
-	status := result.Status
-	bodyLen := result.BodyLen
-	location := result.Location
-	if _, ok := r.Skipped[k]; !ok {
-		r.Skipped[k] = make(map[string]*TargetResult)
-	}
-	r.Skipped[k][v] = &TargetResult{
-		Target:   k,
-		Path:     v,
-		Title:    title,
-		Status:   status,
-		BodyLen:  bodyLen,
-		Location: location,
-	}
-}
-func (r *Result) HasSkipped(target, path string) (*TargetResult, bool) {
+func (r *Result) HasSkipped(target, path string) bool {
 	r.RLock()
 	defer r.RUnlock()
 
 	_, ok := r.TargetPaths[target]
 	if !ok {
-		return nil, false
+		return ok
 	}
 	_, haspath := r.TargetPaths[target][path]
-	if !haspath {
-		return nil, false
-	}
-	return r.TargetPaths[target][path], haspath
+	return haspath
 }
 func (r *Result) DelSkipped(target, path string) {
 	r.RLock()
@@ -231,24 +197,6 @@ func (r *Result) DelSkipped(target, path string) {
 		delete(r.Skipped, target)
 	}
 }
-func (r *Result) GetSkipped(target, path string) *TargetResult {
-	r.RLock()
-	defer r.RUnlock()
-	_, ok := r.Skipped[target]
-	if !ok {
-		fmt.Println(target)
-		fmt.Println(path)
-		return nil
-	}
-	_, ok = r.Skipped[target][path]
-	if !ok {
-		fmt.Println(target)
-		fmt.Println(path)
-		return nil
-	}
-	return r.Skipped[target][path]
-
-}
 func (r *Result) GetSkippedCount() int {
 	r.RLock()
 	defer r.RUnlock()
@@ -259,31 +207,4 @@ func (r *Result) GetSkippedCount() int {
 		}
 	}
 	return num
-}
-func (r *Result) PathsChangeSkipped() {
-
-	r.Skipped = make(map[string]map[string]*TargetResult)
-	out := func() chan *TargetResult {
-		out := make(chan *TargetResult)
-		defer close(out)
-		for _, targets := range r.TargetPaths {
-			for _, path := range targets {
-				out <- path
-			}
-		}
-		return out
-	}()
-	for re := range out {
-		k := re.Target
-		v := re.Path
-		if _, ok := r.Skipped[k]; !ok {
-			r.Skipped[k] = make(map[string]*TargetResult)
-		}
-		r.Skipped[k][v] = re
-
-	}
-
-	r.TargetPaths = make(map[string]map[string]*TargetResult)
-	r.Targets = make(map[string]struct{})
-
 }

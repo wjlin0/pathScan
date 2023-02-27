@@ -37,9 +37,6 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode == 404 {
-		return nil, nil
-	}
 	location := resp.Header.Get("Location")
 
 	defer resp.Body.Close()
@@ -63,6 +60,5 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 		BodyLen:  len(string(body)),
 		Location: location,
 	}
-
 	return re, nil
 }

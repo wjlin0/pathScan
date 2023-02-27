@@ -47,9 +47,10 @@ func NewRun(options *Options) (*Runner, error) {
 				cfg.Results.TargetPaths = make(map[string]map[string]*result.TargetResult)
 			}
 			if cfg.Results.Skipped == nil {
-				cfg.Results.Skipped = make(map[string]map[string]*result.TargetResult)
+				cfg.Results.Skipped = make(map[string]map[string]struct{})
 			}
 			cfg.Options.ResumeCfg = options.ResumeCfg
+			cfg.Options.SkipHost = true
 			run.Cfg = cfg
 		}
 	} else {
@@ -107,7 +108,7 @@ func (r *Runner) newClient() *http.Client {
 		Timeout:   5 * time.Second,
 		Transport: t,
 	}
-	if options.ErrUseLastResponse {
+	if !options.ErrUseLastResponse {
 		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
@@ -158,7 +159,10 @@ func (r *Runner) Run() error {
 	showBanner()
 
 	r.DiscoveryHost(targets)
-
+	targets = nil
+	for t := range r.Cfg.Results.GetTargets() {
+		targets = append(targets, t)
+	}
 	if r.Cfg.Options.OnlyTargets {
 		return nil
 	}
@@ -166,8 +170,8 @@ func (r *Runner) Run() error {
 	targetCount := uint64(r.Cfg.Results.Len())
 	Range := pathCount * targetCount
 	gologger.Info().Msgf("存活目标总数 -> %d", uint64(r.Cfg.Results.Len()))
-
 	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(r.Cfg.Options.Retries))
+
 	if r.Cfg.Options.EnableProgressBar {
 		r.stats.AddStatic("paths", pathCount)
 		r.stats.AddStatic("targets", targetCount)
@@ -180,30 +184,38 @@ func (r *Runner) Run() error {
 			gologger.Warning().Msgf("Couldn't start statistics: %s\n", err)
 		}
 	}
-
+	randShuffle(pathUrls)
+	randShuffle(targets)
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
 		for _, p := range pathUrls {
-			for t := range r.Cfg.Results.GetTargets() {
+			for _, t := range targets {
 				r.wg.Add()
 				go func(target, path string) {
 					defer func() {
 						if r.Cfg.Options.EnableProgressBar {
 							r.stats.IncrementCounter("packets", 1)
 						}
+						r.wg.Done()
 					}()
-					defer r.wg.Done()
-					_, ok := r.Cfg.Results.HasSkipped(target, path)
-					if ok {
+					if r.Cfg.Results.HasSkipped(path, target) {
 						return
 					}
+					if r.Cfg.Results.HasPath(target, path) {
+						return
+					}
+
 					r.limiter.Take()
 					targetResult, err := r.GoTargetPath(target, path)
 					if targetResult != nil && err == nil {
-						if r.Cfg.Results.HasPath(targetResult.Target, targetResult.Path) {
+						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
+						if targetResult.Status == 404 || targetResult.Status == 500 || targetResult.Status == 0 {
+							return
+						}
+						if !r.Cfg.Options.SkipCode && targetResult.Status != 200 {
 							return
 						}
 						r.Cfg.Results.AddPathByResult(targetResult)
-						r.Cfg.Results.AddSkipped(targetResult.Target, targetResult.Path, targetResult.Title, targetResult.Location, targetResult.Status, targetResult.BodyLen)
+
 						r.handlerOutputTarget(targetResult)
 					}
 				}(t, p)
@@ -312,8 +324,12 @@ func (r *Runner) getAllTargets() []string {
 			}
 		}
 	}
-
+	for _, skip := range r.Cfg.Options.SkipUrl {
+		fmt.Println(skip)
+		delete(at, skip)
+	}
 	var t []string
+
 	for k, _ := range at {
 		t = append(t, k)
 	}
@@ -372,8 +388,8 @@ func (r *Runner) getAllPaths() []string {
 			gologger.Error().Msgf(err.Error())
 			return nil
 		}
-		dictPath := filepath.Join(home, ".config", "pathScan", "dict")
-		err = DownloadDict()
+		dictPath := filepath.Join(home, ".config", "pathScan", "dict", "v"+Version)
+		err = r.DownloadDict()
 		if err != nil {
 			gologger.Error().Msgf(err.Error())
 			return nil

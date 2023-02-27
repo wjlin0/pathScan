@@ -10,30 +10,32 @@ import (
 )
 
 type Options struct {
-	Url                goflags.StringSlice `json:"url,omitempty"`
-	UrlFile            goflags.StringSlice `json:"url_file,omitempty"`
-	UrlRemote          string              `json:"url_remote,omitempty"`
-	Path               goflags.StringSlice `json:"path,omitempty"`
-	PathFile           goflags.StringSlice `json:"path_file,omitempty"`
-	PathRemote         string              `json:"path_remote,omitempty"`
-	ResumeCfg          string              `json:"resume_cfg,omitempty"`
-	Output             string              `json:"output,omitempty"`
-	Rate               int                 `json:"rate,omitempty"`
-	RateHttp           int                 `json:"rate_http,omitempty"`
-	Retries            int                 `json:"retries,omitempty"`
-	Proxy              string              `json:"proxy,omitempty"`
-	ProxyAuth          string              `json:"proxy_auth,omitempty"`
-	NoColor            bool                `json:"no_color"`
-	Verbose            bool                `json:"verbose"`
-	Silent             bool                `json:"silent"`
-	OnlyTargets        bool                `json:"only_targets"`
-	EnableProgressBar  bool                `json:"enable_progress_bar"`
-	SkipCode           bool                `json:"skip_code"`
-	SkipHost           bool                `json:"skip_host"`
-	ErrUseLastResponse bool                `json:"err_use_last_response,omitempty"`
-	Csv                bool                `json:"csv,omitempty"`
-	ClearResume        bool                `json:"clear_resume,omitempty"`
-	Version            bool                `json:"version,omitempty"`
+	Url       goflags.StringSlice `json:"url,omitempty"`
+	UrlFile   goflags.StringSlice `json:"url_file,omitempty"`
+	UrlRemote string              `json:"url_remote,omitempty"`
+	SkipUrl   goflags.StringSlice `json:"url_skip,omitempty"`
+	Path      goflags.StringSlice `json:"path,omitempty"`
+	PathFile  goflags.StringSlice `json:"path_file,omitempty"`
+
+	PathRemote         string `json:"path_remote,omitempty"`
+	ResumeCfg          string `json:"resume_cfg,omitempty"`
+	Output             string `json:"output,omitempty"`
+	Rate               int    `json:"rate,omitempty"`
+	RateHttp           int    `json:"rate_http,omitempty"`
+	Retries            int    `json:"retries,omitempty"`
+	Proxy              string `json:"proxy,omitempty"`
+	ProxyAuth          string `json:"proxy_auth,omitempty"`
+	NoColor            bool   `json:"no_color"`
+	Verbose            bool   `json:"verbose"`
+	Silent             bool   `json:"silent"`
+	OnlyTargets        bool   `json:"only_targets"`
+	EnableProgressBar  bool   `json:"enable_progress_bar"`
+	SkipCode           bool   `json:"skip_code"`
+	SkipHost           bool   `json:"skip_host"`
+	ErrUseLastResponse bool   `json:"err_use_last_response,omitempty"`
+	Csv                bool   `json:"csv,omitempty"`
+	ClearResume        bool   `json:"clear_resume,omitempty"`
+	Version            bool   `json:"version,omitempty"`
 }
 
 func ParserOptions() *Options {
@@ -45,6 +47,11 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.UrlFile, "url-file", "uf", nil, "从文件中,读取目标", goflags.FileStringSliceOptions),
 		set.StringVarP(&options.UrlRemote, "url-remote", "ur", "", "从远程加载目标"),
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
+	)
+	set.CreateGroup("Skip", "跳过",
+		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
+		set.BoolVarP(&options.SkipCode, "skip-code-not", "scn", false, "不跳过其他状态输出"),
+		set.BoolVarP(&options.SkipHost, "skip-host", "sh", false, "跳过目标验证"),
 	)
 	set.CreateGroup("Dict", "扫描字典",
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.NormalizedStringSliceOptions),
@@ -63,11 +70,9 @@ func ParserOptions() *Options {
 	set.CreateGroup("config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
-		set.BoolVarP(&options.SkipCode, "skip-code", "sc", false, "跳过其他状态输出"),
-		set.BoolVarP(&options.SkipHost, "skip-host", "sh", false, "跳过目标验证"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
-		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许HTTP最新请求"),
+		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "允许HTTP最新请求"),
 		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
 	)
 	set.CreateGroup("rate", "速率",

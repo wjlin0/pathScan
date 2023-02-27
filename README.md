@@ -9,7 +9,7 @@ pathScan -u http://www.google.com/ -ps /docs
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
 /_/
 
                         wjlin0.com
@@ -51,6 +51,11 @@ Flags:
   -ur, -url-remote string  从远程加载目标
   -resume string           使用resume.cfg恢复扫描
 
+跳过:
+  -su, -skip-url string[]  跳过的目标(以逗号分割)
+  -scn, -skip-code-not     不跳过其他状态输出
+  -sh, -skip-host          跳过目标验证
+
 扫描字典:
   -ps, -path string[]       路径(以逗号分割)
   -pf, -path-file string[]  从文件中,读取路径
@@ -61,20 +66,22 @@ Flags:
   -c, -csv            csv格式输出
   -nc, -no-color      无颜色输出
   -vb, -verbose       详细输出模式
-  -sl, -silent        只输出状态码为200
+  -sl, -silent        管道模式
   -pb, -progressbar   启用进度条
-  -skip               跳过404、302输出默认跳过
+  -v, -version        输出版本
 
 配置:
   -rs, -retries int        重试3次 (default 3)
   -p, -proxy string        代理
   -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
   -st, -scan-target        只进行目标存活扫描
-  -nn, -not-new            不允许HTTP最新请求
+  -nn, -not-new            允许HTTP最新请求
+  -clear                   清理历史任务
 
 速率:
   -rl, -rate-limit int  线程 (default 30)
   -rh, -rate-http int   允许每秒钟最大http请求数 (default 100)
+
 
 清理:
   -clear  清理历史任务
@@ -93,7 +100,8 @@ docker run --rm --name pathScan -it wjlin0/path_scan:latest  -u http://baidu.com
 ```
 ### 自行编译
 ```shell
-cd pathScan && go build
+chmod +x build_linux.sh
+./build_linux
 ```
 ## 远程加载
 ```console
@@ -102,7 +110,7 @@ pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
 /_/
 
                         wjlin0.com
@@ -125,7 +133,7 @@ pathScan -u https://google.com -vb
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
 /_/
 
                         wjlin0.com
@@ -155,7 +163,7 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
 /_/
 
                         wjlin0.com
@@ -173,7 +181,7 @@ pathScan -u https://www.baidu.com -csv -output 1.csv
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
 /_/
 
                         wjlin0.com
@@ -192,7 +200,7 @@ pathScan -u https://google.com -st
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
 /_/
 
                         wjlin0.com

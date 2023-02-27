@@ -12,14 +12,14 @@ import (
 )
 
 // Unzip 覆盖解压
-func Unzip(path string, reader *bytes.Reader) error {
+func Unzip(p string, reader *bytes.Reader) error {
 
 	zipReader, err := zip.NewReader(reader, reader.Size())
 	if err != nil {
 		return fmt.Errorf("failed to uncompress zip file: %w", err)
 	}
 	for _, f := range zipReader.File {
-		filePath := filepath.Join(path, f.Name)
+		filePath := filepath.Join(p, filepath.Base(f.Name))
 		if f.FileInfo().IsDir() {
 			err := fileutil.CreateFolders(filePath)
 			if err != nil {

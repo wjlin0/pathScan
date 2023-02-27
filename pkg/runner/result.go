@@ -15,10 +15,7 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 	builder := &strings.Builder{}
 	builder.WriteString(path)
 	statusCode := re.Status
-	skipCode := r.Cfg.Options.SkipCode
-	if skipCode && statusCode != 200 {
-		return
-	}
+
 	if !r.Cfg.Options.Silent {
 		builder.WriteString(" [")
 		if !nocolor {
@@ -65,14 +62,5 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 	}
 
 	fmt.Println(builder.String())
-	//if re.Status == 200 && r.Cfg.Options.Silent {
-	//	gologger.Silent().Msg(path)
-	//}
-	//if re.Status == 200 {
-	//	gologger.Info().Msgf("状态码 %d %s 文章标题 %s 页面长度 %d\n", re.Status, path, re.Title, re.BodyLen)
-	//} else {
-	//	gologger.Verbose().Msgf("状态码 %d %s 文章标题 %s 页面长度 %d\n", re.Status, path, re.Title, re.BodyLen)
-	//
-	//}
 
 }

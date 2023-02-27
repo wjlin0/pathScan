@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
-	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -46,11 +44,8 @@ func ParserResumeCfg(filename string) (*ResumeCfg, error) {
 func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	cfg.Rwm.Lock()
 	defer cfg.Rwm.Unlock()
-	gologger.Info().Str("len", strconv.Itoa(cfg.Results.GetPathsCount())).Msgf("已完成扫描结果")
-	//newResult := result.NewResult()
-	//newResult.Skipped = cfg.Results.TargetPaths
-	//cfg.Results = newResult
-	data, err := json.MarshalIndent(cfg, "", "\t")
+	data, err := json.Marshal(cfg)
+	//data, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return err
 	}

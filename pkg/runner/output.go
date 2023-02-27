@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/url"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -18,19 +17,16 @@ import (
 func WriteTargetOutput(target string, paths map[string]*result.TargetResult, writer io.Writer) error {
 	bufwriter := bufio.NewWriter(writer)
 	sb := &strings.Builder{}
-	sb.WriteString(target)
-	sb.WriteString(":\n")
 	for _, path := range paths {
-		if path.Status != 200 {
-			continue
-		}
-		sb.WriteString("\t\t")
-		sb.WriteString(path.Path)
-		sb.WriteString(" [" + path.Title + " " + strconv.Itoa(path.BodyLen) + " " + "]")
-		sb.WriteString("\n")
-		_, err := bufwriter.WriteString(sb.String())
+		joinPath, err := url.JoinPath(target, path.Path)
 		if err != nil {
-			bufwriter.Flush()
+			joinPath = target + path.Path
+		}
+		sb.WriteString(joinPath)
+		sb.WriteString("\n")
+		_, err = bufwriter.WriteString(sb.String())
+		if err != nil {
+			_ = bufwriter.Flush()
 			return err
 		}
 		sb.Reset()
