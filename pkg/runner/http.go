@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"fmt"
+	"github.com/pkg/errors"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
 	"net/http"
@@ -21,7 +23,6 @@ func (r *Runner) ConnectTarget(target string) (bool, error) {
 	}
 	return true, err
 }
-
 func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
 	reg := regexp.MustCompile(`<title>(.*?)</title>`)
 	_url, err := url.JoinPath(target, path)
@@ -37,7 +38,7 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	if err != nil {
 		return nil, err
 	}
-	location := resp.Header.Get("Location")
+	server := resp.Header.Get("Server")
 
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
@@ -53,12 +54,32 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	}
 
 	re := &result.TargetResult{
-		Target:   target,
-		Path:     path,
-		Title:    title,
-		Status:   resp.StatusCode,
-		BodyLen:  len(string(body)),
-		Location: location,
+		Target:  target,
+		Path:    path,
+		Title:   title,
+		Status:  resp.StatusCode,
+		BodyLen: len(string(body)),
+		Server:  server,
 	}
 	return re, nil
+}
+func (r *Runner) verifyTarget(target string) (bool, error) {
+	path1 := RandStr(5) + "/" + RandStr(5)
+	path2 := RandStr(5) + "/" + RandStr(5)
+	p1, _ := url.JoinPath(target, path1)
+	p2, _ := url.JoinPath(target, path2)
+	get1, err1 := r.client.Get(p1)
+	get2, err2 := r.client.Get(p2)
+	if err1 != nil || err2 != nil {
+		return false, errors.New(fmt.Sprintf("错误的两次请求：%s", target))
+	}
+
+	defer get1.Body.Close()
+	defer get2.Body.Close()
+	body1, _ := io.ReadAll(get1.Body)
+	body2, _ := io.ReadAll(get2.Body)
+	if get1.StatusCode == 200 && get2.StatusCode == 200 && (string(body1) == string(body2)) {
+		return true, nil
+	}
+	return false, nil
 }

@@ -6,12 +6,12 @@ import (
 )
 
 type TargetResult struct {
-	Target   string `json:"target,omitempty" csv:"target"`
-	Path     string `json:"path,omitempty"  csv:"path"`
-	Title    string `json:"title,omitempty" csv:"title"`
-	Status   int    `json:"status,omitempty" csv:"status"`
-	BodyLen  int    `json:"body_len,omitempty" csv:"body_len"`
-	Location string `json:"location,omitempty" csv:"location"`
+	Target  string `json:"target,omitempty" csv:"target"`
+	Path    string `json:"path,omitempty"  csv:"path"`
+	Title   string `json:"title,omitempty" csv:"title"`
+	Status  int    `json:"status,omitempty" csv:"status"`
+	BodyLen int    `json:"body_len,omitempty" csv:"body_len"`
+	Server  string `json:"server,omitempty" csv:"server"`
 }
 type Result struct {
 	sync.RWMutex
@@ -54,6 +54,11 @@ func (r *Result) GetPathsByTarget() map[string]map[string]*TargetResult {
 	return r.TargetPaths
 }
 
+func (r *Result) RemoveTargets(k string) {
+	r.Lock()
+	defer r.Unlock()
+	delete(r.Targets, k)
+}
 func (r *Result) HasTargets() bool {
 	r.RLock()
 	defer r.RUnlock()
@@ -68,12 +73,12 @@ func (r *Result) AddPathByResult(result *TargetResult) {
 		r.TargetPaths[k] = make(map[string]*TargetResult)
 	}
 	r.TargetPaths[k][v] = &TargetResult{
-		Target:   k,
-		Path:     v,
-		Title:    result.Title,
-		Status:   result.Status,
-		BodyLen:  result.BodyLen,
-		Location: result.Location,
+		Target:  k,
+		Path:    v,
+		Title:   result.Title,
+		Status:  result.Status,
+		BodyLen: result.BodyLen,
+		Server:  result.Server,
 	}
 	r.Targets[k] = struct{}{}
 }
@@ -85,12 +90,12 @@ func (r *Result) AddPath(k, v, title, location string, status, bodyLen int) {
 		r.TargetPaths[k] = make(map[string]*TargetResult)
 	}
 	r.TargetPaths[k][v] = &TargetResult{
-		Target:   k,
-		Path:     v,
-		Title:    title,
-		Status:   status,
-		BodyLen:  bodyLen,
-		Location: location,
+		Target:  k,
+		Path:    v,
+		Title:   title,
+		Status:  status,
+		BodyLen: bodyLen,
+		Server:  location,
 	}
 	r.Targets[k] = struct{}{}
 }

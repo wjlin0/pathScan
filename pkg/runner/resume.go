@@ -3,12 +3,15 @@ package runner
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -55,7 +58,7 @@ func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	}
 	return os.WriteFile(DefaultResumeFilePath(filename), data, 0644)
 }
-func RandFileName(length int) string {
+func RandStr(length int) string {
 	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	bytes := []byte(str)
 	result := []byte{}
@@ -80,5 +83,47 @@ func (cfg *ResumeCfg) CleanupResumeConfig() {
 	if fileutil.FileExists(cfg.Options.ResumeCfg) {
 
 		_ = os.Remove(cfg.Options.ResumeCfg)
+	}
+}
+
+func (cfg *ResumeCfg) ClearResume() {
+	resumePath := DataRoot("resume")
+	dir, err := os.ReadDir(resumePath)
+	if err != nil {
+		return
+	}
+	var t int64
+
+	size := func() chan int64 {
+		out := make(chan int64)
+		go func() {
+			defer close(out)
+			for _, d := range dir {
+				if d.IsDir() {
+					continue
+				}
+				info, err := d.Info()
+				if err != nil {
+					continue
+				}
+				out <- info.Size()
+			}
+		}()
+		return out
+	}()
+
+	for s := range size {
+		t += s
+	}
+	// t > 50MB
+	if t >= 52428800 {
+		//_ = os.RemoveAll(DefaultResumeFolderPath())
+		builder := strings.Builder{}
+		if !cfg.Options.NoColor {
+			builder.WriteString(aurora.Yellow(fmt.Sprintf("%s", DefaultResumeFolderPath())).String())
+		} else {
+			builder.WriteString(DefaultResumeFolderPath())
+		}
+		gologger.Info().Msg(builder.String() + " 已经大于100MB, 请使用 -clear 清理")
 	}
 }

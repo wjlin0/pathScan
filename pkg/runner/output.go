@@ -35,12 +35,12 @@ func WriteTargetOutput(target string, paths map[string]*result.TargetResult, wri
 }
 
 type CsvData struct {
+	TimeStamp  time.Time `json:"timestamp" csv:"timestamp"`
 	TargetPath string    `json:"target_path,omitempty" csv:"target_path"`
 	Title      string    `json:"title,omitempty" csv:"title"`
 	Status     int       `json:"status,omitempty" csv:"status"`
 	BodyLen    int       `json:"body_len,omitempty" csv:"body_len"`
-	Location   string    `json:"location,omitempty" csv:"location"`
-	TimeStamp  time.Time `json:"timestamp" csv:"timestamp"`
+	Server     string    `json:"server,omitempty" csv:"server"`
 }
 
 var NumberOfCsvFieldsErr = errors.New("exported fields don't match csv tags")
@@ -74,7 +74,7 @@ func WriteTargetCsv(paths map[string]*result.TargetResult, header bool, writer i
 			joinPath = path.Target
 		}
 		data.TargetPath = joinPath
-		data.Location = path.Location
+		data.Server = path.Server
 		data.Title = path.Title
 		data.BodyLen = path.BodyLen
 		data.Status = path.Status

@@ -51,12 +51,12 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 			builder.WriteString(title)
 		}
 		builder.WriteRune(']')
-		location := re.Location
+		server := re.Server
 		builder.WriteString(" [")
 		if !nocolor {
-			builder.WriteString(aurora.Cyan(location).String())
+			builder.WriteString(aurora.Cyan(server).String())
 		} else {
-			builder.WriteString(location)
+			builder.WriteString(server)
 		}
 		builder.WriteRune(']')
 	}

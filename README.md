@@ -4,12 +4,12 @@ pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的
 ## 特征
 
 ```console
-pathScan -u http://www.google.com/ -ps /docs
+pathScan -t http://www.google.com/ 
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.5
 /_/
 
                         wjlin0.com
@@ -22,6 +22,7 @@ pathScan -u http://www.google.com/ -ps /docs
 - 可远程加载目标或远程加载字典
 - 丰富的内置字典,自动下载字典
 - 可恢复上次扫描进度
+- 从网络空间测绘中发现目标
 - 支持使用HTTP/SOCKS代理
 - 随机UserAgent、证书跳过验证
 - Csv输出
@@ -46,10 +47,10 @@ Usage:
 
 Flags:
 输入:
-  -u, -url string[]        目标(以逗号分割)
-  -uf, -url-file string[]  从文件中,读取目标
-  -ur, -url-remote string  从远程加载目标
-  -resume string           使用resume.cfg恢复扫描
+  -t, -target string[]        目标(以逗号分割)
+  -tf, -target-file string[]  从文件中,读取目标
+  -tr, -target-remote string  从远程加载目标
+  -resume string              使用resume.cfg恢复扫描
 
 跳过:
   -su, -skip-url string[]  跳过的目标(以逗号分割)
@@ -75,16 +76,20 @@ Flags:
   -p, -proxy string        代理
   -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
   -st, -scan-target        只进行目标存活扫描
-  -nn, -not-new            允许HTTP最新请求
+  -nn, -not-new            不允许跳转
   -clear                   清理历史任务
 
+引擎:
+  -uc, -uncover                  启用打开搜索引擎
+  -uq, -uncover-query string[]   搜索查询
+  -ue, -uncover-engine string[]  支持的引擎 (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas) (default fofa) (default ["fofa"])
+  -uf, -uncover-field string     uncover fields to return (ip,port,host) (default "ip:port")
+  -ul, -uncover-limit int        发现要返回的结果 (default 200)
+  -ucd, -uncover-delay int       打开查询请求之间的延迟（秒）(0 to disable) (default 1)
+
 速率:
-  -rl, -rate-limit int  线程 (default 30)
-  -rh, -rate-http int   允许每秒钟最大http请求数 (default 100)
+  -rh, -rate-http int  允许每秒钟最大http请求数 (default 500)
 
-
-清理:
-  -clear  清理历史任务
 ```
 ## 安装
 
@@ -100,58 +105,63 @@ docker run --rm --name pathScan -it wjlin0/path_scan:latest  -u http://baidu.com
 ```
 ### 自行编译
 ```shell
-chmod +x build_linux.sh
-./build_linux
+go install github.com/goreleaser/goreleaser@latest
+goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
 ```
+
 ## 远程加载
 ```console
-pathScan -u http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/pathScan/main/dict/api-user.txt
+pathScan -t http://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/pathScan/main/dict/api-user.txt
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.5
 /_/
 
                         wjlin0.com
 
 慎用。你要为自己的行为负责
 开发者不承担任何责任，也不对任何误用或损坏负责.
-[INF] 从远程加载字典 完成...
-[INF] 状态码200 http://www.google.com:80/apis 文章标题: Google Code 页面长度:5325
-[INF] 状态码200 http://www.google.com:80/apis/ 文章标题: Google Code 页面长度:5325
 ```
 ## 从通道中加载目标
 待补充 - 后续见面
+## 从搜索引擎中加载目标
+```console
+pathScan -uc -ue "fofa" -uq "domain=baidu.com" -ps "api/users"
+
+               __   __    ____
+   ___  ___ _ / /_ / /   / __/____ ___ _ ___
+  / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.5
+/_/
+
+                        wjlin0.com
+
+慎用。你要为自己的行为负责
+开发者不承担任何责任，也不对任何误用或损坏负责.
+```
 
 ## 详细模式
 ```console
-pathScan -u https://google.com -vb
+pathScan -t https://google.com -vb
 
 [DBG] 远程字典下载成功-> /root/.config/pathScan/dict
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.5
 /_/
 
                         wjlin0.com
 
 慎用。你要为自己的行为负责
 开发者不承担任何责任，也不对任何误用或损坏负责.
-[DBG] 发现 https://google.com 存活
-[INF] 存活目标总数 -> 1
-[INF] 请求总数 -> 18408
-[VER] 状态码 301 https://google.com/developer 文章标题  页面长度 229
-[VER] 状态码 301 https://google.com/profiles/testing/testing.info 文章标题  页面长度 249
-[VER] 状态码 301 https://google.com/technology 文章标题  页面长度 230
-[VER] 状态码 301 https://google.com/survey 文章标题  页面长度 226
-[VER] 状态码 404 https://google.com/js/tinymce/ 文章标题 Error 404 (Not Found)!!1 页面长度 1572
 ```
-## 只输出200模式
+## 通道模式
 ```console
-pathScan -u https://google.com -sl
+pathScan -t https://google.com -sl
 https://google.com
 https://google.com/partners
 ```
@@ -163,25 +173,22 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.5
 /_/
 
                         wjlin0.com
 
 慎用。你要为自己的行为负责
 开发者不承担任何责任，也不对任何误用或损坏负责.
-[WRN] 状态码404 http://www.google.com:80/lyfhtxy 文章标题: Error 404 (Not Found)!!1 页面长度:1568
-[WRN] 状态码404 http://www.google.com:80/en/netdu 文章标题: Error 404 (Not Found)!!1 页面长度:1569
-[WRN] 状态码404 http://www.google.com:80/a_zbzn 文章标题: Error 404 (Not Found)!!1 页面长度:1567
 ```
 ## Csv格式输出
 ```console
-pathScan -u https://www.baidu.com -csv -output 1.csv
+pathScan -t https://www.baidu.com -csv -output 1.csv
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.0.5
 /_/
 
                         wjlin0.com
@@ -191,11 +198,13 @@ pathScan -u https://www.baidu.com -csv -output 1.csv
 ```
 
 ## 配置文件
-pathScan 支持默认配置文件位于`$HOME/.config/pathScan/config.yaml`，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
+pathScan 支持默认配置文件位于下面两个路径，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
+- $HOME/.config/pathScan/config.yaml
+- $HOME/.config/pathScan/provider-config.yaml
 
 ## 仅主机发现
 ```console
-pathScan -u https://google.com -st
+pathScan -t https://google.com -st
 
                __   __    ____
    ___  ___ _ / /_ / /   / __/____ ___ _ ___
@@ -207,7 +216,6 @@ pathScan -u https://google.com -st
 
 慎用。你要为自己的行为负责
 开发者不承担任何责任，也不对任何误用或损坏负责.
-[INF] 发现 https://google.com 存活
 ```
 ## 感谢
 

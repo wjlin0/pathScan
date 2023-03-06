@@ -11,7 +11,6 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"golang.org/x/net/context"
-	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -50,8 +49,6 @@ func NewRun(options *Options) (*Runner, error) {
 				cfg.Results.Skipped = make(map[string]map[string]struct{})
 			}
 			cfg.Options.ResumeCfg = options.ResumeCfg
-			cfg.Options.SkipHost = true
-			run.Cfg = cfg
 		}
 	} else {
 		run.Cfg = &ResumeCfg{
@@ -83,16 +80,21 @@ func NewRun(options *Options) (*Runner, error) {
 	}
 	return run, nil
 }
+
 func (r *Runner) GetUserAgent() string {
 	rand.Seed(time.Now().Unix())
 	return r.userAgent[rand.Intn(len(r.userAgent))]
 }
+
 func (r *Runner) newClient() *http.Client {
 	options := r.Cfg.Options
 	t := &http.Transport{
+		MaxIdleConnsPerHost: -1,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS10,
 		},
+		DisableKeepAlives: true,
 	}
 	if options.Proxy != "" {
 		proxyUrl, err := url.Parse(options.Proxy)
@@ -108,7 +110,7 @@ func (r *Runner) newClient() *http.Client {
 		Timeout:   5 * time.Second,
 		Transport: t,
 	}
-	if !options.ErrUseLastResponse {
+	if options.ErrUseLastResponse {
 		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
@@ -117,19 +119,33 @@ func (r *Runner) newClient() *http.Client {
 	return client
 }
 
-func (r *Runner) DiscoveryHost(targets []string) {
-
-	wg := sizedwaitgroup.New(r.Cfg.Options.Rate)
-	if r.Cfg.Options.SkipHost {
-		gologger.Debug().Msg("跳过主机验证")
-		for _, target := range targets {
-			r.Cfg.Results.AddTarget(target)
-		}
+func (r *Runner) SkippedHost() {
+	var targets []string
+	for target := range r.Cfg.Results.GetTargets() {
+		targets = append(targets, target)
 	}
+	wg := sizedwaitgroup.New(100)
 	for _, target := range targets {
-
 		wg.Add()
+		go func(target string) {
+			defer wg.Done()
+			exit, err := r.verifyTarget(target)
+			if exit && err == nil {
+				r.Cfg.Results.RemoveTargets(target)
+				gologger.Info().Msgf("发现异常站点: %s", target)
+			} else if err != nil {
+				gologger.Debug().Msgf("%s", err.Error())
+			}
 
+		}(target)
+	}
+	wg.Wait()
+}
+
+func (r *Runner) DiscoveryHost(targets []string) {
+	wg := sizedwaitgroup.New(r.Cfg.Options.Rate)
+	for _, target := range targets {
+		wg.Add()
 		go func(target string) {
 			defer wg.Done()
 			if r.Cfg.Results.HasTarget(target) {
@@ -141,7 +157,7 @@ func (r *Runner) DiscoveryHost(targets []string) {
 				if r.Cfg.Options.Silent {
 					gologger.Silent().Msg(target)
 				}
-				gologger.Info().Msgf("发现 %s 存活", target)
+				gologger.Debug().Msgf("发现 %s 存活", target)
 			} else if err != nil {
 				gologger.Debug().Msgf("%s", err.Error())
 			}
@@ -149,29 +165,32 @@ func (r *Runner) DiscoveryHost(targets []string) {
 		}(target)
 	}
 	wg.Wait()
-
 }
 
 func (r *Runner) Run() error {
+
 	targets := r.targets
 	pathUrls := r.paths
 	Retries := r.Cfg.Options.Retries
-	showBanner()
+	// 下载远程字典
+	err := r.DownloadDict()
+	if err != nil {
+		gologger.Error().Msgf(err.Error())
+	}
 
-	r.DiscoveryHost(targets)
-	targets = nil
-	for t := range r.Cfg.Results.GetTargets() {
-		targets = append(targets, t)
+	if len(pathUrls) == 1 {
+		r.Cfg.Options.OnlyTargets = true
 	}
 	if r.Cfg.Options.OnlyTargets {
-		return nil
+		pathUrls = []string{pathUrls[0]}
 	}
-	pathCount := uint64(len(pathUrls))
-	targetCount := uint64(r.Cfg.Results.Len())
-	Range := pathCount * targetCount
-	gologger.Info().Msgf("存活目标总数 -> %d", uint64(r.Cfg.Results.Len()))
-	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(r.Cfg.Options.Retries))
 
+	pathCount := uint64(len(pathUrls))
+	targetCount := uint64(len(targets))
+	Range := pathCount * targetCount
+	gologger.Info().Msgf("存活目标总数 -> %d", targetCount)
+	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(r.Cfg.Options.Retries))
+	time.Sleep(5 * time.Second)
 	if r.Cfg.Options.EnableProgressBar {
 		r.stats.AddStatic("paths", pathCount)
 		r.stats.AddStatic("targets", targetCount)
@@ -184,9 +203,10 @@ func (r *Runner) Run() error {
 			gologger.Warning().Msgf("Couldn't start statistics: %s\n", err)
 		}
 	}
-	randShuffle(pathUrls)
-	randShuffle(targets)
+
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
+		pathUrls = randShuffle(pathUrls)
+		targets = randShuffle(targets)
 		for _, p := range pathUrls {
 			for _, t := range targets {
 				r.wg.Add()
@@ -208,11 +228,13 @@ func (r *Runner) Run() error {
 					targetResult, err := r.GoTargetPath(target, path)
 					if targetResult != nil && err == nil {
 						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
-						if targetResult.Status == 404 || targetResult.Status == 500 || targetResult.Status == 0 {
-							return
-						}
-						if !r.Cfg.Options.SkipCode && targetResult.Status != 200 {
-							return
+						if !r.Cfg.Options.OnlyTargets {
+							if targetResult.Status == 404 || targetResult.Status == 500 || targetResult.Status == 0 {
+								return
+							}
+							if !r.Cfg.Options.SkipCode && targetResult.Status != 200 {
+								return
+							}
 						}
 						r.Cfg.Results.AddPathByResult(targetResult)
 
@@ -223,8 +245,11 @@ func (r *Runner) Run() error {
 			}
 		}
 	}
+
 	r.wg.Wait()
+
 	r.handlerOutput(r.Cfg.Results)
+	r.Cfg.ClearResume()
 	return nil
 }
 
@@ -274,152 +299,6 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 		builder.Reset()
 	}
-}
-
-func (r *Runner) getAllTargets() []string {
-	at := make(map[string]struct{})
-	var resp *http.Response
-	var err error
-	if r.Cfg.Options.Url != nil {
-		for _, u := range r.Cfg.Options.Url {
-			u = strings.Trim(u, "\r")
-			u = strings.Trim(u, "\n")
-			if !strings.HasPrefix(u, "http") {
-				u = "http://" + u
-			}
-			if _, ok := at[u]; !ok {
-				at[u] = struct{}{}
-			}
-		}
-	}
-	if r.Cfg.Options.UrlFile != nil {
-		for _, u := range r.Cfg.Options.UrlFile {
-			u = strings.Trim(u, "\r")
-			u = strings.Trim(u, "\n")
-			if !strings.HasPrefix(u, "http") {
-				u = "http://" + u
-			}
-			if _, ok := at[u]; !ok {
-				at[u] = struct{}{}
-			}
-		}
-	}
-	if r.Cfg.Options.UrlRemote != "" {
-		resp, err = http.Get(r.Cfg.Options.UrlRemote)
-		if err == nil {
-			defer resp.Body.Close()
-			body, _ := io.ReadAll(resp.Body)
-			for _, u := range strings.Split(string(body), "\n") {
-				u = strings.Trim(u, "\r")
-				u = strings.Trim(u, "\n")
-				if u == "" {
-					continue
-				}
-				if !strings.HasPrefix(u, "http") {
-					u = "http://" + u
-				}
-				if _, ok := at[u]; !ok {
-					at[u] = struct{}{}
-				}
-			}
-		}
-	}
-	for _, skip := range r.Cfg.Options.SkipUrl {
-		fmt.Println(skip)
-		delete(at, skip)
-	}
-	var t []string
-
-	for k, _ := range at {
-		t = append(t, k)
-	}
-
-	return t
-}
-
-func (r *Runner) getAllPaths() []string {
-	at := make(map[string]struct{})
-	var resp *http.Response
-	var err error
-	if r.Cfg.Options.Path != nil {
-		for _, p := range r.Cfg.Options.Path {
-			if _, ok := at[p]; !ok {
-				p = strings.TrimSpace(p)
-				at[p] = struct{}{}
-			}
-		}
-	}
-	if r.Cfg.Options.PathFile != nil {
-		for _, p := range r.Cfg.Options.PathFile {
-			if _, ok := at[p]; !ok {
-				p = strings.TrimSpace(p)
-				at[p] = struct{}{}
-			}
-		}
-	}
-	if r.Cfg.Options.PathRemote != "" {
-		request, _ := http.NewRequest("GET", r.Cfg.Options.PathRemote, nil)
-		resp, err = r.client.Do(request)
-		if err == nil {
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-
-				}
-			}(resp.Body)
-			body, _ := io.ReadAll(resp.Body)
-			for _, p := range strings.Split(string(body), "\n") {
-				p = strings.Trim(p, "\r")
-				p = strings.Trim(p, "\n")
-				if p == "" {
-					continue
-				}
-				if _, ok := at[p]; !ok {
-					at[p] = struct{}{}
-				}
-
-			}
-		}
-		gologger.Info().Msg("从远程加载字典 完成...")
-	}
-	if len(at) == 0 {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			gologger.Error().Msgf(err.Error())
-			return nil
-		}
-		dictPath := filepath.Join(home, ".config", "pathScan", "dict", "v"+Version)
-		err = r.DownloadDict()
-		if err != nil {
-			gologger.Error().Msgf(err.Error())
-			return nil
-		}
-		gologger.Debug().Msgf("远程字典下载成功-> %s", dictPath)
-		mainDict := filepath.Join(dictPath, "main.txt")
-
-		paths, err := fileutil.ReadFile(mainDict)
-		if err != nil {
-			gologger.Error().Msgf(err.Error())
-			return nil
-		}
-		for p := range paths {
-			p = strings.Trim(p, "\r")
-			p = strings.Trim(p, "\n")
-			if p == "" {
-				continue
-			}
-			if _, ok := at[p]; !ok {
-
-				at[p] = struct{}{}
-			}
-		}
-	}
-	var t []string
-	for k, _ := range at {
-		t = append(t, k)
-	}
-	//gologger.Debug().Msgf("加载字典 -> %d", len(t))
-	return t
 }
 
 func (r *Runner) handlerOutput(scanResults *result.Result) {

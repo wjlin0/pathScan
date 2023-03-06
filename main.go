@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	run, err := runner.NewRun(runner.ParserOptions())
 	if err != nil {
 		gologger.Print().Msg(fmt.Sprintf("无法创建Runner: %s", err.Error()))
@@ -22,7 +21,7 @@ func main() {
 	go func() {
 		for range c {
 			gologger.Info().Msg("CTRL+C 按下: Exiting")
-			filename := runner.RandFileName(30) + ".cfg"
+			filename := runner.RandStr(30) + ".cfg"
 			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
 			err := run.Cfg.MarshalResume(filename)
 			if err != nil {
