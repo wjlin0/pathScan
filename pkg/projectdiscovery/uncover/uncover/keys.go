@@ -11,7 +11,8 @@ type Keys struct {
 	ZoomEyeToken    string
 	NetlasToken     string
 	CriminalIPToken string
-	ZoneKeyId       string
+	ZoneToken       string
+	BinaryToken     string
 }
 
 func (keys Keys) Empty() bool {
@@ -25,5 +26,6 @@ func (keys Keys) Empty() bool {
 		keys.ZoomEyeToken == "" &&
 		keys.NetlasToken == "" &&
 		keys.CriminalIPToken == "" &&
-		keys.ZoneKeyId == ""
+		keys.ZoneToken == "" &&
+		keys.BinaryToken == ""
 }

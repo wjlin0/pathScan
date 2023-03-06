@@ -40,26 +40,35 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 	go func() {
 		defer close(results)
 
-		numberOfResults := 0
-
+		var numberOfResults, totalResults int
 		for {
 			quakeRequest := &Request{
 				Query:       query.Query,
 				Size:        Size,
 				Start:       numberOfResults,
 				IgnoreCache: true,
-				Include:     []string{"ip", "port", "hostname"},
+				Exclude: []string{"transport", "asn", "org", "service.name", "location.country_cn",
+					"service.http.host", "time", "service.http.title", "service.response", "service.cert",
+					"components.product_catalog", "components.product_type", "components.product_type", "location.country_en",
+					"location.province_en",
+					"location.city_en",
+					"location.district_en",
+					"location.district_cn",
+					"location.province_cn", "location.city_cn", "service.http.host", "service.http.body"},
 			}
 			quakeResponse := agent.query(URL, session, quakeRequest, results)
 			if quakeResponse == nil {
 				break
 			}
-
-			if numberOfResults > query.Limit || len(quakeResponse.Data) == 0 {
-				break
+			if totalResults == 0 {
+				totalResults = int(quakeResponse.Meta.Pagination.Total)
 			}
 
 			numberOfResults += len(quakeResponse.Data)
+			if numberOfResults >= query.Limit || len(quakeResponse.Data) == 0 || numberOfResults > totalResults {
+				break
+			}
+
 		}
 	}()
 
@@ -72,18 +81,20 @@ func (agent *Agent) query(URL string, session *uncover.Session, quakeRequest *Re
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}
-
 	quakeResponse := &Response{}
+	//body, _ := io.ReadAll(resp.Body)
+	//fmt.Println(string(body))
 	if err := json.NewDecoder(resp.Body).Decode(quakeResponse); err != nil {
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}
 
 	for _, quakeResult := range quakeResponse.Data {
+
 		result := uncover.Result{Source: agent.Name()}
 		result.IP = quakeResult.IP
 		result.Port = quakeResult.Port
-		result.Host = quakeResult.Hostname
+		result.Host = quakeResult.Domain
 		raw, _ := json.Marshal(result)
 		result.Raw = raw
 		results <- result
@@ -106,7 +117,6 @@ func (agent *Agent) queryURL(session *uncover.Session, URL string, quakeRequest 
 	if err != nil {
 		return nil, err
 	}
-
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-QuakeToken", session.Keys.QuakeToken)
 

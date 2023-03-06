@@ -5,5 +5,5 @@ type Request struct {
 	Size        int      `json:"size"`
 	Start       int      `json:"start"`
 	IgnoreCache bool     `json:"ignore_cache"`
-	Include     []string `json:"include"`
+	Exclude     []string `json:"exclude"`
 }

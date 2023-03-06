@@ -1,0 +1,7 @@
+{
+    "query": "root:example.com",
+    "page": 1,
+    "pagesize": 100,
+    "total": 6308,
+    "events": ["m.example.com", "startup.antichat.example.com", "anandop1.example.com", "vladimirbezz3.example.com"]
+}

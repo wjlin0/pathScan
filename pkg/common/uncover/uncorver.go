@@ -10,6 +10,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/binary"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/censys"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/fofa"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/hunter"
@@ -31,7 +32,7 @@ var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault(".
 const maxConcurrentAgents = 50
 
 func GetUncoverSupportedAgents() string {
-	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "zone"}
+	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "zone", "binary"}
 	return strings.Join(uncoverSupportedAgents, ",")
 }
 func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
@@ -87,6 +88,8 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 			agent, err = netlas.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		case "zone":
 			agent, err = zone.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
+		case "binary":
+			agent, err = binary.NewWithOptions(&uncover.AgentOptions{RateLimiter: rateLimiter})
 		default:
 			err = errors.Errorf("%s unknown uncover agent type", engine)
 		}
@@ -98,27 +101,31 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 	// enumerate
 	swg := sizedwaitgroup.New(maxConcurrentAgents)
 	ret := make(chan string)
+	//var results []*uncover.Result
 	go func() {
 		for _, q := range uncoverOptions.Query {
-			uncoverQuery := &uncover.Query{
-				Query: q,
-				Limit: uncoverOptions.Limit,
-			}
 			for _, agent := range agents {
+				uncoverQuery := &uncover.Query{
+					Limit: uncoverOptions.Limit,
+				}
+				uncoverQuery.Query = loadQuery(agent.Name(), q)
+				//uncoverQuery.Query = q
 				swg.Add()
-				go func(agent uncover.Agent, uncoverQuery *uncover.Query) {
+				go func(agent uncover.Agent, uq *uncover.Query) {
 					defer swg.Done()
 					keys := uncoverOptions.Provider.GetKeys()
 					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
 					if err != nil {
 						gologger.Error().Label(agent.Name()).Msgf("couldn't create uncover new session: %s", err)
 					}
-					ch, err := agent.Query(session, uncoverQuery)
+					ch, err := agent.Query(session, uq)
 					if err != nil {
 						gologger.Warning().Msgf("%s", err)
 						return
 					}
 					for result := range ch {
+						//results = append(results, &result)
+
 						replacer := strings.NewReplacer(
 							"ip", result.IP,
 							"host", result.Host,
@@ -137,6 +144,19 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 func loadProvidersFrom(location string, options *ucRunner.Options) error {
 	return fileutil.Unmarshal(fileutil.YAML, []byte(location), options.Provider)
 }
+func loadQuery(engine string, str string) string {
+	var newStr string
+	switch engine {
+	case "fofa":
+		newStr = fmt.Sprintf("domain=\"%s\"", str)
+	case "quake":
+		newStr = fmt.Sprintf("domain:\"%s\"", str)
+	default:
+		newStr = str
+	}
+	return newStr
+}
+
 func loadKeys(engine string, options *ucRunner.Options) error {
 	switch engine {
 	case "fofa":

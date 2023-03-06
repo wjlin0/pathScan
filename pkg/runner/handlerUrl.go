@@ -70,8 +70,12 @@ func (r *Runner) getAllTargets() []string {
 		}
 	}
 	if r.Cfg.Options.Uncover && r.Cfg.Options.UncoverQuery != nil {
+
+		if r.Cfg.Options.UncoverEngine == nil {
+			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
+		}
 		gologger.Info().Msgf("正在运行: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, _ := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery)
+		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery)
 		if err != nil {
 			gologger.Error().Label("WRN").Msg(err.Error())
 		}

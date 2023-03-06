@@ -17,6 +17,7 @@ type Provider struct {
 	Netlas     []string `yaml:"netlas"`
 	CriminalIP []string `yaml:"criminalip"`
 	Zone       []string `yaml:"zone"`
+	Binary     []string `yaml:"binary"`
 }
 
 func (provider *Provider) GetKeys() uncover.Keys {
@@ -64,7 +65,10 @@ func (provider *Provider) GetKeys() uncover.Keys {
 		keys.CriminalIPToken = provider.CriminalIP[rand.Intn(len(provider.CriminalIP))]
 	}
 	if len(provider.Zone) > 0 {
-		keys.ZoneKeyId = provider.Zone[rand.Intn(len(provider.Zone))]
+		keys.ZoneToken = provider.Zone[rand.Intn(len(provider.Zone))]
+	}
+	if len(provider.Binary) > 0 {
+		keys.BinaryToken = provider.Binary[rand.Intn(len(provider.Binary))]
 	}
 	return keys
 }

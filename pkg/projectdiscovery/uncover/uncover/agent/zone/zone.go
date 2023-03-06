@@ -5,7 +5,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 	"io"
 	"net/http"
@@ -36,7 +35,7 @@ func (agent *Agent) Name() string {
 	return "zone"
 }
 func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan uncover.Result, error) {
-	if session.Keys.ZoneKeyId == "" {
+	if session.Keys.ZoneToken == "" {
 		return nil, errors.New("empty 0zone keys")
 	}
 	results := make(chan uncover.Result)
@@ -59,10 +58,10 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 			if totalResults == 0 {
 				totalResults = zoneResponse.Total
 			}
-			if zoneResponse.Code == 1 {
-				gologger.Debug().Msg(zoneResponse.Message)
-				break
-			}
+			//if zoneResponse.Code == 1 {
+			//	gologger.Debug().Msg(zoneResponse.Message)
+			//	break
+			//}
 			// query certificates
 			if numberOfResults > query.Limit || numberOfResults > totalResults || len(zoneResponse.Data) == 0 {
 				break
@@ -91,13 +90,12 @@ func (agent *Agent) query(session *uncover.Session, zoneRequest *ZoneRequest, re
 		return nil
 	}
 
-	for _, quakeResult := range zoneResponse.Data {
-
+	for _, zoneResult := range zoneResponse.Data {
 		result := uncover.Result{Source: agent.Name()}
-		result.IP = quakeResult.Ip
-		result.Port = quakeResult.Port
+		result.IP = zoneResult.Ip
+		result.Port = zoneResult.Port
 		var host string
-		p, err := url.Parse(quakeResult.Url)
+		p, err := url.Parse(zoneResult.Url)
 		if err != nil {
 			host = result.IP + strconv.Itoa(result.Port)
 		} else {
@@ -113,7 +111,7 @@ func (agent *Agent) query(session *uncover.Session, zoneRequest *ZoneRequest, re
 
 }
 func (agent *Agent) queryURL(session *uncover.Session, URL string, zoneRequest *ZoneRequest) (*http.Response, error) {
-	zoneRequest.ZoneKeyId = session.Keys.ZoneKeyId
+	zoneRequest.ZoneKeyId = session.Keys.ZoneToken
 	zoneRequest.QueryType = "site"
 	body, err := json.Marshal(zoneRequest)
 	if err != nil {

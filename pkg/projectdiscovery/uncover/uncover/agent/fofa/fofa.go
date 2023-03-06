@@ -14,7 +14,7 @@ import (
 
 const (
 	URL    = "https://fofa.info/api/v1/search/all?email=%s&key=%s&qbase64=%s&fields=%s&page=%d&size=%d"
-	Fields = "ip,port,domain"
+	Fields = "ip,port,host"
 	Size   = 100
 )
 
@@ -39,7 +39,6 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 		return nil, errors.New("empty fofa keys")
 	}
 	results := make(chan uncover.Result)
-
 	go func() {
 		defer close(results)
 

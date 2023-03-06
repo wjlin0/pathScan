@@ -1,9 +1,9 @@
 package quake
 
 type responseData struct {
-	Hostname string `json:"hostname"`
-	IP       string `json:"ip"`
-	Port     int    `json:"port"`
+	Domain string `json:"domain"`
+	IP     string `json:"ip"`
+	Port   int    `json:"port"`
 }
 
 type pagination struct {

@@ -24,7 +24,7 @@ func (r *Runner) ConnectTarget(target string) (bool, error) {
 	return true, err
 }
 func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
-	reg := regexp.MustCompile(`<title>(.*?)</title>`)
+	reg := regexp.MustCompile(`<title.*>(.*?)</title>`)
 	_url, err := url.JoinPath(target, path)
 	if err != nil {
 		return nil, err
