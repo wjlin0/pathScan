@@ -45,18 +45,22 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 	}
 	_ = loadProvidersFrom(defaultProviderConfigLocation, uncoverOptions)
 
-	//for _, eng := range engine {
-	//	err := loadKeys(eng, uncoverOptions)
-	//	if err != nil {
-	//		gologger.Error().Label("WRN").Msgf(err.Error())
-	//		continue
-	//	}
-	//}
+	for _, eng := range engine {
+		err := loadKeys(eng, uncoverOptions)
+		if err != nil {
+			gologger.Error().Label("WRN").Msgf(err.Error())
+			continue
+		}
+	}
+	if !uncoverOptions.Provider.HasKeys() {
+		return nil, errors.New("no keys provided")
+	}
 	return getTargets(uncoverOptions, field)
 }
 func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, error) {
 	var rateLimiter *ratelimit.Limiter
 	// create rateLimiter for uncover delay
+
 	if uncoverOptions.Delay > 0 {
 		rateLimiter = ratelimit.New(context.Background(), 1, time.Duration(uncoverOptions.Delay))
 	} else {
@@ -214,6 +218,12 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 			options.Provider.Netlas = append(options.Provider.Zone, key)
 		} else {
 			return errors.Errorf("ZONE_API_KEY env variable is not configured")
+		}
+	case "binary":
+		if key, exists := os.LookupEnv("BINARY_API_KEY"); exists {
+			options.Provider.Netlas = append(options.Provider.Binary, key)
+		} else {
+			return errors.Errorf("BINARY_API_KEY env variable is not configured")
 		}
 	default:
 		return errors.Errorf("unknown uncover agent")

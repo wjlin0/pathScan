@@ -1,9 +1,11 @@
 package quake
 
 type responseData struct {
-	Domain string `json:"domain"`
-	IP     string `json:"ip"`
-	Port   int    `json:"port"`
+	Domain   string   `json:"domain"`
+	IP       string   `json:"ip"`
+	Port     int      `json:"port"`
+	Hostname string   `json:"hostname"`
+	Service  *service `json:"service"`
 }
 
 type pagination struct {
@@ -16,7 +18,14 @@ type pagination struct {
 type meta struct {
 	Pagination pagination `json:"pagination"`
 }
-
+type service struct {
+	Name string        `json:"name"`
+	Http *httpResponse `json:"http"`
+}
+type httpResponse struct {
+	Host        string   `json:"host"`
+	HttpLoadUrl []string `json:"http_load_url"`
+}
 type Response struct {
 	Code    int            `json:"code"`
 	Data    []responseData `json:"data"`

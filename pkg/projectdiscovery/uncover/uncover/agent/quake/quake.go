@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 )
@@ -47,14 +48,6 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 				Size:        Size,
 				Start:       numberOfResults,
 				IgnoreCache: true,
-				Exclude: []string{"transport", "asn", "org", "service.name", "location.country_cn",
-					"service.http.host", "time", "service.http.title", "service.response", "service.cert",
-					"components.product_catalog", "components.product_type", "components.product_type", "location.country_en",
-					"location.province_en",
-					"location.city_en",
-					"location.district_en",
-					"location.district_cn",
-					"location.province_cn", "location.city_cn", "service.http.host", "service.http.body"},
 			}
 			quakeResponse := agent.query(URL, session, quakeRequest, results)
 			if quakeResponse == nil {
@@ -90,11 +83,26 @@ func (agent *Agent) query(URL string, session *uncover.Session, quakeRequest *Re
 	}
 
 	for _, quakeResult := range quakeResponse.Data {
-
 		result := uncover.Result{Source: agent.Name()}
 		result.IP = quakeResult.IP
 		result.Port = quakeResult.Port
-		result.Host = quakeResult.Domain
+		switch {
+		case quakeResult.Hostname != "":
+			result.Host = quakeResult.Hostname
+		case quakeResult.Domain != "":
+			result.Host = quakeResult.Domain
+		case quakeResult.Service != nil && (quakeResult.Service.Name == "http" || quakeResult.Service.Name == "http/ssl") && quakeResult.Service.Http.Host != "":
+			result.Host = quakeResult.Service.Http.Host
+		case quakeResult.Service != nil && (quakeResult.Service.Name == "http" || quakeResult.Service.Name == "http/ssl") && len(quakeResult.Service.Http.HttpLoadUrl) > 0:
+			parse, err := url.Parse(quakeResult.Service.Http.HttpLoadUrl[0])
+			if err != nil {
+				result.Host = ""
+			} else {
+				result.Host = parse.Host
+			}
+		default:
+			result.Host = ""
+		}
 		raw, _ := json.Marshal(result)
 		result.Raw = raw
 		results <- result

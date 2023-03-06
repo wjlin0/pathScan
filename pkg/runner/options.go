@@ -93,7 +93,7 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
 		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.FileStringSliceOptions),
 		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 (%s) (default quake)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
-		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "uncover fields to return (ip,port,host)"),
+		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 200, "发现要返回的结果"),
 		set.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "打开查询请求之间的延迟（秒）(0 to disable)"),
 	)

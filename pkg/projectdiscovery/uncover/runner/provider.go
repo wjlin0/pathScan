@@ -82,5 +82,6 @@ func (provider *Provider) HasKeys() bool {
 		len(provider.ZoomEye) > 0 ||
 		len(provider.Netlas) > 0 ||
 		len(provider.CriminalIP) > 0 ||
-		len(provider.Zone) > 0
+		len(provider.Zone) > 0 ||
+		len(provider.Binary) > 0
 }

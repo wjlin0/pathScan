@@ -70,7 +70,6 @@ func (r *Runner) getAllTargets() []string {
 		}
 	}
 	if r.Cfg.Options.Uncover && r.Cfg.Options.UncoverQuery != nil {
-
 		if r.Cfg.Options.UncoverEngine == nil {
 			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
 		}
@@ -78,26 +77,28 @@ func (r *Runner) getAllTargets() []string {
 		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery)
 		if err != nil {
 			gologger.Error().Label("WRN").Msg(err.Error())
-		}
-		for c := range ch {
-			c = strings.Trim(c, "\r")
-			c = strings.Trim(c, "\n")
-			if c == "" {
-				continue
-			}
-			if !strings.HasPrefix(c, "http") {
-				c1 := "http://" + c
-				c = "https://" + c
-				if !strings.HasSuffix(c1, "/") {
-					c1, _ = url.JoinPath(c1, "/")
+		} else {
+			for c := range ch {
+				c = strings.Trim(c, "\r")
+				c = strings.Trim(c, "\n")
+				if c == "" {
+					continue
 				}
-				at[c1] = struct{}{}
+				if !strings.HasPrefix(c, "http") {
+					c1 := "http://" + c
+					c = "https://" + c
+					if !strings.HasSuffix(c1, "/") {
+						c1, _ = url.JoinPath(c1, "/")
+					}
+					at[c1] = struct{}{}
+				}
+				if !strings.HasSuffix(c, "/") {
+					c, _ = url.JoinPath(c, "/")
+				}
+				at[c] = struct{}{}
 			}
-			if !strings.HasSuffix(c, "/") {
-				c, _ = url.JoinPath(c, "/")
-			}
-			at[c] = struct{}{}
 		}
+
 	}
 	for _, skip := range r.Cfg.Options.SkipUrl {
 		delete(at, skip)

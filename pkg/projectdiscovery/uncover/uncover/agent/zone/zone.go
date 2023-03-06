@@ -94,14 +94,20 @@ func (agent *Agent) query(session *uncover.Session, zoneRequest *ZoneRequest, re
 		result := uncover.Result{Source: agent.Name()}
 		result.IP = zoneResult.Ip
 		result.Port = zoneResult.Port
-		var host string
-		p, err := url.Parse(zoneResult.Url)
-		if err != nil {
-			host = result.IP + strconv.Itoa(result.Port)
-		} else {
-			host = p.Host
+		switch {
+		case zoneResult.IpAddr != "":
+			result.Host = zoneResult.IpAddr
+		case zoneResult.Url != "":
+			var host string
+			p, err := url.Parse(zoneResult.Url)
+			if err != nil {
+				host = result.IP + strconv.Itoa(result.Port)
+			} else {
+				host = p.Host
+			}
+			result.Host = host
 		}
-		result.Host = host
+
 		raw, _ := json.Marshal(result)
 		result.Raw = raw
 		results <- result
