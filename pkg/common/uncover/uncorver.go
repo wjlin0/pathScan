@@ -23,6 +23,8 @@ import (
 	"golang.org/x/net/context"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -48,7 +50,7 @@ func GetTargetsFromUncover(delay, limit int, field string, engine, query []strin
 	for _, eng := range engine {
 		err := loadKeys(eng, uncoverOptions)
 		if err != nil {
-			gologger.Error().Label("WRN").Msgf(err.Error())
+			gologger.Warning().Label("WRN").Msgf(err.Error())
 			continue
 		}
 	}
@@ -130,6 +132,12 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 					for result := range ch {
 						//results = append(results, &result)
 
+						switch {
+						case result.IP != "" && result.Port == 0:
+							ret <- result.IP
+						case result.IP != "" && result.Port != 0:
+							ret <- result.IP + ":" + strconv.Itoa(result.Port)
+						}
 						replacer := strings.NewReplacer(
 							"ip", result.IP,
 							"host", result.Host,
@@ -150,13 +158,17 @@ func loadProvidersFrom(location string, options *ucRunner.Options) error {
 }
 func loadQuery(engine string, str string) string {
 	var newStr string
-	switch engine {
-	case "fofa":
-		newStr = fmt.Sprintf("domain=\"%s\"", str)
-	case "quake":
-		newStr = fmt.Sprintf("domain:\"%s\"", str)
-	default:
+	if !IsDomain(str) {
 		newStr = str
+	} else {
+		switch engine {
+		case "fofa":
+			newStr = fmt.Sprintf("domain=\"%s\"", str)
+		case "quake":
+			newStr = fmt.Sprintf("domain:\"%s\"", str)
+		default:
+			newStr = str
+		}
 	}
 	return newStr
 }
@@ -229,4 +241,10 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 		return errors.Errorf("unknown uncover agent")
 	}
 	return nil
+}
+
+func IsDomain(string2 string) bool {
+	re := `[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z]{0,62})\.?`
+	compile := regexp.MustCompile(re)
+	return compile.MatchString(string2)
 }
