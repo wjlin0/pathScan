@@ -1,14 +1,15 @@
 package runner
 
 import (
-	"bufio"
 	"crypto/tls"
 	"fmt"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/remeh/sizedwaitgroup"
+	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"golang.org/x/net/context"
 	"math/rand"
@@ -43,7 +44,7 @@ func NewRun(options *Options) (*Runner, error) {
 				cfg.Results.Targets = make(map[string]struct{})
 			}
 			if cfg.Results.TargetPaths == nil {
-				cfg.Results.TargetPaths = make(map[string]map[string]*result.TargetResult)
+				cfg.Results.TargetPaths = make(map[string]map[string]struct{})
 			}
 			if cfg.Results.Skipped == nil {
 				cfg.Results.Skipped = make(map[string]map[string]struct{})
@@ -203,6 +204,27 @@ func (r *Runner) Run() error {
 			gologger.Warning().Msgf("Couldn't start statistics: %s\n", err)
 		}
 	}
+	var f *os.File
+	outputWriter, _ := ucRunner.NewOutputWriter()
+	cache, _ := lru.New(2048)
+	if r.Cfg.Options.Output != "" {
+		outputFolder := filepath.Dir(r.Cfg.Options.Output)
+		if fileutil.FolderExists(outputFolder) {
+			mkdirErr := os.MkdirAll(outputFolder, 0700)
+			if mkdirErr != nil {
+				return mkdirErr
+			}
+		}
+		f, err = AppendCreate(r.Cfg.Options.Output)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		outputWriter.AddWriters(f)
+		if r.Cfg.Options.Csv {
+			_ = LivingTargetCsv(nil, true, f, cache)
+		}
+	}
 
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
 		pathUrls = randShuffle(pathUrls)
@@ -236,9 +258,15 @@ func (r *Runner) Run() error {
 								return
 							}
 						}
-						r.Cfg.Results.AddPathByResult(targetResult)
+						r.Cfg.Results.AddPathByResult(targetResult.Target, targetResult.Path)
 
 						r.handlerOutputTarget(targetResult)
+						switch {
+						case f != nil && !r.Cfg.Options.Csv:
+							outputWriter.WriteString(targetResult.Target)
+						case f != nil && r.Cfg.Options.Csv:
+							_ = LivingTargetCsv(targetResult, false, f, cache)
+						}
 					}
 				}(t, p)
 
@@ -247,8 +275,6 @@ func (r *Runner) Run() error {
 	}
 
 	r.wg.Wait()
-
-	r.handlerOutput(r.Cfg.Results)
 	r.Cfg.ClearResume()
 	return nil
 }
@@ -298,71 +324,5 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 		builder.Reset()
-	}
-}
-
-func (r *Runner) handlerOutput(scanResults *result.Result) {
-	var (
-		file   *os.File
-		err    error
-		output string
-	)
-
-	if r.Cfg.Options.Output != "" {
-		output = r.Cfg.Options.Output
-
-		// create path if not existing
-		outputFolder := filepath.Dir(output)
-		if fileutil.FolderExists(outputFolder) {
-			mkdirErr := os.MkdirAll(outputFolder, 0700)
-			if mkdirErr != nil {
-				gologger.Error().Msgf("无法创建输出文件夹 %s: %s\n", outputFolder, mkdirErr)
-				return
-			}
-		}
-
-		file, err = os.Create(output)
-		if err != nil {
-			gologger.Error().Msgf("无法创建文件 %s: %s\n", output, err)
-			return
-		}
-		defer file.Close()
-	}
-
-	switch {
-	case scanResults.HasPaths():
-		header := true
-		for scan, v := range scanResults.GetPathsByTarget() {
-			if file != nil {
-				if r.Cfg.Options.Csv {
-					err = WriteTargetCsv(v, header, file)
-					header = false
-				} else {
-					err = WriteTargetOutput(scan, v, file)
-				}
-
-			}
-			if err != nil {
-				gologger.Error().Msgf("无法写入文件 %s: %s\n", scan, err)
-			}
-		}
-
-	case scanResults.HasTargets():
-		for target := range scanResults.GetTargets() {
-			if file != nil {
-				bufwriter := bufio.NewWriter(file)
-				sb := &strings.Builder{}
-				sb.WriteString(target)
-				sb.WriteString("\n")
-				_, _ = bufwriter.WriteString(sb.String())
-				sb.Reset()
-				err := bufwriter.Flush()
-				if err != nil {
-					gologger.Error().Msgf("无法写入文件 %s: %s\n", target, err)
-				}
-
-			}
-		}
-
 	}
 }

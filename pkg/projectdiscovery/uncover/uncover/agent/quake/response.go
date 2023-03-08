@@ -1,7 +1,6 @@
 package quake
 
 type responseData struct {
-	Domain   string   `json:"domain"`
 	IP       string   `json:"ip"`
 	Port     int      `json:"port"`
 	Hostname string   `json:"hostname"`
@@ -23,8 +22,7 @@ type service struct {
 	Http *httpResponse `json:"http"`
 }
 type httpResponse struct {
-	Host        string   `json:"host"`
-	HttpLoadUrl []string `json:"http_load_url"`
+	Host string `json:"host"`
 }
 type Response struct {
 	Code    int            `json:"code"`

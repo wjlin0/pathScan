@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/url"
-
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
+	"net/http"
 )
 
 const (
@@ -48,6 +46,7 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 				Size:        Size,
 				Start:       numberOfResults,
 				IgnoreCache: true,
+				Include:     []string{"ip", "port", "hostname", "service.name", "service.http.host"},
 			}
 			quakeResponse := agent.query(URL, session, quakeRequest, results)
 			if quakeResponse == nil {
@@ -58,7 +57,7 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 			}
 
 			numberOfResults += len(quakeResponse.Data)
-			if numberOfResults >= query.Limit || len(quakeResponse.Data) == 0 || numberOfResults > totalResults {
+			if numberOfResults > query.Limit || len(quakeResponse.Data) == 0 || numberOfResults > totalResults {
 				break
 			}
 
@@ -81,7 +80,6 @@ func (agent *Agent) query(URL string, session *uncover.Session, quakeRequest *Re
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}
-
 	for _, quakeResult := range quakeResponse.Data {
 		result := uncover.Result{Source: agent.Name()}
 		result.IP = quakeResult.IP
@@ -89,17 +87,8 @@ func (agent *Agent) query(URL string, session *uncover.Session, quakeRequest *Re
 		switch {
 		case quakeResult.Hostname != "":
 			result.Host = quakeResult.Hostname
-		case quakeResult.Domain != "":
-			result.Host = quakeResult.Domain
 		case quakeResult.Service != nil && (quakeResult.Service.Name == "http" || quakeResult.Service.Name == "http/ssl") && quakeResult.Service.Http.Host != "":
 			result.Host = quakeResult.Service.Http.Host
-		case quakeResult.Service != nil && (quakeResult.Service.Name == "http" || quakeResult.Service.Name == "http/ssl") && len(quakeResult.Service.Http.HttpLoadUrl) > 0:
-			parse, err := url.Parse(quakeResult.Service.Http.HttpLoadUrl[0])
-			if err != nil {
-				result.Host = ""
-			} else {
-				result.Host = parse.Host
-			}
 		default:
 			result.Host = ""
 		}

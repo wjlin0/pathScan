@@ -76,3 +76,7 @@ func DataRoot(elem ...string) string {
 	e = append(e, elem...)
 	return filepath.Join(e...)
 }
+
+func AppendCreate(name string) (*os.File, error) {
+	return os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+}

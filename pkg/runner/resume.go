@@ -47,8 +47,8 @@ func ParserResumeCfg(filename string) (*ResumeCfg, error) {
 func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	cfg.Rwm.Lock()
 	defer cfg.Rwm.Unlock()
-	data, err := json.Marshal(cfg)
-	//data, err := json.MarshalIndent(cfg, "", "\t")
+	//data, err := json.Marshal(cfg)
+	data, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return err
 	}

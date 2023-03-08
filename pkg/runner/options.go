@@ -16,21 +16,21 @@ import (
 )
 
 type Options struct {
-	Url       goflags.StringSlice `json:"url,omitempty"`
-	UrlFile   goflags.StringSlice `json:"url_file,omitempty"`
-	UrlRemote string              `json:"url_remote,omitempty"`
-	SkipUrl   goflags.StringSlice `json:"url_skip,omitempty"`
-	Path      goflags.StringSlice `json:"path,omitempty"`
-	PathFile  goflags.StringSlice `json:"path_file,omitempty"`
+	Url       goflags.StringSlice `json:"url"`
+	UrlFile   goflags.StringSlice `json:"url_file"`
+	UrlRemote string              `json:"url_remote"`
+	SkipUrl   goflags.StringSlice `json:"url_skip"`
+	Path      goflags.StringSlice `json:"path"`
+	PathFile  goflags.StringSlice `json:"path_file"`
 
-	PathRemote         string              `json:"path_remote,omitempty"`
-	ResumeCfg          string              `json:"resume_cfg,omitempty"`
-	Output             string              `json:"output,omitempty"`
-	Rate               int                 `json:"rate,omitempty"`
-	RateHttp           int                 `json:"rate_http,omitempty"`
-	Retries            int                 `json:"retries,omitempty"`
-	Proxy              string              `json:"proxy,omitempty"`
-	ProxyAuth          string              `json:"proxy_auth,omitempty"`
+	PathRemote         string              `json:"path_remote"`
+	ResumeCfg          string              `json:"resume_cfg"`
+	Output             string              `json:"output"`
+	Rate               int                 `json:"rate"`
+	RateHttp           int                 `json:"rate_http"`
+	Retries            int                 `json:"retries"`
+	Proxy              string              `json:"proxy"`
+	ProxyAuth          string              `json:"proxy_auth"`
 	NoColor            bool                `json:"no_color"`
 	Verbose            bool                `json:"verbose"`
 	Silent             bool                `json:"silent"`
@@ -38,16 +38,17 @@ type Options struct {
 	EnableProgressBar  bool                `json:"enable_progress_bar"`
 	SkipCode           bool                `json:"skip_code"`
 	SkipHost           bool                `json:"skip_host"`
-	ErrUseLastResponse bool                `json:"err_use_last_response,omitempty"`
+	ErrUseLastResponse bool                `json:"err_use_last_response"`
 	Csv                bool                `json:"csv,omitempty"`
-	ClearResume        bool                `json:"clear_resume,omitempty"`
-	Version            bool                `json:"version,omitempty"`
-	Uncover            bool                `json:"uncover,omitempty"`
-	UncoverQuery       goflags.StringSlice `json:"uncover_query,omitempty"`
-	UncoverEngine      goflags.StringSlice `json:"uncover_engine,omitempty"`
-	UncoverDelay       int                 `json:"uncover_delay,omitempty"`
-	UncoverLimit       int                 `json:"uncover_limit,omitempty"`
-	UncoverField       string              `json:"uncover_field,omitempty"`
+	ClearResume        bool                `json:"clear_resume"`
+	Version            bool                `json:"version"`
+	Uncover            bool                `json:"uncover"`
+	UncoverQuery       goflags.StringSlice `json:"uncover_query"`
+	UncoverEngine      goflags.StringSlice `json:"uncover_engine"`
+	UncoverDelay       int                 `json:"uncover_delay"`
+	UncoverLimit       int                 `json:"uncover_limit"`
+	UncoverField       string              `json:"uncover_field"`
+	UncoverOutput      string              `json:"uncover_output"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
@@ -91,18 +92,21 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
-		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.FileStringSliceOptions),
+		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 (%s) (default quake,fofa)", uncover.GetUncoverSupportedAgents()), goflags.FileStringSliceOptions),
 		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 200, "发现要返回的结果"),
 		set.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "打开查询请求之间的延迟（秒）"),
+		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存"),
 	)
 
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
 	)
 	_ = set.Parse()
-	showBanner()
+	if !options.Silent {
+		showBanner()
+	}
 	if options.Version {
 		gologger.Print().Msgf("pathScan version: %s", Version)
 		os.Exit(0)

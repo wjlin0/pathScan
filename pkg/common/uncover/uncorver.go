@@ -37,13 +37,15 @@ func GetUncoverSupportedAgents() string {
 	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "zone", "binary"}
 	return strings.Join(uncoverSupportedAgents, ",")
 }
-func GetTargetsFromUncover(delay, limit int, field string, engine, query []string) (chan string, error) {
+func GetTargetsFromUncover(delay, limit int, field, output string, csv bool, engine, query []string) (chan string, error) {
 	uncoverOptions := &ucRunner.Options{
-		Provider: &ucRunner.Provider{},
-		Delay:    delay,
-		Limit:    limit,
-		Query:    query,
-		Engine:   engine,
+		Provider:   &ucRunner.Provider{},
+		Delay:      delay,
+		Limit:      limit,
+		Query:      query,
+		Engine:     engine,
+		OutputFile: output,
+		JSON:       csv,
 	}
 	_ = loadProvidersFrom(defaultProviderConfigLocation, uncoverOptions)
 
@@ -107,8 +109,19 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 	// enumerate
 	swg := sizedwaitgroup.New(maxConcurrentAgents)
 	ret := make(chan string)
-	//var results []*uncover.Result
 	go func() {
+		outputWriter, err := ucRunner.NewOutputWriter()
+		if err != nil {
+			return
+		}
+		if uncoverOptions.OutputFile != "" {
+			outputFile, err := os.Create(uncoverOptions.OutputFile)
+			if err != nil {
+				return
+			}
+			defer outputFile.Close()
+			outputWriter.AddWriters(outputFile)
+		}
 		for _, q := range uncoverOptions.Query {
 			for _, agent := range agents {
 				uncoverQuery := &uncover.Query{
@@ -130,20 +143,33 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 						return
 					}
 					for result := range ch {
-						//results = append(results, &result)
-
 						switch {
-						case result.IP != "" && result.Port == 0:
-							ret <- result.IP
-						case result.IP != "" && result.Port != 0:
-							ret <- result.IP + ":" + strconv.Itoa(result.Port)
+						case result.Error != nil:
+							gologger.Warning().Msgf("请求%s发送错误: %s", result.Source, result.Error)
+						default:
+							var host string
+							switch {
+							case result.IP != "" && result.Port == 0:
+								host = result.IP
+							case result.IP != "" && result.Port != 0:
+								host = result.IP + ":" + strconv.Itoa(result.Port)
+							}
+							replacer := strings.NewReplacer(
+								"ip", result.IP,
+								"host", result.Host,
+								"port", fmt.Sprint(result.Port),
+							)
+							outData := replacer.Replace(field)
+							if host != "" {
+								outputWriter.WriteString(host)
+							}
+							if outData != "" {
+								outputWriter.WriteString(outData)
+							}
+							ret <- host
+							ret <- outData
 						}
-						replacer := strings.NewReplacer(
-							"ip", result.IP,
-							"host", result.Host,
-							"port", fmt.Sprint(result.Port),
-						)
-						ret <- replacer.Replace(field)
+
 					}
 				}(agent, uncoverQuery)
 			}

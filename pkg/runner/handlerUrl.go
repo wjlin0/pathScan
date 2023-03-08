@@ -1,11 +1,13 @@
 package runner
 
 import (
+	"bufio"
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -69,12 +71,38 @@ func (r *Runner) getAllTargets() []string {
 			}
 		}
 	}
+	if r.Cfg.Options.Silent {
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeNamedPipe) != os.ModeNamedPipe {
+			gologger.Warning().Msg("The command is intended to work with pipes.")
+		}
+		s := bufio.NewScanner(os.Stdin)
+		for s.Scan() {
+			u := s.Text()
+			if u == "" {
+				continue
+			}
+			u = strings.Trim(u, "\r")
+			u = strings.Trim(u, "\n")
+			if !strings.HasSuffix(u, "/") {
+				u, _ = url.JoinPath(u, "/")
+			}
+			if !strings.HasPrefix(u, "http") {
+				u1 := "http://" + u
+				u2 := "https://" + u
+				at[u1] = struct{}{}
+				at[u2] = struct{}{}
+			} else {
+				at[u] = struct{}{}
+			}
+		}
+	}
 	if r.Cfg.Options.Uncover && r.Cfg.Options.UncoverQuery != nil {
 		if r.Cfg.Options.UncoverEngine == nil {
 			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
 		}
 		gologger.Info().Msgf("正在运行: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery)
+		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery)
 		if err != nil {
 			gologger.Error().Label("WRN").Msg(err.Error())
 		} else {

@@ -45,9 +45,10 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 		var numberOfResults, totalResults int
 		for {
 			zoneRequest := &ZoneRequest{
-				Query:    query.Query,
-				Page:     currentPage,
-				PageSize: Size,
+				Query:     query.Query,
+				Page:      currentPage,
+				PageSize:  Size,
+				QueryType: "site",
 			}
 			zoneResponse := agent.query(session, zoneRequest, results)
 			if zoneResponse == nil {
@@ -58,11 +59,6 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 			if totalResults == 0 {
 				totalResults = zoneResponse.Total
 			}
-			//if zoneResponse.Code == 1 {
-			//	gologger.Debug().Msg(zoneResponse.Message)
-			//	break
-			//}
-			// query certificates
 			if numberOfResults > query.Limit || numberOfResults > totalResults || len(zoneResponse.Data) == 0 {
 				break
 			}
@@ -118,7 +114,6 @@ func (agent *Agent) query(session *uncover.Session, zoneRequest *ZoneRequest, re
 }
 func (agent *Agent) queryURL(session *uncover.Session, URL string, zoneRequest *ZoneRequest) (*http.Response, error) {
 	zoneRequest.ZoneKeyId = session.Keys.ZoneToken
-	zoneRequest.QueryType = "site"
 	body, err := json.Marshal(zoneRequest)
 	if err != nil {
 		return nil, err

@@ -2,8 +2,11 @@ package runner
 
 import (
 	"bufio"
+	"crypto/sha1"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/result"
@@ -59,7 +62,6 @@ func (d *CsvData) CSVHeaders() ([]string, error) {
 
 func WriteTargetCsv(paths map[string]*result.TargetResult, header bool, writer io.Writer) error {
 	encoder := csv.NewWriter(writer)
-
 	if header {
 		writeCSVHeaders(&CsvData{
 			TimeStamp: time.Now().UTC(),
@@ -108,11 +110,53 @@ func (d *CsvData) CSVFields() ([]string, error) {
 func writeCSVHeaders(data *CsvData, writer *csv.Writer) {
 	headers, err := data.CSVHeaders()
 	if err != nil {
-		gologger.Error().Msgf(err.Error())
+		gologger.Error().Msg(err.Error())
 		return
 	}
 	if err := writer.Write(headers); err != nil {
 		errMsg := errors.Wrap(err, "Could not write headers")
-		gologger.Error().Msgf(errMsg.Error())
+		gologger.Error().Msg(errMsg.Error())
 	}
+}
+
+func LivingTargetCsv(path *result.TargetResult, header bool, writer io.Writer, cache *lru.Cache) error {
+	encoder := csv.NewWriter(writer)
+	if header {
+		writeCSVHeaders(&CsvData{
+			TimeStamp: time.Now().UTC(),
+		}, encoder)
+		encoder.Flush()
+		return nil
+	}
+	if findDuplicate(cache, path) {
+		return nil
+	}
+	data := &CsvData{
+		TimeStamp: time.Now().UTC(),
+	}
+	joinPath, err := url.JoinPath(path.Target, path.Path)
+	if err != nil {
+		joinPath = path.Target
+	}
+	data.TargetPath = joinPath
+	data.Server = path.Server
+	data.Title = path.Title
+	data.BodyLen = path.BodyLen
+	data.Status = path.Status
+	writeCSVRow(data, encoder)
+	encoder.Flush()
+	return nil
+}
+
+func findDuplicate(cache *lru.Cache, data *result.TargetResult) bool {
+	marshal, err := json.Marshal(data)
+	if err != nil {
+		return true
+	}
+	itemHash := sha1.Sum(marshal)
+	if cache.Contains(itemHash) {
+		return true
+	}
+	cache.Add(itemHash, struct{}{})
+	return false
 }

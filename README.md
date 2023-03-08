@@ -17,7 +17,7 @@ pathScan -h
 ```
 ```yaml
 Usage:
-  ./pathScan [flags]
+  pathScan [flags]
 
 Flags:
 输入:
@@ -60,9 +60,11 @@ Flags:
   -uf, -uncover-field string     引擎返回字段 (ip,port,host) (default "host")
   -ul, -uncover-limit int        发现要返回的结果 (default 200)
   -ucd, -uncover-delay int       打开查询请求之间的延迟（秒） (default 1)
+  -uo, -uncover-output string    搜索引擎查询结果保存
 
 速率:
   -rh, -rate-http int  允许每秒钟最大http请求数 (default 100)
+
 
 ```
 ## 安装
@@ -75,7 +77,7 @@ go install -v github.com/wjlin0/pathScan@latest
 ### Docker
 ```shell
 docker pull wjlin0/path_scan:latest
-docker run --rm --name pathScan -it wjlin0/path_scan:latest  -u http://baidu.com -vb
+docker run --rm --name pathScan -it wjlin0/path_scan:latest  -t https://wjlin0.com -vb
 ```
 ### 自行编译
 ```shell
@@ -89,6 +91,8 @@ goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
 pathScan -t https://baidu.com/
 # 远程加载
 pathScan -t https://www.google.com/ -pr https://raw.githubusercontent.com/wjlin0/pathScan/main/dict/api-user.txt
+# 从管道中加载
+cat url.txt | pathScan -silent
 # 使用搜索引擎
 pathScan -uc -ue "fofa" -uq "domain=baidu.com"
 # 回复上次扫描
