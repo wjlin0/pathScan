@@ -3,17 +3,15 @@ package zoomeye
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
-	"strconv"
-
-	"github.com/pkg/errors"
 
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 const (
-	URL = "https://api.zoomeye.org/host/search?query=%s&page=%d"
+	URL = "https://api.zoomeye.org/domain/search?q=%s&page=%d&type=%d"
 )
 
 type Agent struct {
@@ -47,6 +45,7 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 			zoomeyeRequest := &ZoomEyeRequest{
 				Query: query.Query,
 				Page:  currentPage,
+				Type:  1,
 			}
 
 			zoomeyeResponse := agent.query(URL, session, zoomeyeRequest, results)
@@ -54,13 +53,13 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 				break
 			}
 			currentPage++
-			numberOfResults += len(zoomeyeResponse.Results)
+			numberOfResults += len(zoomeyeResponse.List)
 			if totalResults == 0 {
 				totalResults = zoomeyeResponse.Total
 			}
 
 			// query certificates
-			if numberOfResults > query.Limit || numberOfResults > totalResults || len(zoomeyeResponse.Results) == 0 {
+			if numberOfResults > query.Limit || numberOfResults > totalResults || len(zoomeyeResponse.List) == 0 {
 				break
 			}
 		}
@@ -70,8 +69,7 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 }
 
 func (agent *Agent) queryURL(session *uncover.Session, URL string, zoomeyeRequest *ZoomEyeRequest) (*http.Response, error) {
-	zoomeyeURL := fmt.Sprintf(URL, url.QueryEscape(zoomeyeRequest.Query), zoomeyeRequest.Page)
-
+	zoomeyeURL := fmt.Sprintf(URL, url.QueryEscape(zoomeyeRequest.Query), zoomeyeRequest.Page, zoomeyeRequest.Type)
 	request, err := uncover.NewHTTPRequest(http.MethodGet, zoomeyeURL, nil)
 	if err != nil {
 		return nil, err
@@ -88,34 +86,26 @@ func (agent *Agent) query(URL string, session *uncover.Session, zoomeyeRequest *
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}
-
 	zoomeyeResponse := &ZoomEyeResponse{}
 	if err := json.NewDecoder(resp.Body).Decode(zoomeyeResponse); err != nil {
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}
+	for _, listData := range zoomeyeResponse.List {
+		if len(listData.Ip) == 0 {
+			result := uncover.Result{Source: agent.Name()}
+			result.Host = listData.Name
 
-	for _, zoomeyeResult := range zoomeyeResponse.Results {
-		result := uncover.Result{Source: agent.Name()}
-		if ip, ok := zoomeyeResult["ip"]; ok {
-			result.IP = ip.(string)
-		}
-		if portinfo, ok := zoomeyeResult["portinfo"]; ok {
-			if port, ok := portinfo.(map[string]interface{}); ok {
-				result.Port = convertPortFromValue(port["port"].(float64))
-				if result.Port == 0 {
-					continue
-				}
-				result.Host = port["hostname"].(string)
-				raw, _ := json.Marshal(zoomeyeResult)
-				result.Raw = raw
+			results <- result
+		} else {
+			for _, ip := range listData.Ip {
+				result := uncover.Result{Source: agent.Name()}
+				result.Host = listData.Name
+				result.IP = ip
 				results <- result
 			}
-		} else {
-			raw, _ := json.Marshal(zoomeyeResult)
-			result.Raw = raw
-			results <- result
 		}
+
 	}
 
 	return zoomeyeResponse
@@ -124,16 +114,5 @@ func (agent *Agent) query(URL string, session *uncover.Session, zoomeyeRequest *
 type ZoomEyeRequest struct {
 	Query string
 	Page  int
-}
-
-func convertPortFromValue(value interface{}) int {
-	switch v := value.(type) {
-	case float64:
-		return int(v)
-	case string:
-		parsed, _ := strconv.Atoi(v)
-		return parsed
-	default:
-		return 0
-	}
+	Type  int
 }

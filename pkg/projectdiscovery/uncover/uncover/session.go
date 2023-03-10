@@ -34,7 +34,8 @@ func NewSession(keys *Keys, retryMax, timeout int) (*Session, error) {
 
 	options := retryablehttp.Options{RetryMax: retryMax}
 	options.RetryWaitMax = time.Duration(timeout) * time.Second
-	client := retryablehttp.NewWithHTTPClient(httpclient, options)
+	options.HttpClient = httpclient
+	client := retryablehttp.NewClient(options)
 
 	session := &Session{
 		Client:   client,

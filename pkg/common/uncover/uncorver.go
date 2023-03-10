@@ -127,7 +127,11 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 				uncoverQuery := &uncover.Query{
 					Limit: uncoverOptions.Limit,
 				}
-				uncoverQuery.Query = loadQuery(agent.Name(), q)
+				uncoverQuery.Query, err = loadQuery(agent.Name(), q)
+				if err != nil {
+					gologger.Warning().Msgf("解析字符串发送错误: %s", err.Error())
+					continue
+				}
 				//uncoverQuery.Query = q
 				swg.Add()
 				go func(agent uncover.Agent, uq *uncover.Query) {
@@ -182,10 +186,20 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 func loadProvidersFrom(location string, options *ucRunner.Options) error {
 	return fileutil.Unmarshal(fileutil.YAML, []byte(location), options.Provider)
 }
-func loadQuery(engine string, str string) string {
+func loadQuery(engine string, str string) (string, error) {
 	var newStr string
-	if !IsDomain(str) {
+	var err error
+	t := IsDomain(str)
+	if !t {
 		newStr = str
+		switch engine {
+		case "zoomeye":
+			err = errors.New("请求zoomeye 需要为主域名形式 eg :wjlin0.com")
+		case "binary":
+			err = errors.New("请求binary 需要为主域名形式 eg: wjlin0.com")
+		default:
+			err = nil
+		}
 	} else {
 		switch engine {
 		case "fofa":
@@ -196,7 +210,7 @@ func loadQuery(engine string, str string) string {
 			newStr = str
 		}
 	}
-	return newStr
+	return newStr, err
 }
 
 func loadKeys(engine string, options *ucRunner.Options) error {
@@ -270,7 +284,7 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 }
 
 func IsDomain(string2 string) bool {
-	re := `[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z]{0,62})\.?`
+	re := `^[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$`
 	compile := regexp.MustCompile(re)
 	return compile.MatchString(string2)
 }
