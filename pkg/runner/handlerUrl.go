@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"strings"
 )
 
-func (r *Runner) getAllTargets() []string {
+func (r *Runner) getAllTargets() map[string]struct{} {
 	at := make(map[string]struct{})
 	var resp *http.Response
 	var err error
@@ -71,19 +72,13 @@ func (r *Runner) getAllTargets() []string {
 			}
 		}
 	}
-	if r.Cfg.Options.Silent {
-		stat, _ := os.Stdin.Stat()
-		if (stat.Mode() & os.ModeNamedPipe) != os.ModeNamedPipe {
-			gologger.Warning().Msg("The command is intended to work with pipes.")
-		}
+	if r.Cfg.Options.Silent && fileutil.HasStdin() {
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
-			u := s.Text()
+			u := strings.TrimSpace(s.Text())
 			if u == "" {
 				continue
 			}
-			u = strings.Trim(u, "\r")
-			u = strings.Trim(u, "\n")
 			if !strings.HasSuffix(u, "/") {
 				u, _ = url.JoinPath(u, "/")
 			}
@@ -96,6 +91,7 @@ func (r *Runner) getAllTargets() []string {
 				at[u] = struct{}{}
 			}
 		}
+		os.Stdin.Close()
 	}
 	if r.Cfg.Options.Uncover && r.Cfg.Options.UncoverQuery != nil {
 		if r.Cfg.Options.UncoverEngine == nil {
@@ -132,10 +128,5 @@ func (r *Runner) getAllTargets() []string {
 		delete(at, skip)
 	}
 
-	var t []string
-
-	for k, _ := range at {
-		t = append(t, k)
-	}
-	return t
+	return at
 }

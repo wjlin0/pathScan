@@ -7,7 +7,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -59,13 +58,6 @@ func (r *Runner) DownloadDict() error {
 	gologger.Info().Msgf("远程字典下载成功->%s", path)
 	time.Sleep(time.Second * 5)
 	return nil
-}
-func randShuffle(slice []string) []string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	r.Shuffle(len(slice), func(i, j int) {
-		slice[i], slice[j] = slice[j], slice[i]
-	})
-	return slice
 }
 
 func DataRoot(elem ...string) string {

@@ -3,7 +3,6 @@ package runner
 import (
 	"crypto/tls"
 	"fmt"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
@@ -27,8 +26,8 @@ type Runner struct {
 	Cfg       *ResumeCfg
 	client    *http.Client
 	limiter   *ratelimit.Limiter
-	targets   []string
-	paths     []string
+	targets   map[string]struct{}
+	paths     map[string]struct{}
 	userAgent []string
 	stats     *clistats.Statistics
 }
@@ -120,54 +119,6 @@ func (r *Runner) newClient() *http.Client {
 	return client
 }
 
-func (r *Runner) SkippedHost() {
-	var targets []string
-	for target := range r.Cfg.Results.GetTargets() {
-		targets = append(targets, target)
-	}
-	wg := sizedwaitgroup.New(100)
-	for _, target := range targets {
-		wg.Add()
-		go func(target string) {
-			defer wg.Done()
-			exit, err := r.verifyTarget(target)
-			if exit && err == nil {
-				r.Cfg.Results.RemoveTargets(target)
-				gologger.Info().Msgf("发现异常站点: %s", target)
-			} else if err != nil {
-				gologger.Debug().Msgf("%s", err.Error())
-			}
-
-		}(target)
-	}
-	wg.Wait()
-}
-
-func (r *Runner) DiscoveryHost(targets []string) {
-	wg := sizedwaitgroup.New(r.Cfg.Options.Rate)
-	for _, target := range targets {
-		wg.Add()
-		go func(target string) {
-			defer wg.Done()
-			if r.Cfg.Results.HasTarget(target) {
-				return
-			}
-			exit, err := r.ConnectTarget(target)
-			if exit && err == nil {
-				r.Cfg.Results.AddTarget(target)
-				if r.Cfg.Options.Silent {
-					gologger.Silent().Msg(target)
-				}
-				gologger.Debug().Msgf("发现 %s 存活", target)
-			} else if err != nil {
-				gologger.Debug().Msgf("%s", err.Error())
-			}
-
-		}(target)
-	}
-	wg.Wait()
-}
-
 func (r *Runner) Run() error {
 
 	targets := r.targets
@@ -183,7 +134,7 @@ func (r *Runner) Run() error {
 		r.Cfg.Options.OnlyTargets = true
 	}
 	if r.Cfg.Options.OnlyTargets {
-		pathUrls = []string{pathUrls[0]}
+		pathUrls = map[string]struct{}{"/": {}}
 	}
 
 	pathCount := uint64(len(pathUrls))
@@ -206,7 +157,6 @@ func (r *Runner) Run() error {
 	}
 	var f *os.File
 	outputWriter, _ := ucRunner.NewOutputWriter()
-	cache, _ := lru.New(2048)
 	if r.Cfg.Options.Output != "" {
 		outputFolder := filepath.Dir(r.Cfg.Options.Output)
 		if fileutil.FolderExists(outputFolder) {
@@ -219,18 +169,25 @@ func (r *Runner) Run() error {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer func(f *os.File) {
+			_ = f.Close()
+		}(f)
 		outputWriter.AddWriters(f)
-		if r.Cfg.Options.Csv {
-			_ = LivingTargetCsv(nil, true, f, cache)
+	}
+	if r.Cfg.Options.Csv {
+		path, err := LivingTargetHeader(&result.TargetResult{})
+		if path != "" && err == nil {
+			if !r.Cfg.Options.Silent {
+				fmt.Println(path)
+			}
+			outputWriter.WriteString(path)
+
 		}
 	}
 
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
-		pathUrls = randShuffle(pathUrls)
-		targets = randShuffle(targets)
-		for _, p := range pathUrls {
-			for _, t := range targets {
+		for p := range pathUrls {
+			for t := range targets {
 				r.wg.Add()
 				go func(target, path string) {
 					defer func() {
@@ -250,11 +207,9 @@ func (r *Runner) Run() error {
 					targetResult, err := r.GoTargetPath(target, path)
 					if targetResult != nil && err == nil {
 						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
-						if !r.Cfg.Options.OnlyTargets {
-							if targetResult.Status == 404 || targetResult.Status == 500 || targetResult.Status == 0 {
-								return
-							}
-							if !r.Cfg.Options.SkipCode && targetResult.Status != 200 {
+						if !r.Cfg.Options.OnlyTargets && !r.Cfg.Options.Verbose {
+
+							if !r.Cfg.Options.SkipCode && targetResult.Status == 404 || targetResult.Status == 500 || targetResult.Status == 0 {
 								return
 							}
 						}
@@ -262,10 +217,11 @@ func (r *Runner) Run() error {
 
 						r.handlerOutputTarget(targetResult)
 						switch {
-						case f != nil && !r.Cfg.Options.Csv:
-							outputWriter.WriteString(targetResult.Target)
-						case f != nil && r.Cfg.Options.Csv:
-							_ = LivingTargetCsv(targetResult, false, f, cache)
+						case !r.Cfg.Options.Csv:
+							outputWriter.WriteString(targetResult.ToString())
+						case r.Cfg.Options.Csv:
+							row, _ := LivingTargetRow(targetResult)
+							outputWriter.WriteString(row)
 						}
 					}
 				}(t, p)
@@ -284,7 +240,6 @@ const bufferSize = 128
 func makePrintCallback() func(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
 	builder.Grow(bufferSize)
-
 	return func(stats clistats.StatisticsClient) {
 		builder.WriteRune('[')
 		startedAt, _ := stats.GetStatic("startedAt")

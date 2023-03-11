@@ -26,7 +26,6 @@ type Options struct {
 	PathRemote         string              `json:"path_remote"`
 	ResumeCfg          string              `json:"resume_cfg"`
 	Output             string              `json:"output"`
-	Rate               int                 `json:"rate"`
 	RateHttp           int                 `json:"rate_http"`
 	Retries            int                 `json:"retries"`
 	Proxy              string              `json:"proxy"`
@@ -103,6 +102,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
 	)
+	//set.CreateGroup("")
 	_ = set.Parse()
 	if !options.Silent {
 		showBanner()

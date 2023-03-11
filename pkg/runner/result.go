@@ -13,10 +13,14 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 	path := re.ToString()
 	nocolor := r.Cfg.Options.NoColor
 	builder := &strings.Builder{}
-	builder.WriteString(path)
-	statusCode := re.Status
 
-	if !r.Cfg.Options.Silent {
+	statusCode := re.Status
+	switch {
+	case !r.Cfg.Options.Silent && r.Cfg.Options.Csv:
+		row, _ := LivingTargetRow(re)
+		builder.WriteString(row)
+	case !r.Cfg.Options.Silent && !r.Cfg.Options.Csv:
+		builder.WriteString(path)
 		builder.WriteString(" [")
 		if !nocolor {
 			switch {
@@ -59,6 +63,8 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 			builder.WriteString(server)
 		}
 		builder.WriteRune(']')
+	case r.Cfg.Options.Silent:
+		builder.WriteString(path)
 	}
 
 	fmt.Println(builder.String())

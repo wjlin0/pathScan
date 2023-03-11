@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (r *Runner) getAllPaths() []string {
+func (r *Runner) getAllPaths() map[string]struct{} {
 	at := make(map[string]struct{})
 	var resp *http.Response
 	var err error
@@ -54,9 +54,7 @@ func (r *Runner) getAllPaths() []string {
 		}
 		gologger.Debug().Msg("从远程加载字典 完成...")
 	}
-	if len(at) == 0 {
-		at["/"] = struct{}{}
-	}
+
 	if len(r.targets) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil && r.Cfg.Options.PathRemote == "" {
 		u := r.getFilePath("main.txt")
 		if u != nil {
@@ -65,11 +63,10 @@ func (r *Runner) getAllPaths() []string {
 			}
 		}
 	}
-	var t []string
-	for k, _ := range at {
-		t = append(t, k)
+	if len(at) == 0 {
+		at["/"] = struct{}{}
 	}
-	return t
+	return at
 }
 
 func (r *Runner) getFilePath(filename string) []string {
