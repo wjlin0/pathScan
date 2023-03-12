@@ -23,31 +23,32 @@ type Options struct {
 	Path      goflags.StringSlice `json:"path"`
 	PathFile  goflags.StringSlice `json:"path_file"`
 
-	PathRemote         string              `json:"path_remote"`
-	ResumeCfg          string              `json:"resume_cfg"`
-	Output             string              `json:"output"`
-	RateHttp           int                 `json:"rate_http"`
-	Retries            int                 `json:"retries"`
-	Proxy              string              `json:"proxy"`
-	ProxyAuth          string              `json:"proxy_auth"`
-	NoColor            bool                `json:"no_color"`
-	Verbose            bool                `json:"verbose"`
-	Silent             bool                `json:"silent"`
-	OnlyTargets        bool                `json:"only_targets"`
-	EnableProgressBar  bool                `json:"enable_progress_bar"`
-	SkipCode           bool                `json:"skip_code"`
-	SkipHost           bool                `json:"skip_host"`
-	ErrUseLastResponse bool                `json:"err_use_last_response"`
-	Csv                bool                `json:"csv,omitempty"`
-	ClearResume        bool                `json:"clear_resume"`
-	Version            bool                `json:"version"`
-	Uncover            bool                `json:"uncover"`
-	UncoverQuery       goflags.StringSlice `json:"uncover_query"`
-	UncoverEngine      goflags.StringSlice `json:"uncover_engine"`
-	UncoverDelay       int                 `json:"uncover_delay"`
-	UncoverLimit       int                 `json:"uncover_limit"`
-	UncoverField       string              `json:"uncover_field"`
-	UncoverOutput      string              `json:"uncover_output"`
+	PathRemote            string              `json:"path_remote"`
+	ResumeCfg             string              `json:"resume_cfg"`
+	Output                string              `json:"output"`
+	RateHttp              int                 `json:"rate_http"`
+	Retries               int                 `json:"retries"`
+	Proxy                 string              `json:"proxy"`
+	ProxyAuth             string              `json:"proxy_auth"`
+	NoColor               bool                `json:"no_color"`
+	Verbose               bool                `json:"verbose"`
+	Silent                bool                `json:"silent"`
+	OnlyTargets           bool                `json:"only_targets"`
+	EnableProgressBar     bool                `json:"enable_progress_bar"`
+	SkipCode              bool                `json:"skip_code"`
+	SkipHost              bool                `json:"skip_host"`
+	ErrUseLastResponse    bool                `json:"err_use_last_response"`
+	Csv                   bool                `json:"csv,omitempty"`
+	ClearResume           bool                `json:"clear_resume"`
+	Version               bool                `json:"version"`
+	Uncover               bool                `json:"uncover"`
+	UncoverQuery          goflags.StringSlice `json:"uncover_query"`
+	UncoverEngine         goflags.StringSlice `json:"uncover_engine"`
+	UncoverDelay          int                 `json:"uncover_delay"`
+	UncoverLimit          int                 `json:"uncover_limit"`
+	UncoverField          string              `json:"uncover_field"`
+	UncoverOutput         string              `json:"uncover_output"`
+	UpdatePathScanVersion bool                `json:"update"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
@@ -55,7 +56,7 @@ var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault(".
 func ParserOptions() *Options {
 	options := &Options{}
 	set := goflags.NewFlagSet()
-	set.SetDescription("PathScan Go 扫描工具")
+	set.SetDescription("PathScan Go 扫描、信息收集工具")
 	set.CreateGroup("Input", "输入",
 		set.StringSliceVarP(&options.Url, "target", "t", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.UrlFile, "target-file", "tf", nil, "从文件中,读取目标", goflags.FileStringSliceOptions),
@@ -102,6 +103,9 @@ func ParserOptions() *Options {
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
 	)
+	set.CreateGroup("update", "更新",
+		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
+	)
 	//set.CreateGroup("")
 	_ = set.Parse()
 	if !options.Silent {
@@ -118,11 +122,6 @@ func ParserOptions() *Options {
 		}
 	}
 
-	if options.ClearResume {
-		_ = os.RemoveAll(DefaultResumeFolderPath())
-		gologger.Print().Msgf("clear success: %s", DefaultResumeFolderPath())
-		os.Exit(0)
-	}
 	return options
 }
 

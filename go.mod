@@ -20,18 +20,27 @@ require (
 	github.com/projectdiscovery/utils v0.0.10-0.20230217185600-008d111dd1c1
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/stretchr/testify v1.8.1
+	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	golang.org/x/net v0.6.0
 )
 
 require (
 	github.com/Mzack9999/go-http-digest-auth-client v0.6.1-0.20220414142836-eb8883508809 // indirect
+	github.com/apex/log v1.9.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/go-github v17.0.0+incompatible // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
+	github.com/gosuri/uilive v0.0.4 // indirect
+	github.com/gosuri/uiprogress v0.0.1 // indirect
+	github.com/klauspost/compress v1.16.0 // indirect
+	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible // indirect

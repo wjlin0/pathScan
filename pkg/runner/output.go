@@ -25,9 +25,6 @@ func CSVHeaders(data *result.TargetResult) ([]string, error) {
 	return headers, nil
 }
 
-func writeCSVRow(data *result.TargetResult, writer *csv.Writer) {
-
-}
 func CSVFields(d *result.TargetResult) ([]string, error) {
 	var fields []string
 	vl := reflect.ValueOf(*d)

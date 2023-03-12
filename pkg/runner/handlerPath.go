@@ -3,6 +3,7 @@ package runner
 import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
 	"strings"
@@ -71,7 +72,7 @@ func (r *Runner) getAllPaths() map[string]struct{} {
 
 func (r *Runner) getFilePath(filename string) []string {
 
-	path := DataRoot("dict", "v"+Version, filename)
+	path := util.DataRoot("dict", "v"+Version, filename)
 	out, err := fileutil.ReadFile(path)
 	if err != nil {
 		return nil

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/runner"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,13 +16,16 @@ func main() {
 		gologger.Print().Msg(fmt.Sprintf("无法创建Runner: %s", err.Error()))
 		os.Exit(0)
 	}
+	if run == nil {
+		os.Exit(0)
+	}
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
 			gologger.Info().Msg("CTRL+C 按下: Exiting")
-			filename := runner.RandStr(30) + ".cfg"
+			filename := util.RandStr(30) + ".cfg"
 			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
 			err := run.Cfg.MarshalResume(filename)
 			if err != nil {

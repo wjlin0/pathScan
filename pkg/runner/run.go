@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"crypto/tls"
 	"fmt"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/fileutil"
@@ -10,10 +9,10 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"golang.org/x/net/context"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +33,7 @@ type Runner struct {
 
 func NewRun(options *Options) (*Runner, error) {
 	run := &Runner{}
+	var err error
 	if options.ResumeCfg != "" {
 		cfg, err := ParserResumeCfg(options.ResumeCfg)
 		if err != nil {
@@ -57,14 +57,35 @@ func NewRun(options *Options) (*Runner, error) {
 			Results: result.NewResult(),
 		}
 	}
+	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
+		err := CheckVersion()
+		if err != nil {
+			gologger.Error().Msgf(err.Error())
+		}
+	}
 
-	err := run.Cfg.Options.Validate()
+	err = run.Cfg.Options.DownloadDict()
+	if err != nil {
+		gologger.Error().Msgf(err.Error())
+	}
+	if run.Cfg.Options.UpdatePathScanVersion {
+		ok, err := run.Cfg.Options.UpdateVersion()
+		if err != nil && ok == false {
+			gologger.Error().Msg(err.Error())
+		}
+		return nil, nil
+	}
+	if run.Cfg.Options.ClearResume {
+		_ = os.RemoveAll(DefaultResumeFolderPath())
+		gologger.Print().Msgf("clear success: %s", DefaultResumeFolderPath())
+		os.Exit(0)
+	}
+	err = run.Cfg.Options.Validate()
 	if err != nil {
 		return nil, err
 	}
 	run.Cfg.Options.configureOutput()
-	run.newClient()
-
+	run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
 	run.targets = run.getAllTargets()
@@ -86,49 +107,12 @@ func (r *Runner) GetUserAgent() string {
 	return r.userAgent[rand.Intn(len(r.userAgent))]
 }
 
-func (r *Runner) newClient() *http.Client {
-	options := r.Cfg.Options
-	t := &http.Transport{
-		MaxIdleConnsPerHost: -1,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-		},
-		DisableKeepAlives: true,
-	}
-	if options.Proxy != "" {
-		proxyUrl, err := url.Parse(options.Proxy)
-		if err != nil {
-			gologger.Error().Msg(err.Error())
-		}
-		if options.ProxyAuth != "" {
-			proxyUrl.User = url.UserPassword(strings.Split(options.ProxyAuth, ":")[0], strings.Split(options.ProxyAuth, ":")[1])
-		}
-		t.Proxy = http.ProxyURL(proxyUrl)
-	}
-	client := &http.Client{
-		Timeout:   5 * time.Second,
-		Transport: t,
-	}
-	if options.ErrUseLastResponse {
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
-	r.client = client
-	return client
-}
-
 func (r *Runner) Run() error {
 
 	targets := r.targets
 	pathUrls := r.paths
 	Retries := r.Cfg.Options.Retries
-	// 下载远程字典
-	err := r.DownloadDict()
-	if err != nil {
-		gologger.Error().Msgf(err.Error())
-	}
+	var err error
 
 	if len(pathUrls) == 1 {
 		r.Cfg.Options.OnlyTargets = true
@@ -165,7 +149,7 @@ func (r *Runner) Run() error {
 				return mkdirErr
 			}
 		}
-		f, err = AppendCreate(r.Cfg.Options.Output)
+		f, err = util.AppendCreate(r.Cfg.Options.Output)
 		if err != nil {
 			return err
 		}

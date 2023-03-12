@@ -8,12 +8,11 @@ import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/result"
-	"math/rand"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 )
 
 const defaultResumeFileName = `resume.cfg`
@@ -58,16 +57,6 @@ func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	}
 	return os.WriteFile(DefaultResumeFilePath(filename), data, 0644)
 }
-func RandStr(length int) string {
-	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	bytes := []byte(str)
-	result := []byte{}
-	rand.Seed(time.Now().UnixNano() + int64(rand.Intn(100)))
-	for i := 0; i < length; i++ {
-		result = append(result, bytes[rand.Intn(len(bytes))])
-	}
-	return string(result)
-}
 
 func DefaultResumeFolderPath() string {
 	home, err := os.UserHomeDir()
@@ -87,7 +76,7 @@ func (cfg *ResumeCfg) CleanupResumeConfig() {
 }
 
 func (cfg *ResumeCfg) ClearResume() {
-	resumePath := DataRoot("resume")
+	resumePath := util.DataRoot("resume")
 	dir, err := os.ReadDir(resumePath)
 	if err != nil {
 		return

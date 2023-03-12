@@ -65,6 +65,8 @@ Flags:
 速率:
   -rh, -rate-http int  允许每秒钟最大http请求数 (default 100)
 
+更新:
+  -update  更新版本
 
 ```
 ## 安装

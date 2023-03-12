@@ -1,8 +1,8 @@
 package uncover
 
 import (
-	"io"
 	"github.com/projectdiscovery/retryablehttp-go"
+	"io"
 )
 
 func NewHTTPRequest(method, url string, body io.Reader) (*retryablehttp.Request, error) {
@@ -10,6 +10,6 @@ func NewHTTPRequest(method, url string, body io.Reader) (*retryablehttp.Request,
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("User-Agent", "Uncover - FOSS Project (github.com/projectdiscovery/uncover)")
+	request.Header.Set("User-Agent", "PathScan - FOSS Project (github.com/wjlin0/pathScan)")
 	return request, nil
 }

@@ -3,17 +3,22 @@ package runner
 import (
 	"bytes"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	"github.com/tj/go-update"
+	"github.com/tj/go-update/progress"
+	githubUpdateStore "github.com/tj/go-update/stores/github"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 )
 
-func (r *Runner) DownloadDict() error {
+func (o *Options) DownloadDict() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 
@@ -30,24 +35,18 @@ func (r *Runner) DownloadDict() error {
 		return fmt.Errorf("打开 %s 出错:%s\n", path, err.Error())
 	}
 
-	url := "https://github.com/wjlin0/pathScan/releases/download/v" + Version + "/dict.zip"
-	request, err := http.NewRequest("GET", url, nil)
-	r.client.CheckRedirect = nil
-	resp, err := r.client.Do(request)
-	if !r.Cfg.Options.ErrUseLastResponse {
-		r.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
-	if err != nil {
-		return fmt.Errorf("下载文件出错: %s\n", err.Error())
-	}
+	dictUrl := "https://github.com/wjlin0/pathScan/releases/download/v" + Version + "/dict.zip"
 
+	client := newClient(o, false)
+	resp, err := client.Get(dictUrl)
+	if err != nil {
+		return err
+	}
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 
-		return fmt.Errorf("下载 %s 文件出错: %s\n", url, err.Error())
+		return fmt.Errorf("下载 %s 文件出错: %s\n", dictUrl, err.Error())
 	}
 	defer resp.Body.Close()
 	reader := bytes.NewReader(body)
@@ -60,15 +59,80 @@ func (r *Runner) DownloadDict() error {
 	return nil
 }
 
-func DataRoot(elem ...string) string {
-	home, _ := os.UserHomeDir()
-	var e []string
-	home = filepath.Join(home, ".config", "pathScan")
-	e = append(e, home)
-	e = append(e, elem...)
-	return filepath.Join(e...)
+func (o *Options) UpdateVersion() (bool, error) {
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "pathScan.exe"
+	default:
+		command = "pathScan"
+	}
+	m := &update.Manager{
+		Command: command,
+		Store: &githubUpdateStore.Store{
+			Owner:   "wjlin0",
+			Repo:    "pathScan",
+			Version: Version,
+		},
+	}
+	releases, err := m.LatestReleases()
+	if err != nil {
+		return false, errors.Wrap(err, "could not fetch latest release")
+	}
+	if len(releases) == 0 {
+		gologger.Info().Msgf("No new updates found for nuclei engine!")
+		return true, nil
+	}
+	latest := releases[0]
+	var currentOS string
+	currentOS = strings.ToUpper(runtime.GOOS[:1]) + runtime.GOOS[1:]
+	var currentArch string
+	switch runtime.GOARCH {
+	case "amd64":
+		currentArch = "x86_64"
+	default:
+		currentArch = runtime.GOARCH
+	}
+	final := latest.FindZip(currentOS, currentArch)
+	if final == nil {
+		return false, fmt.Errorf("no compatible binary found for %s/%s", currentOS, runtime.GOARCH)
+	}
+	tarball, err := final.DownloadProxy(progress.Reader)
+	if err != nil {
+		return false, errors.Wrap(err, "could not download latest release")
+	}
+	if err := m.Install(tarball); err != nil {
+		return false, errors.Wrap(err, "could not install latest release")
+	}
+	gologger.Info().Msgf("Successfully updated to Nuclei %s\n", latest.Version)
+	return true, nil
 }
 
-func AppendCreate(name string) (*os.File, error) {
-	return os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+func CheckVersion() error {
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "pathScan.exe"
+	default:
+		command = "pathScan"
+	}
+	m := &update.Manager{
+		Command: command,
+		Store: &githubUpdateStore.Store{
+			Owner:   "wjlin0",
+			Repo:    "pathScan",
+			Version: Version,
+		},
+	}
+	releases, err := m.LatestReleases()
+	if err != nil {
+		return err
+	}
+	if len(releases) != 0 {
+		gologger.Error().Label("OUT").Msgf("你的版本( v%s )较低. 最新为 %s", Version, releases[0].Version)
+	} else {
+		gologger.Info().Msgf("使用 pathScan v%s", Version)
+	}
+	return nil
+
 }
