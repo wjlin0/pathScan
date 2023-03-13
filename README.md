@@ -1,7 +1,16 @@
-# PathScan
-pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的扫描URL地址。这是一个非常简单的工具。
+<h4 align="center">pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的扫描URL地址。这是一个非常简单的工具。</h4>
 
-## 特征
+<p align="center">
+<img src="https://img.shields.io/github/go-mod/go-version/wjlin0/pathScan?filename=go.mod" alt="">
+    <a href="https://github.com/wjlin0/pathScan/releases"><img src="https://img.shields.io/github/downloads/wjlin0/pathScan/total" alt=""></a>
+    <a href="https://github.com/wjlin0/pathScan/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/wjlin0/pathScan"></a>
+    <a href="https://github.com/wjlin0/pathScan/releases/"><img src="https://img.shields.io/github/release/wjlin0/pathScan" alt=""></a>
+    <a href="https://github.com/wjlin0/pathScan/issues"><img src="https://img.shields.io/github/issues-raw/wjlin0/pathScan" alt=""></a>
+    <a href="https://wjlin0.com/"><img src="https://img.shields.io/badge/wjlin0-blog-green" alt=""></a>
+</p>
+
+
+# 特征
 
 - 快速发现路径
 - 可远程加载目标或远程加载字典
@@ -11,7 +20,8 @@ pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的
 - 支持使用HTTP/SOCKS代理
 - 随机UserAgent、证书跳过验证
 
-## 用法
+# 用法
+
 ```shell
 pathScan -h
 ```
@@ -69,26 +79,49 @@ Flags:
   -update  更新版本
 
 ```
-## 安装
+# 安装pathScan
 
-下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)或使用 GO 安装
-### GO
-```shell
+pathScan需要**go1.19**才能安装成功。执行一下命令
+
+```sh
 go install -v github.com/wjlin0/pathScan@latest
 ```
-### Docker
-```shell
+
+或下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
+
+<table>
+    <tr>
+    <td>
+
+**Docker：**
+
+```sh
 docker pull wjlin0/path_scan:latest
 docker run --rm --name pathScan -it wjlin0/path_scan:latest  -t https://wjlin0.com -vb
 ```
-### 自行编译
-```shell
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+
+**自行编译：**
+
+```sh
+git clone https://github.com/wjlin0/pathScan.git && cd pathScan
 go install github.com/goreleaser/goreleaser@latest
 goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
 ```
+</td>
+</tr>
+</table>
 
 
-## 使用案例
+
+# 运行pathScan
+
 ```text
 pathScan -t https://baidu.com/
 # 远程加载
@@ -103,11 +136,12 @@ pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 pathScan -t https://www.baidu.com -csv -output 1.csv
 ```
 
-## 配置文件
+
+
 pathScan 支持默认配置文件位于下面两个路径，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 - $HOME/.config/pathScan/config.yaml
 - $HOME/.config/pathScan/provider-config.yaml
 
-## 感谢
+# 感谢
 
 - [projectdiscovery.io](https://projectdiscovery.io/#/)
