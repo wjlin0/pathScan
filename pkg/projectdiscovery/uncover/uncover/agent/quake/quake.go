@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
+	"io"
 	"net/http"
 )
 
@@ -33,7 +34,6 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 	if session.Keys.QuakeToken == "" {
 		return nil, errors.New("empty quake keys")
 	}
-
 	results := make(chan uncover.Result)
 
 	go func() {
@@ -69,14 +69,16 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 
 func (agent *Agent) query(URL string, session *uncover.Session, quakeRequest *Request, results chan uncover.Result) *Response {
 	resp, err := agent.queryURL(session, URL, quakeRequest)
+	//fmt.Println(quakeRequest.Query)
 	if err != nil {
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}
 	quakeResponse := &Response{}
-	//body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	//fmt.Println(string(body))
-	if err := json.NewDecoder(resp.Body).Decode(quakeResponse); err != nil {
+	err = json.Unmarshal(body, quakeResponse)
+	if err != nil {
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}

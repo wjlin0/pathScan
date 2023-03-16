@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -128,11 +129,11 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 					Limit: uncoverOptions.Limit,
 				}
 				uncoverQuery.Query, err = loadQuery(agent.Name(), q)
+				gologger.Debug().Msgf("请求参数为: %s", uncoverQuery.Query)
 				if err != nil {
 					gologger.Warning().Msgf("解析字符串发送错误: %s", err.Error())
 					continue
 				}
-				//uncoverQuery.Query = q
 				swg.Add()
 				go func(agent uncover.Agent, uq *uncover.Query) {
 					defer swg.Done()
@@ -190,13 +191,28 @@ func loadQuery(engine string, str string) (string, error) {
 	var newStr string
 	var err error
 	t := IsDomain(str)
+	//fmt.Println(str)
 	if !t {
 		newStr = str
-		switch engine {
-		case "zoomeye":
+		switch {
+		case engine == "zoomeye":
 			err = errors.New("请求zoomeye 需要为主域名形式 eg :wjlin0.com")
-		case "binary":
+		case engine == "binary":
 			err = errors.New("请求binary 需要为主域名形式 eg: wjlin0.com")
+		case engine == "quake" && runtime.GOOS == "windows" && strings.Count(str, ":") == 1:
+			re := `^(.*?):(.*?)$`
+			compile := regexp.MustCompile(re)
+			r := compile.FindAllStringSubmatch(str, -1)
+			if len(r) >= 1 && len(r[0]) == 3 {
+				newStr = r[0][1] + ":\"" + r[0][2] + "\""
+			}
+		case engine == "fofa" && runtime.GOOS == "windows" && strings.Count(str, "=") == 1:
+			re := `^(.*?)=(.*?)$`
+			compile := regexp.MustCompile(re)
+			r := compile.FindAllStringSubmatch(str, -1)
+			if len(r) >= 1 && len(r[0]) == 3 {
+				newStr = r[0][1] + "=\"" + r[0][2] + "\""
+			}
 		default:
 			err = nil
 		}
@@ -210,6 +226,7 @@ func loadQuery(engine string, str string) (string, error) {
 			newStr = str
 		}
 	}
+	//fmt.Println(newStr)
 	return newStr, err
 }
 

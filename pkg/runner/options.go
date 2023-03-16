@@ -59,7 +59,7 @@ func ParserOptions() *Options {
 	set.SetDescription("PathScan Go 扫描、信息收集工具")
 	set.CreateGroup("Input", "输入",
 		set.StringSliceVarP(&options.Url, "target", "t", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
-		set.StringSliceVarP(&options.UrlFile, "target-file", "tf", nil, "从文件中,读取目标", goflags.FileStringSliceOptions),
+		set.StringSliceVarP(&options.UrlFile, "target-file", "tf", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
 		set.StringVarP(&options.UrlRemote, "target-remote", "tr", "", "从远程加载目标"),
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
 	)
@@ -69,7 +69,7 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.SkipHost, "skip-host", "sh", false, "跳过目标验证"),
 	)
 	set.CreateGroup("Dict", "扫描字典",
-		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.StringSliceOptions),
 		set.StringSliceVarP(&options.PathFile, "path-file", "pf", nil, "从文件中,读取路径", goflags.FileStringSliceOptions),
 		set.StringVarP(&options.PathRemote, "path-remote", "pr", "", "从远程加载字典"),
 	)
@@ -92,7 +92,7 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
-		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.StringSliceOptions),
 		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 (%s) (default quake,fofa)", uncover.GetUncoverSupportedAgents()), goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 200, "发现要返回的结果"),
@@ -106,7 +106,6 @@ func ParserOptions() *Options {
 	set.CreateGroup("update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
 	)
-	//set.CreateGroup("")
 	_ = set.Parse()
 	if !options.Silent {
 		showBanner()

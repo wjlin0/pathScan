@@ -57,6 +57,8 @@ func NewRun(options *Options) (*Runner, error) {
 			Results: result.NewResult(),
 		}
 	}
+
+	run.Cfg.Options.configureOutput()
 	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
 		err := CheckVersion()
 		if err != nil {
@@ -84,7 +86,7 @@ func NewRun(options *Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-	run.Cfg.Options.configureOutput()
+
 	run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
