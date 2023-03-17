@@ -5,12 +5,26 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
 )
+
+func (r *Runner) CustomHeader(req *http.Request) {
+	for k, v := range r.headers {
+		switch v.(type) {
+		case string:
+			req.Header.Set(k, v.(string))
+		case []string:
+			rand.Seed(time.Now().Unix())
+			i := v.([]string)
+			req.Header.Set(k, i[rand.Intn(len(i))])
+		}
+	}
+}
 
 func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
 	reg := regexp.MustCompile(`<title.*>(.*?)</title>`)
@@ -22,7 +36,7 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", r.GetUserAgent())
+	r.CustomHeader(req)
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, err

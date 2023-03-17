@@ -11,7 +11,6 @@ import (
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"golang.org/x/net/context"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,14 +20,14 @@ import (
 )
 
 type Runner struct {
-	wg        sizedwaitgroup.SizedWaitGroup
-	Cfg       *ResumeCfg
-	client    *http.Client
-	limiter   *ratelimit.Limiter
-	targets   map[string]struct{}
-	paths     map[string]struct{}
-	userAgent []string
-	stats     *clistats.Statistics
+	wg      sizedwaitgroup.SizedWaitGroup
+	Cfg     *ResumeCfg
+	client  *http.Client
+	limiter *ratelimit.Limiter
+	targets map[string]struct{}
+	paths   map[string]struct{}
+	headers map[string]interface{}
+	stats   *clistats.Statistics
 }
 
 func NewRun(options *Options) (*Runner, error) {
@@ -59,40 +58,44 @@ func NewRun(options *Options) (*Runner, error) {
 	}
 
 	run.Cfg.Options.configureOutput()
+	err = run.Cfg.Options.Validate()
+	if err != nil {
+		return nil, err
+	}
 	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
 		err := CheckVersion()
 		if err != nil {
 			gologger.Error().Msgf(err.Error())
 		}
 	}
-
-	err = run.Cfg.Options.DownloadDict()
-	if err != nil {
-		gologger.Error().Msgf(err.Error())
-	}
-	if run.Cfg.Options.UpdatePathScanVersion {
-		ok, err := run.Cfg.Options.UpdateVersion()
-		if err != nil && ok == false {
-			gologger.Error().Msg(err.Error())
+	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion {
+		if run.Cfg.Options.UpdatePathDictVersion {
+			err = run.Cfg.Options.DownloadDict()
+			if err != nil {
+				gologger.Error().Msgf(err.Error())
+			}
+		}
+		if run.Cfg.Options.UpdatePathScanVersion {
+			ok, err := run.Cfg.Options.UpdateVersion()
+			if err != nil && ok == false {
+				gologger.Error().Msg(err.Error())
+			}
 		}
 		return nil, nil
 	}
+
 	if run.Cfg.Options.ClearResume {
 		_ = os.RemoveAll(DefaultResumeFolderPath())
 		gologger.Print().Msgf("clear success: %s", DefaultResumeFolderPath())
 		os.Exit(0)
 	}
-	err = run.Cfg.Options.Validate()
-	if err != nil {
-		return nil, err
-	}
 
 	run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
-	run.targets = run.getAllTargets()
-	run.paths = run.getAllPaths()
-	run.userAgent = []string{"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_3 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5", "Mozilla/5.0 (Linux;u;Android 4.2.2;zh-cn;) AppleWebKit/534.46 (KHTML,like Gecko)Version/5.1 Mobile Safari/10600.6.3 (compatible; Baiduspider/2.0;+http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (compatible; Baiduspider-render/2.0; +http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (iPhone;CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko)Version/9.0 Mobile/13B143 Safari/601.1 (compatible; Baiduspider-render/2.0;Smartapp; +http://www.baidu.com/search/spider.html)"}
+	run.targets = run.handlerGetTargets()
+	run.paths = run.handlerGetTargetPath()
+	run.headers = run.handlerHeader()
 	if run.Cfg.Options.EnableProgressBar {
 		stats, err := clistats.New()
 		if err != nil {
@@ -102,11 +105,6 @@ func NewRun(options *Options) (*Runner, error) {
 		}
 	}
 	return run, nil
-}
-
-func (r *Runner) GetUserAgent() string {
-	rand.Seed(time.Now().Unix())
-	return r.userAgent[rand.Intn(len(r.userAgent))]
 }
 
 func (r *Runner) Run() error {

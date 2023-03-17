@@ -2,13 +2,12 @@
 
 <p align="center">
 <img src="https://img.shields.io/github/go-mod/go-version/wjlin0/pathScan?filename=go.mod" alt="">
-    <a href="https://github.com/wjlin0/pathScan/releases"><img src="https://img.shields.io/github/downloads/wjlin0/pathScan/total" alt=""></a>
-    <a href="https://github.com/wjlin0/pathScan/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/wjlin0/pathScan"></a>
-    <a href="https://github.com/wjlin0/pathScan/releases/"><img src="https://img.shields.io/github/release/wjlin0/pathScan" alt=""></a>
-    <a href="https://github.com/wjlin0/pathScan/issues"><img src="https://img.shields.io/github/issues-raw/wjlin0/pathScan" alt=""></a>
-    <a href="https://wjlin0.com/"><img src="https://img.shields.io/badge/wjlin0-blog-green" alt=""></a>
+<a href="https://github.com/wjlin0/pathScan/releases"><img src="https://img.shields.io/github/downloads/wjlin0/pathScan/total" alt=""></a> 
+<a href="https://github.com/wjlin0/pathScan/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/wjlin0/pathScan"></a> 
+<a href="https://github.com/wjlin0/pathScan/releases/"><img src="https://img.shields.io/github/release/wjlin0/pathScan" alt=""></a> 
+<a href="https://hub.docker.com/repository/docker/wjlin0/path_scan/general" ><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/wjlin0/path_scan"></a>
+<a href="https://wjlin0.com/"><img src="https://img.shields.io/badge/wjlin0-blog-green" alt=""></a>
 </p>
-
 
 # 特征
 
@@ -18,7 +17,7 @@
 - 可恢复上次扫描进度
 - 从网络空间测绘中发现目标
 - 支持使用HTTP/SOCKS代理
-- 随机UserAgent、证书跳过验证
+- 自定义请求头
 
 # 用法
 
@@ -48,7 +47,7 @@ Flags:
 
 输出:
   -o, -output string  输出文件路径（可忽略）
-  -c, -csv            csv格式输出
+  -csv                csv格式输出
   -nc, -no-color      无颜色输出
   -vb, -verbose       详细输出模式
   -sl, -silent        管道模式
@@ -72,11 +71,19 @@ Flags:
   -ucd, -uncover-delay int       打开查询请求之间的延迟（秒） (default 1)
   -uo, -uncover-output string    搜索引擎查询结果保存
 
+请求头参数:
+  -ua, -user-agent string[]     User-Agent
+  -c, -cookie string            cookie
+  -auth, -authorization string  Auth请求头
+  -header string[]              自定义请求头,以逗号隔开
+  -hf, -header-file string[]    从文件中加载自定义请求头
+
 速率:
   -rh, -rate-http int  允许每秒钟最大http请求数 (default 100)
 
 更新:
-  -update  更新版本
+  -update            更新版本
+  -ud, -update-dict  更新字典版本
 
 ```
 # 安装pathScan
@@ -134,6 +141,8 @@ pathScan -uc -ue "fofa" -uq "domain=baidu.com"
 pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 # 输出
 pathScan -t https://www.baidu.com -csv -output 1.csv
+# 自定义请求头
+pathScan -t http://www.baidu.com -header User-Agent:pathScan/1.8,Cookie:a=1  -header a:1
 ```
 
 

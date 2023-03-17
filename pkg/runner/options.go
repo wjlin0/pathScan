@@ -49,6 +49,12 @@ type Options struct {
 	UncoverField          string              `json:"uncover_field"`
 	UncoverOutput         string              `json:"uncover_output"`
 	UpdatePathScanVersion bool                `json:"update"`
+	UpdatePathDictVersion bool                `json:"update_path_dict_version"`
+	UserAgent             goflags.StringSlice `json:"user_agent"`
+	Cookie                string              `json:"cookie"`
+	Authorization         string              `json:"authorization"`
+	Header                goflags.StringSlice `json:"header"`
+	HeaderFile            goflags.StringSlice `json:"header_file"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
@@ -69,13 +75,13 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.SkipHost, "skip-host", "sh", false, "跳过目标验证"),
 	)
 	set.CreateGroup("Dict", "扫描字典",
-		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.StringSliceOptions),
+		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.PathFile, "path-file", "pf", nil, "从文件中,读取路径", goflags.FileStringSliceOptions),
 		set.StringVarP(&options.PathRemote, "path-remote", "pr", "", "从远程加载字典"),
 	)
 	set.CreateGroup("output", "输出",
 		set.StringVarP(&options.Output, "output", "o", "", "输出文件路径（可忽略）"),
-		set.BoolVarP(&options.Csv, "csv", "c", false, "csv格式输出"),
+		set.BoolVar(&options.Csv, "csv", false, "csv格式输出"),
 		set.BoolVarP(&options.NoColor, "no-color", "nc", false, "无颜色输出"),
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Silent, "silent", "sl", false, "管道模式"),
@@ -92,19 +98,26 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
-		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.StringSliceOptions),
+		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 (%s) (default quake,fofa)", uncover.GetUncoverSupportedAgents()), goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 200, "发现要返回的结果"),
 		set.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "打开查询请求之间的延迟（秒）"),
 		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存"),
 	)
-
+	set.CreateGroup("header", "请求头参数",
+		set.StringSliceVarP(&options.UserAgent, "user-agent", "ua", nil, "User-Agent", goflags.CommaSeparatedStringSliceOptions),
+		set.StringVarP(&options.Cookie, "cookie", "c", "", "cookie"),
+		set.StringVarP(&options.Authorization, "authorization", "auth", "", "Auth请求头"),
+		set.StringSliceVar(&options.Header, "header", nil, "自定义请求头,以逗号隔开", goflags.CommaSeparatedStringSliceOptions),
+		set.StringSliceVarP(&options.HeaderFile, "header-file", "hf", nil, "从文件中加载自定义请求头", goflags.FileStringSliceOptions),
+	)
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
 	)
 	set.CreateGroup("update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
+		set.BoolVarP(&options.UpdatePathDictVersion, "update-dict", "ud", false, "更新字典版本"),
 	)
 	_ = set.Parse()
 	if !options.Silent {
@@ -117,7 +130,7 @@ func ParserOptions() *Options {
 	// create default provider file if it doesn't exist
 	if !fileutil.FileExists(defaultProviderConfigLocation) {
 		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), ucRunner.Provider{}); err != nil {
-			gologger.Warning().Msgf("couldn't write provider default file: %s\n", err)
+			gologger.Warning().Msgf("无法写入提供程序默认文件: %s\n", err)
 		}
 	}
 

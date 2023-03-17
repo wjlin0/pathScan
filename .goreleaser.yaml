@@ -26,8 +26,8 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # use zip for windows archives
     format_overrides:
-    - goos: windows
-      format: zip
+      - goos: windows
+        format: zip
 checksum:
   algorithm: sha256
 snapshot:
@@ -40,8 +40,8 @@ changelog:
       - '^test:'
 dockers:
   - image_templates:
-      - "wjlin0/path_scan:latest"
       - "wjlin0/path_scan:{{ .Tag }}"
+      - "wjlin0/path_scan:latest"
     dockerfile: Dockerfile
     skip_push: false
     build_flag_templates:

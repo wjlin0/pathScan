@@ -26,6 +26,7 @@ func (o *Options) DownloadDict() error {
 	}
 	path := filepath.Join(home, ".config", "pathScan", "dict", "v"+Version)
 	if fileutil.FileExists(filepath.Join(path, ".check")) {
+		gologger.Info().Msgf("远程字典下载成功->%s", path)
 		return nil
 	}
 	gologger.Info().Msg("本地不存在字典,正在下载...")
@@ -77,10 +78,10 @@ func (o *Options) UpdateVersion() (bool, error) {
 	}
 	releases, err := m.LatestReleases()
 	if err != nil {
-		return false, errors.Wrap(err, "could not fetch latest release")
+		return false, errors.Wrap(err, "无法获取最新版本")
 	}
 	if len(releases) == 0 {
-		gologger.Info().Msgf("No new updates found for nuclei engine!")
+		gologger.Info().Msgf("已经为最新版本%v", Version)
 		return true, nil
 	}
 	latest := releases[0]
