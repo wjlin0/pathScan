@@ -30,26 +30,31 @@ type Runner struct {
 	stats   *clistats.Statistics
 }
 
-func NewRun(options *Options) (*Runner, error) {
+func NewRunner(options *Options) (*Runner, error) {
 	run := &Runner{}
-	var err error
+
+	// 如果存在恢复配置，解析它并设置相应的选项
 	if options.ResumeCfg != "" {
 		cfg, err := ParserResumeCfg(options.ResumeCfg)
 		if err != nil {
 			return nil, err
-		} else {
-			if cfg.Results.Targets == nil {
-				cfg.Results.Targets = make(map[string]struct{})
-			}
-			if cfg.Results.TargetPaths == nil {
-				cfg.Results.TargetPaths = make(map[string]map[string]struct{})
-			}
-			if cfg.Results.Skipped == nil {
-				cfg.Results.Skipped = make(map[string]map[string]struct{})
-			}
-			cfg.Options.ResumeCfg = options.ResumeCfg
 		}
+
+		// 如果目标、目标路径或跳过的目标为空，则创建一个空 map
+		if cfg.Results.Targets == nil {
+			cfg.Results.Targets = make(map[string]struct{})
+		}
+		if cfg.Results.TargetPaths == nil {
+			cfg.Results.TargetPaths = make(map[string]map[string]struct{})
+		}
+		if cfg.Results.Skipped == nil {
+			cfg.Results.Skipped = make(map[string]map[string]struct{})
+		}
+
+		// 将 ResumeCfg 字段设置为 options.ResumeCfg
+		cfg.Options.ResumeCfg = options.ResumeCfg
 	} else {
+		// 否则，创建一个新的 ResumeCfg 并设置其 Options 和 Results 字段
 		run.Cfg = &ResumeCfg{
 			Rwm:     &sync.RWMutex{},
 			Options: options,
@@ -57,17 +62,24 @@ func NewRun(options *Options) (*Runner, error) {
 		}
 	}
 
+	// 配置输出方式
 	run.Cfg.Options.configureOutput()
-	err = run.Cfg.Options.Validate()
+
+	// 验证选项是否合法
+	err := run.Cfg.Options.Validate()
 	if err != nil {
 		return nil, err
 	}
+
+	// 检查版本更新
 	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
 		err := CheckVersion()
 		if err != nil {
 			gologger.Error().Msgf(err.Error())
 		}
 	}
+
+	// 下载字典或更新版本
 	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion {
 		if run.Cfg.Options.UpdatePathDictVersion {
 			err = run.Cfg.Options.DownloadDict()
@@ -84,26 +96,32 @@ func NewRun(options *Options) (*Runner, error) {
 		return nil, nil
 	}
 
+	// 清除恢复文件夹
 	if run.Cfg.Options.ClearResume {
 		_ = os.RemoveAll(DefaultResumeFolderPath())
-		gologger.Print().Msgf("clear success: %s", DefaultResumeFolderPath())
+		gologger.Print().Msgf("清除成功：%s", DefaultResumeFolderPath())
 		os.Exit(0)
 	}
 
+	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
 	run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
 	run.targets = run.handlerGetTargets()
 	run.paths = run.handlerGetTargetPath()
 	run.headers = run.handlerHeader()
+
+	// 如果启用了进度条，则创建统计信息引擎
 	if run.Cfg.Options.EnableProgressBar {
 		stats, err := clistats.New()
 		if err != nil {
-			gologger.Warning().Msgf("Couldn't create progress engine: %s\n", err)
+			gologger.Warning().Msgf("无法创建进度条引擎：%s\n", err)
 		} else {
 			run.stats = stats
 		}
 	}
+
+	// 返回 Runner 实例和无误差
 	return run, nil
 }
 

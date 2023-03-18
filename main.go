@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	run, err := runner.NewRun(runner.ParserOptions())
+	run, err := runner.NewRunner(runner.ParserOptions())
 	if err != nil {
 		gologger.Print().Msg(fmt.Sprintf("无法创建Runner: %s", err.Error()))
 		os.Exit(0)

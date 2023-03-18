@@ -13,102 +13,108 @@ import (
 	"strings"
 )
 
+const (
+	HeaderKeyUserAgent     = "User-Agent"
+	HeaderKeyCookie        = "Cookie"
+	HeaderKeyAuthorization = "Authorization"
+)
+
+var defaultUserAgents = []string{
+	"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_3 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5",
+	"Mozilla/5.0 (Linux;u;Android 4.2.2;zh-cn;) AppleWebKit/534.46 (KHTML,like Gecko)Version/5.1 Mobile Safari/10600.6.3 (compatible; Baiduspider/2.0;+http://www.baidu.com/search/spider.html)",
+	"Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)",
+	"Mozilla/5.0 (compatible; Baiduspider-render/2.0; +http://www.baidu.com/search/spider.html)",
+	"Mozilla/5.0 (iPhone;CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko)Version/9.0 Mobile/13B143 Safari/601.1 (compatible; Baiduspider-render/2.0;Smartapp; +http://www.baidu.com/search/spider.html)",
+}
+
 func (r *Runner) handlerHeader() map[string]interface{} {
-	headerMap := make(map[string]interface{})
-	if r.Cfg.Options.UserAgent != nil {
-		headerMap["User-Agent"] = r.Cfg.Options.UserAgent
+	headerMap := make(map[string]interface{}, len(r.Cfg.Options.Header)+len(r.Cfg.Options.HeaderFile)+3)
+
+	if len(r.Cfg.Options.UserAgent) > 0 {
+		headerMap[HeaderKeyUserAgent] = r.Cfg.Options.UserAgent
 	}
 	if r.Cfg.Options.Cookie != "" {
-		headerMap["Cookie"] = r.Cfg.Options.Cookie
+		headerMap[HeaderKeyCookie] = r.Cfg.Options.Cookie
 	}
 	if r.Cfg.Options.Authorization != "" {
-		headerMap["Authorization"] = r.Cfg.Options.Authorization
+		headerMap[HeaderKeyAuthorization] = r.Cfg.Options.Authorization
 	}
-	if r.Cfg.Options.Header != nil {
-		for _, v := range r.Cfg.Options.Header {
 
-			split := strings.Split(v, ":")
-			if len(split) == 2 {
-				headerMap[split[0]] = split[1]
-			}
+	for _, header := range append(r.Cfg.Options.Header, r.Cfg.Options.HeaderFile...) {
+		split := strings.SplitN(header, ":", 2)
+		if len(split) == 2 {
+			headerMap[strings.TrimSpace(split[0])] = strings.TrimSpace(split[1])
 		}
 	}
-	if r.Cfg.Options.HeaderFile != nil {
 
-		for _, v := range r.Cfg.Options.HeaderFile {
-			split := strings.Split(v, ":")
-			if len(split) == 2 {
-				headerMap[split[0]] = split[1]
-			}
-		}
-	}
-	_, ok := headerMap["User-Agent"]
-	if !ok {
-		headerMap["User-Agent"] = []string{"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_3 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5", "Mozilla/5.0 (Linux;u;Android 4.2.2;zh-cn;) AppleWebKit/534.46 (KHTML,like Gecko)Version/5.1 Mobile Safari/10600.6.3 (compatible; Baiduspider/2.0;+http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (compatible; Baiduspider-render/2.0; +http://www.baidu.com/search/spider.html)", "Mozilla/5.0 (iPhone;CPU iPhone OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko)Version/9.0 Mobile/13B143 Safari/601.1 (compatible; Baiduspider-render/2.0;Smartapp; +http://www.baidu.com/search/spider.html)"}
+	if userAgent, ok := headerMap[HeaderKeyUserAgent]; !ok || len(userAgent.([]string)) == 0 {
+		headerMap[HeaderKeyUserAgent] = defaultUserAgents
 	}
 
 	return headerMap
 }
+
 func (r *Runner) handlerGetTargetPath() map[string]struct{} {
 	at := make(map[string]struct{})
-	var resp *http.Response
-	var err error
 
-	if r.Cfg.Options.Path != nil {
-		for _, p := range r.Cfg.Options.Path {
-			if _, ok := at[p]; !ok {
-				p = strings.TrimSpace(p)
-				at[p] = struct{}{}
-			}
-		}
-	}
-	if r.Cfg.Options.PathFile != nil {
-		for _, p := range r.Cfg.Options.PathFile {
-			if _, ok := at[p]; !ok {
-				p = strings.TrimSpace(p)
-				at[p] = struct{}{}
-			}
-		}
-	}
+	// 处理 Path 和 PathFile
+	addPathsToSet(r.Cfg.Options.Path, at)
+	addPathsToSet(r.Cfg.Options.PathFile, at)
+
+	// 处理 PathRemote
 	if r.Cfg.Options.PathRemote != "" {
-		request, _ := http.NewRequest("GET", r.Cfg.Options.PathRemote, nil)
-		resp, err = r.client.Do(request)
-		if err == nil {
+		resp, err := r.client.Get(r.Cfg.Options.PathRemote)
+		if err != nil {
+			gologger.Warning().Msgf("从远程加载字典失败: %s", err)
+		} else {
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
 				if err != nil {
-
+					gologger.Warning().Msgf("关闭响应体失败: %s", err)
 				}
 			}(resp.Body)
-			body, _ := io.ReadAll(resp.Body)
-			for _, p := range strings.Split(string(body), "\n") {
-				p = strings.Trim(p, "\r")
-				p = strings.Trim(p, "\n")
-				if p == "" {
-					continue
-				}
-				if _, ok := at[p]; !ok {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				gologger.Warning().Msgf("读取响应体失败：%s", err)
+			} else {
+				for _, p := range strings.Split(string(body), "\n") {
+					p = strings.TrimSpace(p)
+					if p == "" {
+						continue
+					}
 					at[p] = struct{}{}
 				}
-
+				gologger.Debug().Msg("从远程加载字典完成")
 			}
 		}
-		gologger.Debug().Msg("从远程加载字典 完成...")
 	}
 
-	if len(r.targets) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil && r.Cfg.Options.PathRemote == "" {
+	// 如果未指定路径，则处理默认文件名
+	if len(at) == 0 && len(r.targets) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
 		u := r.handlerGetFilePath("main.txt")
 		if u != nil {
-			for _, s := range u {
-				at[s] = struct{}{}
-			}
+			addPathsToSet(u, at)
 		}
 	}
+
+	// 如果没有添加任何路径，则将根目录添加到结果中
 	if len(at) == 0 {
 		at["/"] = struct{}{}
 	}
+
 	return at
 }
+
+// 辅助函数：将路径列表添加到集合中
+func addPathsToSet(pathList []string, pathSet map[string]struct{}) {
+	for _, p := range pathList {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			pathSet[p] = struct{}{}
+		}
+	}
+}
+
 func (r *Runner) handlerGetFilePath(filename string) []string {
 
 	path := util.DataRoot("dict", "v"+Version, filename)
@@ -122,66 +128,43 @@ func (r *Runner) handlerGetFilePath(filename string) []string {
 	}
 	return str
 }
+
 func (r *Runner) handlerGetTargets() map[string]struct{} {
 	at := make(map[string]struct{})
-	var resp *http.Response
-	var err error
-	if r.Cfg.Options.Url != nil {
-		for _, u := range r.Cfg.Options.Url {
-			u = strings.Trim(u, "\r")
-			u = strings.Trim(u, "\n")
-			if !strings.HasSuffix(u, "/") {
-				u, _ = url.JoinPath(u, "/")
-			}
-			if !strings.HasPrefix(u, "http") {
-				u1 := "http://" + u
-				u2 := "https://" + u
-				at[u1] = struct{}{}
-				at[u2] = struct{}{}
-			} else {
-				at[u] = struct{}{}
-			}
-		}
-	}
-	if r.Cfg.Options.UrlFile != nil {
-		for _, u := range r.Cfg.Options.UrlFile {
-			u = strings.Trim(u, "\r")
-			u = strings.Trim(u, "\n")
-			if !strings.HasSuffix(u, "/") {
-				u, _ = url.JoinPath(u, "/")
-			}
-			if !strings.HasPrefix(u, "http") {
-				u1 := "http://" + u
-				u2 := "https://" + u
-				at[u1] = struct{}{}
-				at[u2] = struct{}{}
-			} else {
-				at[u] = struct{}{}
-			}
-		}
-	}
+
+	// 处理 Url 和 UrlFile
+	addPathsToSet(r.Cfg.Options.Url, at)
+	addPathsToSet(r.Cfg.Options.UrlFile, at)
+
+	// 处理 UrlRemote
 	if r.Cfg.Options.UrlRemote != "" {
-		resp, err = http.Get(r.Cfg.Options.UrlRemote)
-		if err == nil {
-			defer resp.Body.Close()
-			body, _ := io.ReadAll(resp.Body)
-			for _, u := range strings.Split(string(body), "\n") {
-				u = strings.Trim(u, "\r")
-				u = strings.Trim(u, "\n")
-				if !strings.HasSuffix(u, "/") {
-					u, _ = url.JoinPath(u, "/")
+		resp, err := http.Get(r.Cfg.Options.UrlRemote)
+		if err != nil {
+			gologger.Warning().Msgf("从远程加载 URL 列表失败：%s", err)
+		} else {
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					gologger.Warning().Msgf("关闭响应体失败: %s", err)
 				}
-				if !strings.HasPrefix(u, "http") {
-					u1 := "http://" + u
-					u2 := "https://" + u
-					at[u1] = struct{}{}
-					at[u2] = struct{}{}
-				} else {
-					at[u] = struct{}{}
+			}(resp.Body)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				gologger.Warning().Msgf("读取响应体失败：%s", err)
+			} else {
+				for _, u := range strings.Split(string(body), "\n") {
+					u = strings.TrimSpace(u)
+					if u == "" {
+						continue
+					}
+					r.addUrlToSet(u, at)
 				}
+				gologger.Debug().Msg("从远程加载 URL 列表完成")
 			}
 		}
 	}
+
+	// 处理从标准输入读取的 URL
 	if r.Cfg.Options.Silent && fileutil.HasStdin() {
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
@@ -189,20 +172,12 @@ func (r *Runner) handlerGetTargets() map[string]struct{} {
 			if u == "" {
 				continue
 			}
-			if !strings.HasSuffix(u, "/") {
-				u, _ = url.JoinPath(u, "/")
-			}
-			if !strings.HasPrefix(u, "http") {
-				u1 := "http://" + u
-				u2 := "https://" + u
-				at[u1] = struct{}{}
-				at[u2] = struct{}{}
-			} else {
-				at[u] = struct{}{}
-			}
+			r.addUrlToSet(u, at)
 		}
 		os.Stdin.Close()
 	}
+
+	// 处理 Uncover 引擎查找到的 URL
 	if r.Cfg.Options.Uncover && r.Cfg.Options.UncoverQuery != nil {
 		if r.Cfg.Options.UncoverEngine == nil {
 			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
@@ -213,30 +188,43 @@ func (r *Runner) handlerGetTargets() map[string]struct{} {
 			gologger.Error().Label("WRN").Msg(err.Error())
 		} else {
 			for c := range ch {
-				c = strings.Trim(c, "\r")
-				c = strings.Trim(c, "\n")
+				c = strings.TrimSpace(c)
 				if c == "" {
 					continue
 				}
-				if !strings.HasPrefix(c, "http") {
-					c1 := "http://" + c
-					c = "https://" + c
-					if !strings.HasSuffix(c1, "/") {
-						c1, _ = url.JoinPath(c1, "/")
-					}
-					at[c1] = struct{}{}
-				}
-				if !strings.HasSuffix(c, "/") {
-					c, _ = url.JoinPath(c, "/")
-				}
-				at[c] = struct{}{}
+				r.addUrlToSet(c, at)
 			}
 		}
-
 	}
+
+	// 从结果中删除 SkipUrl 指定的 URL
 	for _, skip := range r.Cfg.Options.SkipUrl {
 		delete(at, skip)
 	}
 
 	return at
+}
+
+// 辅助函数：将 URL 列表添加到集合中
+func (r *Runner) addUrlsToSet(urlList []string, urlSet map[string]struct{}) {
+	for _, u := range urlList {
+		u = strings.TrimSpace(u)
+		if u != "" {
+			r.addUrlToSet(u, urlSet)
+		}
+	}
+}
+func (r *Runner) addUrlToSet(u string, urlSet map[string]struct{}) {
+	u = strings.TrimSpace(u)
+	if !strings.HasPrefix(u, "http") {
+		u1 := "http://" + u
+		u2 := "https://" + u
+		r.addUrlToSet(u1, urlSet)
+		r.addUrlToSet(u2, urlSet)
+	} else {
+		if !strings.HasSuffix(u, "/") {
+			u, _ = url.JoinPath(u, "/")
+		}
+		urlSet[u] = struct{}{}
+	}
 }

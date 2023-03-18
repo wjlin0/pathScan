@@ -13,6 +13,7 @@ import (
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Options struct {
@@ -55,6 +56,8 @@ type Options struct {
 	Authorization         string              `json:"authorization"`
 	Header                goflags.StringSlice `json:"header"`
 	HeaderFile            goflags.StringSlice `json:"header_file"`
+	TimeoutTCP            time.Duration       `json:"timeout_tcp"`
+	TimeoutHttp           time.Duration       `json:"timeout_http"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
@@ -114,6 +117,8 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
+		set.DurationVarP(&options.TimeoutTCP, "timeout-tcp", "tt", 10*time.Second, "TCP连接超时"),
+		set.DurationVarP(&options.TimeoutHttp, "timeout-http", "th", 5*time.Second, "Http连接超时"),
 	)
 	set.CreateGroup("update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),

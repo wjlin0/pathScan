@@ -6,6 +6,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -64,37 +65,64 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 	return re, nil
 }
 
-func newClient(options *Options, ErrUseLastResponse bool) *http.Client {
-	client := &http.Client{
-		Timeout:   5 * time.Second,
-		Transport: newTransport(options),
+func newClient(options *Options, errUseLastResponse bool) *http.Client {
+	transport := &http.Transport{
+		Proxy:           getProxyFunc(options),
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10},
 	}
-	if ErrUseLastResponse {
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
+	if options.TimeoutTCP > 0 {
+		dial := &net.Dialer{
+			Timeout:   options.TimeoutTCP,
+			KeepAlive: 30 * time.Second,
 		}
+		transport.DialContext = dial.DialContext
+	}
+
+	client := &http.Client{
+		Timeout:       options.TimeoutTCP,
+		CheckRedirect: getCheckRedirectFunc(errUseLastResponse),
+		Transport:     transport,
 	}
 	return client
 }
 
-func newTransport(options *Options) *http.Transport {
-	t := &http.Transport{
-		MaxIdleConnsPerHost: -1,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS10,
-		},
-		DisableKeepAlives: true,
+// 辅助函数：获取代理设置函数
+func getProxyFunc(options *Options) func(*http.Request) (*url.URL, error) {
+	if options.Proxy == "" {
+		return nil
 	}
-	if options.Proxy != "" {
-		proxyUrl, err := url.Parse(options.Proxy)
-		if err != nil {
-			gologger.Error().Msg(err.Error())
-		}
-		if options.ProxyAuth != "" {
-			proxyUrl.User = url.UserPassword(strings.Split(options.ProxyAuth, ":")[0], strings.Split(options.ProxyAuth, ":")[1])
-		}
-		t.Proxy = http.ProxyURL(proxyUrl)
+	proxyURL, err := url.Parse(options.Proxy)
+	if err != nil {
+		gologger.Error().Msgf("解析代理 URL 失败：%s", err)
+		return nil
 	}
-	return t
+	if options.ProxyAuth != "" {
+		username, password, ok := parseProxyAuth(options.ProxyAuth)
+		if !ok {
+			gologger.Error().Msgf("解析代理授权信息失败：%s", options.ProxyAuth)
+			return nil
+		}
+		proxyURL.User = url.UserPassword(username, password)
+	}
+	return http.ProxyURL(proxyURL)
+}
+
+// 辅助函数：获取 CheckRedirect 函数
+func getCheckRedirectFunc(errUseLastResponse bool) func(req *http.Request, via []*http.Request) error {
+	if errUseLastResponse {
+		return func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	} else {
+		return nil
+	}
+}
+
+// 辅助函数：解析代理授权信息（格式为“username:password”）
+func parseProxyAuth(auth string) (string, string, bool) {
+	parts := strings.SplitN(auth, ":", 2)
+	if len(parts) != 2 || parts[0] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }
