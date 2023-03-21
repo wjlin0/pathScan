@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bytes"
 	"crypto/tls"
 	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/result"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"time"
 )
+
+var reg = regexp.MustCompile(`<title.*>(.*?)</title>`)
 
 func (r *Runner) CustomHeader(req *http.Request) {
 	for k, v := range r.headers {
@@ -27,8 +30,55 @@ func (r *Runner) CustomHeader(req *http.Request) {
 	}
 }
 
-func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
-	reg := regexp.MustCompile(`<title.*>(.*?)</title>`)
+//func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
+//	_url, err := url.JoinPath(target, path)
+//	if err != nil {
+//		return nil, err
+//	}
+//	req, err := http.NewRequest("GET", _url, nil)
+//	if err != nil {
+//		return nil, err
+//	}
+//	r.CustomHeader(req)
+//	resp, err := r.client.Do(req)
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer resp.Body.Close()
+//	headerBuffer := bytes.Buffer{}
+//	err = resp.Header.Write(&headerBuffer)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	bodyBuffer := bytes.Buffer{}
+//	_, err = io.Copy(&bodyBuffer, resp.Body)
+//	if err != nil {
+//		return nil, err
+//	}
+//	bodyBytes := bodyBuffer.Bytes()
+//	// tech
+//	parse := r.regOptions.Parse([][]byte{headerBuffer.Bytes(), bodyBytes})
+//	fmt.Println(parse)
+//	// title
+//	title := ""
+//	if t := reg.FindStringSubmatch(string(bodyBytes)); len(t) >= 3 {
+//		title = t[1]
+//	}
+//	// server
+//	server := resp.Header.Get("Server")
+//	re := &result.TargetResult{
+//		Target:  target,
+//		Path:    path,
+//		Title:   title,
+//		Status:  resp.StatusCode,
+//		BodyLen: len(bodyBytes),
+//		Server:  server,
+//	}
+//	return re, nil
+//}
+
+func (r *Runner) createRequest(target, path string) (*http.Request, error) {
 	_url, err := url.JoinPath(target, path)
 	if err != nil {
 		return nil, err
@@ -38,29 +88,79 @@ func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error)
 		return nil, err
 	}
 	r.CustomHeader(req)
+	return req, nil
+}
+func (r *Runner) readHeader(resp *http.Response) ([]byte, error) {
+	buffer := bytes.Buffer{}
+	err := resp.Header.Write(&buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+func (r *Runner) readBody(resp *http.Response) ([]byte, error) {
+	buffer := bytes.Buffer{}
+	_, err := io.Copy(&buffer, resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return buffer.Bytes(), nil
+}
+
+func (r *Runner) extractTitle(body []byte) string {
+	t := reg.FindStringSubmatch(string(body))
+	if len(t) >= 3 {
+		return t[1]
+	}
+	return ""
+}
+func (r *Runner) processResponse(target, path string, resp *http.Response) (*result.TargetResult, error) {
+	headerBytes, err := r.readHeader(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes, err := r.readBody(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	title := r.extractTitle(bodyBytes)
+
+	server := resp.Header.Get("Server")
+	tech := r.Parse(map[string]interface {
+	}{
+		"all_headers": headerBytes,
+		"body":        bodyBytes,
+	})
+
+	re := &result.TargetResult{
+		Target:     target,
+		Path:       path,
+		Title:      title,
+		Status:     resp.StatusCode,
+		BodyLen:    len(bodyBytes),
+		Server:     server,
+		Technology: tech,
+	}
+	return re, nil
+}
+
+func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
+	req, err := r.createRequest(target, path)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	server := resp.Header.Get("Server")
-
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	t := reg.FindAllStringSubmatch(string(body), -1)
-	title := ""
-	if len(t) == 0 {
-	} else if len(t[0]) <= 1 {
-	} else if len(t[0]) == 2 {
-		title = t[0][1]
-	}
 
-	re := &result.TargetResult{
-		Target:  target,
-		Path:    path,
-		Title:   title,
-		Status:  resp.StatusCode,
-		BodyLen: len(string(body)),
-		Server:  server,
+	re, err := r.processResponse(target, path, resp)
+	if err != nil {
+		return nil, err
 	}
 	return re, nil
 }

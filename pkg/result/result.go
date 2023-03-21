@@ -7,13 +7,14 @@ import (
 )
 
 type TargetResult struct {
-	TimeStamp time.Time `json:"timestamp" csv:"timestamp"`
-	Target    string    `json:"target" csv:"target"`
-	Path      string    `json:"path"  csv:"path"`
-	Title     string    `json:"title" csv:"title"`
-	Status    int       `json:"status" csv:"status"`
-	BodyLen   int       `json:"body_len" csv:"body_len"`
-	Server    string    `json:"server" csv:"server"`
+	TimeStamp  time.Time `json:"timestamp" csv:"timestamp"`
+	Target     string    `json:"target" csv:"target"`
+	Path       string    `json:"path"  csv:"path"`
+	Title      string    `json:"title" csv:"title"`
+	Status     int       `json:"status" csv:"status"`
+	BodyLen    int       `json:"body_len" csv:"body_len"`
+	Server     string    `json:"server" csv:"server"`
+	Technology []string  `json:"technology" csv:"technology"`
 }
 type Result struct {
 	sync.RWMutex

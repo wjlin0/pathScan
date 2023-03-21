@@ -7,6 +7,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/remeh/sizedwaitgroup"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
@@ -20,14 +21,15 @@ import (
 )
 
 type Runner struct {
-	wg      sizedwaitgroup.SizedWaitGroup
-	Cfg     *ResumeCfg
-	client  *http.Client
-	limiter *ratelimit.Limiter
-	targets map[string]struct{}
-	paths   map[string]struct{}
-	headers map[string]interface{}
-	stats   *clistats.Statistics
+	wg         sizedwaitgroup.SizedWaitGroup
+	Cfg        *ResumeCfg
+	client     *http.Client
+	limiter    *ratelimit.Limiter
+	targets    map[string]struct{}
+	paths      map[string]struct{}
+	headers    map[string]interface{}
+	stats      *clistats.Statistics
+	regOptions *identification.Options
 }
 
 func NewRunner(options *Options) (*Runner, error) {
@@ -70,7 +72,6 @@ func NewRunner(options *Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// 检查版本更新
 	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
 		err := CheckVersion()
@@ -80,7 +81,7 @@ func NewRunner(options *Options) (*Runner, error) {
 	}
 
 	// 下载字典或更新版本
-	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion {
+	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
 		if run.Cfg.Options.UpdatePathDictVersion {
 			err = run.Cfg.Options.DownloadDict()
 			if err != nil {
@@ -90,6 +91,12 @@ func NewRunner(options *Options) (*Runner, error) {
 		if run.Cfg.Options.UpdatePathScanVersion {
 			ok, err := run.Cfg.Options.UpdateVersion()
 			if err != nil && ok == false {
+				gologger.Error().Msg(err.Error())
+			}
+		}
+		if run.Cfg.Options.UpdateMatchVersion {
+			err := run.Cfg.Options.DownloadFile(defaultMatchConfigLocation, "https://github.com/wjlin0/pathScan/releases/download/v"+Version+"/match-config.yaml")
+			if err != nil {
 				gologger.Error().Msg(err.Error())
 			}
 		}
@@ -110,6 +117,13 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.targets = run.handlerGetTargets()
 	run.paths = run.handlerGetTargetPath()
 	run.headers = run.handlerHeader()
+	run.regOptions, err = identification.ParsesDefaultOptions()
+	if err != nil {
+		return nil, err
+	}
+	if run.regOptions.Version != "" {
+		gologger.Info().Msgf("使用 pathScan匹配规则 %s", run.regOptions.Version)
+	}
 
 	// 如果启用了进度条，则创建统计信息引擎
 	if run.Cfg.Options.EnableProgressBar {

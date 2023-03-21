@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 )
 
 func (o *Options) DownloadDict() error {
@@ -43,20 +42,19 @@ func (o *Options) DownloadDict() error {
 	if err != nil {
 		return err
 	}
-	body, err := io.ReadAll(resp.Body)
-
+	defer resp.Body.Close()
+	var buffer bytes.Buffer
+	_, err = io.Copy(&buffer, resp.Body)
 	if err != nil {
 
 		return fmt.Errorf("下载 %s 文件出错: %s\n", dictUrl, err.Error())
 	}
-	defer resp.Body.Close()
-	reader := bytes.NewReader(body)
+	reader := bytes.NewReader(buffer.Bytes())
 	err = util.Unzip(path, reader)
 	if err != nil {
 		return fmt.Errorf("解压出错: %s\n", err.Error())
 	}
 	gologger.Info().Msgf("远程字典下载成功->%s", path)
-	time.Sleep(time.Second * 5)
 	return nil
 }
 
@@ -136,4 +134,28 @@ func CheckVersion() error {
 	}
 	return nil
 
+}
+
+func (o *Options) DownloadFile(mathConfigPath, url string) error {
+	err := fileutil.CreateFolder(filepath.Dir(mathConfigPath))
+	if err != nil {
+		return fmt.Errorf("新建 %s 出错:%s\n", filepath.Dir(mathConfigPath), err.Error())
+	}
+	client := newClient(o, false)
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	out, err := os.Create(mathConfigPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+	gologger.Info().Msgf("远程文件下载成功-> %s", mathConfigPath)
+	return nil
 }

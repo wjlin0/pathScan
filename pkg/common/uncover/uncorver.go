@@ -20,6 +20,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/shodanidb"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/zone"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover/agent/zoomeye"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"golang.org/x/net/context"
 	"os"
 	"path/filepath"
@@ -187,34 +188,33 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 func loadProvidersFrom(location string, options *ucRunner.Options) error {
 	return fileutil.Unmarshal(fileutil.YAML, []byte(location), options.Provider)
 }
+
+const (
+	errMsgBinary = "请求binary 需要为主域名形式 eg: wjlin0.com"
+)
+
+var reQuake = regexp.MustCompile(`^(?P<host>.*?):(?P<port>.*?)$`)
+var reFofa = regexp.MustCompile(`^(?P<key>.*?)=(?P<value>.*?)$`)
+
 func loadQuery(engine string, str string) (string, error) {
 	var newStr string
-	var err error
-	t := IsDomain(str)
-	//fmt.Println(str)
-	if !t {
-		newStr = str
+	if !IsDomain(str) {
+		// 解决windows的一点小毛病
 		switch {
-		case engine == "zoomeye":
-			err = errors.New("请求zoomeye 需要为主域名形式 eg :wjlin0.com")
 		case engine == "binary":
-			err = errors.New("请求binary 需要为主域名形式 eg: wjlin0.com")
+			return "", errors.New(errMsgBinary)
 		case engine == "quake" && runtime.GOOS == "windows" && strings.Count(str, ":") == 1:
-			re := `^(.*?):(.*?)$`
-			compile := regexp.MustCompile(re)
-			r := compile.FindAllStringSubmatch(str, -1)
-			if len(r) >= 1 && len(r[0]) == 3 {
-				newStr = r[0][1] + ":\"" + r[0][2] + "\""
+			r := reQuake.FindStringSubmatch(str)
+			if len(r) >= 3 {
+				newStr = fmt.Sprintf("%s:\"%s\"", r[1], r[2])
 			}
 		case engine == "fofa" && runtime.GOOS == "windows" && strings.Count(str, "=") == 1:
-			re := `^(.*?)=(.*?)$`
-			compile := regexp.MustCompile(re)
-			r := compile.FindAllStringSubmatch(str, -1)
-			if len(r) >= 1 && len(r[0]) == 3 {
-				newStr = r[0][1] + "=\"" + r[0][2] + "\""
+			r := reFofa.FindStringSubmatch(str)
+			if len(r) >= 3 {
+				newStr = fmt.Sprintf("%s=\"%s\"", r[1], r[2])
 			}
 		default:
-			err = nil
+			newStr = str
 		}
 	} else {
 		switch engine {
@@ -227,7 +227,7 @@ func loadQuery(engine string, str string) (string, error) {
 		}
 	}
 	//fmt.Println(newStr)
-	return newStr, err
+	return newStr, nil
 }
 
 func loadKeys(engine string, options *ucRunner.Options) error {
@@ -302,6 +302,5 @@ func loadKeys(engine string, options *ucRunner.Options) error {
 
 func IsDomain(string2 string) bool {
 	re := `^[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$`
-	compile := regexp.MustCompile(re)
-	return compile.MatchString(string2)
+	return util.MatchString(re, string2)
 }

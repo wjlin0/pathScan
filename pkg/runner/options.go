@@ -9,6 +9,7 @@ import (
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"os"
@@ -17,13 +18,12 @@ import (
 )
 
 type Options struct {
-	Url       goflags.StringSlice `json:"url"`
-	UrlFile   goflags.StringSlice `json:"url_file"`
-	UrlRemote string              `json:"url_remote"`
-	SkipUrl   goflags.StringSlice `json:"url_skip"`
-	Path      goflags.StringSlice `json:"path"`
-	PathFile  goflags.StringSlice `json:"path_file"`
-
+	Url                   goflags.StringSlice `json:"url"`
+	UrlFile               goflags.StringSlice `json:"url_file"`
+	UrlRemote             string              `json:"url_remote"`
+	SkipUrl               goflags.StringSlice `json:"url_skip"`
+	Path                  goflags.StringSlice `json:"path"`
+	PathFile              goflags.StringSlice `json:"path_file"`
 	PathRemote            string              `json:"path_remote"`
 	ResumeCfg             string              `json:"resume_cfg"`
 	Output                string              `json:"output"`
@@ -58,9 +58,11 @@ type Options struct {
 	HeaderFile            goflags.StringSlice `json:"header_file"`
 	TimeoutTCP            time.Duration       `json:"timeout_tcp"`
 	TimeoutHttp           time.Duration       `json:"timeout_http"`
+	UpdateMatchVersion    bool                `json:"update_match_version"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
+var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/match-config.yaml")
 
 func ParserOptions() *Options {
 	options := &Options{}
@@ -123,6 +125,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
 		set.BoolVarP(&options.UpdatePathDictVersion, "update-dict", "ud", false, "更新字典版本"),
+		set.BoolVarP(&options.UpdateMatchVersion, "update-match", "um", false, "更新指纹识别库"),
 	)
 	_ = set.Parse()
 	if !options.Silent {
@@ -138,7 +141,11 @@ func ParserOptions() *Options {
 			gologger.Warning().Msgf("无法写入提供程序默认文件: %s\n", err)
 		}
 	}
-
+	if !fileutil.FileExists(defaultMatchConfigLocation) {
+		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultMatchConfigLocation), identification.Options{}); err != nil {
+			gologger.Warning().Msgf("无法写入提供程序默认文件: %s\n", err)
+		}
+	}
 	return options
 }
 

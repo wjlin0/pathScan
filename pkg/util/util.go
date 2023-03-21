@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -70,4 +71,13 @@ func DataRoot(elem ...string) string {
 
 func AppendCreate(name string) (*os.File, error) {
 	return os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+}
+
+func FindStringSubmatch(reg, str string) []string {
+	compile := regexp.MustCompile(reg)
+	return compile.FindStringSubmatch(str)
+}
+func MatchString(reg, str string) bool {
+	compile := regexp.MustCompile(reg)
+	return compile.MatchString(str)
 }

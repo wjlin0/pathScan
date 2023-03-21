@@ -37,32 +37,46 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 			builder.WriteString(strconv.Itoa(statusCode))
 		}
 		builder.WriteRune(']')
-
-		bodyLen := re.BodyLen
-		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Magenta(strconv.Itoa(bodyLen)).String())
-		} else {
-			builder.WriteString(strconv.Itoa(bodyLen))
+		if re.BodyLen != 0 {
+			bodyLen := re.BodyLen
+			builder.WriteString(" [")
+			if !nocolor {
+				builder.WriteString(aurora.Magenta(strconv.Itoa(bodyLen)).String())
+			} else {
+				builder.WriteString(strconv.Itoa(bodyLen))
+			}
+			builder.WriteRune(']')
 		}
-		builder.WriteRune(']')
-
-		title := re.Title
-		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Cyan(title).String())
-		} else {
-			builder.WriteString(title)
+		if len(re.Technology) != 0 {
+			tech := re.Technology
+			builder.WriteString(" [")
+			if !nocolor {
+				builder.WriteString(aurora.Cyan(strings.Join(tech, ",")).String())
+			} else {
+				builder.WriteString(strings.Join(tech, ","))
+			}
+			builder.WriteRune(']')
 		}
-		builder.WriteRune(']')
-		server := re.Server
-		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Cyan(server).String())
-		} else {
-			builder.WriteString(server)
+		if re.Title != "" {
+			title := re.Title
+			builder.WriteString(" [")
+			if !nocolor {
+				builder.WriteString(aurora.Cyan(title).String())
+			} else {
+				builder.WriteString(title)
+			}
+			builder.WriteRune(']')
 		}
-		builder.WriteRune(']')
+		if re.Server != "" {
+			server := re.Server
+			builder.WriteString(" [")
+			if !nocolor {
+				builder.WriteString(aurora.Cyan(server).String())
+			} else {
+				builder.WriteString(server)
+			}
+			builder.WriteRune(']')
+		}
 	case r.Cfg.Options.Silent:
 		builder.WriteString(path)
 	}
