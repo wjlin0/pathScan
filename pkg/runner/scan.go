@@ -83,7 +83,11 @@ func (r *Runner) createRequest(target, path string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("GET", _url, nil)
+	method := "GET"
+	if r.Cfg.Options.Method != "" {
+		method = r.Cfg.Options.Method
+	}
+	req, err := http.NewRequest(method, _url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +114,7 @@ func (r *Runner) readBody(resp *http.Response) ([]byte, error) {
 
 func (r *Runner) extractTitle(body []byte) string {
 	t := reg.FindStringSubmatch(string(body))
-	if len(t) >= 3 {
+	if len(t) >= 2 {
 		return t[1]
 	}
 	return ""
@@ -127,14 +131,12 @@ func (r *Runner) processResponse(target, path string, resp *http.Response) (*res
 	}
 
 	title := r.extractTitle(bodyBytes)
-
 	server := resp.Header.Get("Server")
 	tech := r.Parse(map[string]interface {
 	}{
 		"all_headers": headerBytes,
 		"body":        bodyBytes,
 	})
-
 	re := &result.TargetResult{
 		Target:     target,
 		Path:       path,

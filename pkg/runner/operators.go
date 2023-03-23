@@ -23,7 +23,6 @@ func Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []stri
 func (r *Runner) Parse(data map[string]interface{}) []string {
 	var tag []string
 	for _, sub := range r.regOptions.SubMatch {
-
 		execute, b := sub.Execute(data, Match)
 		if b && !(len(execute) == 1 && execute[0] == "") {
 			tag = append(tag, execute...)

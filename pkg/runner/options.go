@@ -36,8 +36,7 @@ type Options struct {
 	Silent                bool                `json:"silent"`
 	OnlyTargets           bool                `json:"only_targets"`
 	EnableProgressBar     bool                `json:"enable_progress_bar"`
-	SkipCode              bool                `json:"skip_code"`
-	SkipHost              bool                `json:"skip_host"`
+	SkipCode              goflags.StringSlice `json:"skip_code"`
 	ErrUseLastResponse    bool                `json:"err_use_last_response"`
 	Csv                   bool                `json:"csv,omitempty"`
 	ClearResume           bool                `json:"clear_resume"`
@@ -59,6 +58,8 @@ type Options struct {
 	TimeoutTCP            time.Duration       `json:"timeout_tcp"`
 	TimeoutHttp           time.Duration       `json:"timeout_http"`
 	UpdateMatchVersion    bool                `json:"update_match_version"`
+	Method                string              `json:"method"`
+	MatchPath             string              `json:"match_path"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
@@ -73,11 +74,11 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.UrlFile, "target-file", "tf", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
 		set.StringVarP(&options.UrlRemote, "target-remote", "tr", "", "从远程加载目标"),
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
+		set.StringVarP(&options.MatchPath, "match-file", "mf", "", "指纹文件"),
 	)
 	set.CreateGroup("Skip", "跳过",
 		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
-		set.BoolVarP(&options.SkipCode, "skip-code-not", "scn", false, "不跳过其他状态输出"),
-		set.BoolVarP(&options.SkipHost, "skip-host", "sh", false, "跳过目标验证"),
+		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码", goflags.NormalizedStringSliceOptions),
 	)
 	set.CreateGroup("Dict", "扫描字典",
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
@@ -98,7 +99,7 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
-		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许跳转"),
+		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
 		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
 	)
 	set.CreateGroup("uncover", "引擎",
@@ -111,6 +112,7 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存"),
 	)
 	set.CreateGroup("header", "请求头参数",
+		set.StringVarP(&options.Method, "method", "m", "GET", "请求方法"),
 		set.StringSliceVarP(&options.UserAgent, "user-agent", "ua", nil, "User-Agent", goflags.CommaSeparatedStringSliceOptions),
 		set.StringVarP(&options.Cookie, "cookie", "c", "", "cookie"),
 		set.StringVarP(&options.Authorization, "authorization", "auth", "", "Auth请求头"),
@@ -118,7 +120,7 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.HeaderFile, "header-file", "hf", nil, "从文件中加载自定义请求头", goflags.FileStringSliceOptions),
 	)
 	set.CreateGroup("rate", "速率",
-		set.IntVarP(&options.RateHttp, "rate-http", "rh", 100, "允许每秒钟最大http请求数"),
+		set.IntVarP(&options.RateHttp, "rate-http", "rh", 50, "允许每秒钟最大http请求数"),
 		set.DurationVarP(&options.TimeoutTCP, "timeout-tcp", "tt", 10*time.Second, "TCP连接超时"),
 		set.DurationVarP(&options.TimeoutHttp, "timeout-http", "th", 5*time.Second, "Http连接超时"),
 	)

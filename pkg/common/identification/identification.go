@@ -3,6 +3,7 @@ package identification
 import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
+	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"path/filepath"
@@ -79,9 +80,20 @@ func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 
 var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/match-config.yaml")
 
-func ParsesDefaultOptions() (*Options, error) {
+func ParsesDefaultOptions(u string) (*Options, error) {
 	options := &Options{}
-	_ = options.loadConfigFrom(defaultMatchConfigLocation)
+	var err error
+	if u != "" {
+		err = options.loadConfigFrom(u)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = options.loadConfigFrom(defaultMatchConfigLocation)
+	}
+	if err != nil {
+		gologger.Debug().Msg(err.Error())
+	}
 	for _, sub := range options.SubMatch {
 		err := sub.Compile()
 		if err != nil {

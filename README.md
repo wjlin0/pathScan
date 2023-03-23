@@ -17,7 +17,8 @@
 - 可恢复上次扫描进度
 - 从网络空间测绘中发现目标
 - 支持使用HTTP/SOCKS代理
-- 自定义请求头
+- 可自定义请求头
+- 可自定义指纹识别规则
 
 # 用法
 
@@ -34,11 +35,11 @@ Flags:
   -tf, -target-file string[]  从文件中,读取目标
   -tr, -target-remote string  从远程加载目标
   -resume string              使用resume.cfg恢复扫描
+  -mf, -match-file string     指纹文件
 
 跳过:
-  -su, -skip-url string[]  跳过的目标(以逗号分割)
-  -scn, -skip-code-not     不跳过其他状态输出
-  -sh, -skip-host          跳过目标验证
+  -su, -skip-url string[]   跳过的目标(以逗号分割)
+  -sc, -skip-code string[]  跳过状态码
 
 扫描字典:
   -ps, -path string[]       路径(以逗号分割)
@@ -59,7 +60,7 @@ Flags:
   -p, -proxy string        代理
   -pa, -proxy-auth string  代理认证，以冒号分割（username:password）
   -st, -scan-target        只进行目标存活扫描
-  -nn, -not-new            不允许跳转
+  -nn, -not-new            不允许重定向
   -clear                   清理历史任务
 
 引擎:
@@ -72,6 +73,7 @@ Flags:
   -uo, -uncover-output string    搜索引擎查询结果保存
 
 请求头参数:
+  -m, -method string            请求方法 (default "GET")
   -ua, -user-agent string[]     User-Agent
   -c, -cookie string            cookie
   -auth, -authorization string  Auth请求头
@@ -79,11 +81,14 @@ Flags:
   -hf, -header-file string[]    从文件中加载自定义请求头
 
 速率:
-  -rh, -rate-http int  允许每秒钟最大http请求数 (default 100)
+  -rh, -rate-http int          允许每秒钟最大http请求数 (default 50)
+  -tt, -timeout-tcp duration   TCP连接超时 (default 10s)
+  -th, -timeout-http duration  Http连接超时 (default 5s)
 
 更新:
-  -update            更新版本
-  -ud, -update-dict  更新字典版本
+  -update             更新版本
+  -ud, -update-dict   更新字典版本
+  -um, -update-match  更新指纹识别库
 
 ```
 # 安装pathScan
@@ -144,12 +149,49 @@ pathScan -t https://www.baidu.com -csv -output 1.csv
 # 自定义请求头
 pathScan -t http://www.baidu.com -header User-Agent:pathScan/1.8,Cookie:a=1  -header a:1
 ```
+# 自定义指纹
+
+```yaml
+version: "v1.0.0"
+rules:
+  - name: "Thinkphp"
+    matchers:
+      - type: regex
+        part: header
+        regex:
+          - "ThinkPHP"
+  - name: "Apache"
+    matchers:
+      - type: regex
+        part: header
+        name: Apache
+        regex: 
+          - "Server: .*?([aA]{1}pache[/]?[\\d\\.]*) ?"
+        group: 1
+  - name: "Nginx"
+    matchers:
+      - type: regex
+        name: nginx
+        part: header
+        regex: 
+          - "Server: .*?([nN]{1}ginx[/]?[\\d\\.]*) ?"
+        group: 1 # 指定后匹配的名字为正则匹配后的第1个元素
+  - name: "Django"
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "<title>The install worked successfully! Congratulations!</title>"
+          - "Django tried these URL patterns"
+          - "Django will display a standard"
+```
 
 
 
 pathScan 支持默认配置文件位于下面两个路径，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 - $HOME/.config/pathScan/config.yaml
 - $HOME/.config/pathScan/provider-config.yaml
+- $HOME/.config/pathScan/match-config.yaml
 
 # 感谢
 

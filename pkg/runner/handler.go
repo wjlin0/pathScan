@@ -60,7 +60,6 @@ func (r *Runner) handlerGetTargetPath() map[string]struct{} {
 	// 处理 Path 和 PathFile
 	addPathsToSet(r.Cfg.Options.Path, at)
 	addPathsToSet(r.Cfg.Options.PathFile, at)
-
 	// 处理 PathRemote
 	if r.Cfg.Options.PathRemote != "" {
 		resp, err := r.client.Get(r.Cfg.Options.PathRemote)
@@ -96,7 +95,6 @@ func (r *Runner) handlerGetTargetPath() map[string]struct{} {
 			addPathsToSet(u, at)
 		}
 	}
-
 	// 如果没有添加任何路径，则将根目录添加到结果中
 	if len(at) == 0 {
 		at["/"] = struct{}{}

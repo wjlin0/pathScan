@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ type Runner struct {
 	targets    map[string]struct{}
 	paths      map[string]struct{}
 	headers    map[string]interface{}
+	skipCode   map[string]struct{}
 	stats      *clistats.Statistics
 	regOptions *identification.Options
 }
@@ -117,7 +119,8 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.targets = run.handlerGetTargets()
 	run.paths = run.handlerGetTargetPath()
 	run.headers = run.handlerHeader()
-	run.regOptions, err = identification.ParsesDefaultOptions()
+	addPathsToSet(run.Cfg.Options.SkipCode, run.skipCode)
+	run.regOptions, err = identification.ParsesDefaultOptions(run.Cfg.Options.MatchPath)
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +149,6 @@ func (r *Runner) Run() error {
 	Retries := r.Cfg.Options.Retries
 	var err error
 
-	if len(pathUrls) == 1 {
-		r.Cfg.Options.OnlyTargets = true
-	}
 	if r.Cfg.Options.OnlyTargets {
 		pathUrls = map[string]struct{}{"/": {}}
 	}
@@ -156,6 +156,7 @@ func (r *Runner) Run() error {
 	pathCount := uint64(len(pathUrls))
 	targetCount := uint64(len(targets))
 	Range := pathCount * targetCount
+
 	gologger.Info().Msgf("存活目标总数 -> %d", targetCount)
 	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(r.Cfg.Options.Retries))
 	time.Sleep(5 * time.Second)
@@ -200,7 +201,6 @@ func (r *Runner) Run() error {
 
 		}
 	}
-
 	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
 		for p := range pathUrls {
 			for t := range targets {
@@ -223,14 +223,10 @@ func (r *Runner) Run() error {
 					targetResult, err := r.GoTargetPath(target, path)
 					if targetResult != nil && err == nil {
 						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
-						if !r.Cfg.Options.OnlyTargets && !r.Cfg.Options.Verbose {
-
-							if !r.Cfg.Options.SkipCode && targetResult.Status == 404 || targetResult.Status == 500 || targetResult.Status == 0 {
-								return
-							}
+						if _, ok := r.skipCode[strconv.Itoa(targetResult.Status)]; ok && !r.Cfg.Options.Verbose {
+							return
 						}
 						r.Cfg.Results.AddPathByResult(targetResult.Target, targetResult.Path)
-
 						r.handlerOutputTarget(targetResult)
 						switch {
 						case !r.Cfg.Options.Csv:
@@ -238,6 +234,7 @@ func (r *Runner) Run() error {
 						case r.Cfg.Options.Csv:
 							row, _ := LivingTargetRow(targetResult)
 							outputWriter.WriteString(row)
+
 						}
 					}
 				}(t, p)

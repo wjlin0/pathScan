@@ -7,10 +7,21 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+var cacheString = make(map[string]struct{})
+var lock = sync.Mutex{}
 
 func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 	path := re.ToString()
+	lock.Lock()
+	if _, ok := cacheString[path]; ok {
+		lock.Unlock()
+		return
+	}
+	cacheString[path] = struct{}{}
+	lock.Unlock()
 	nocolor := r.Cfg.Options.NoColor
 	builder := &strings.Builder{}
 
@@ -51,7 +62,7 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 			tech := re.Technology
 			builder.WriteString(" [")
 			if !nocolor {
-				builder.WriteString(aurora.Cyan(strings.Join(tech, ",")).String())
+				builder.WriteString(aurora.Green(strings.Join(tech, ",")).String())
 			} else {
 				builder.WriteString(strings.Join(tech, ","))
 			}
@@ -61,7 +72,7 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 			title := re.Title
 			builder.WriteString(" [")
 			if !nocolor {
-				builder.WriteString(aurora.Cyan(title).String())
+				builder.WriteString(aurora.White(title).String())
 			} else {
 				builder.WriteString(title)
 			}
