@@ -119,6 +119,7 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.targets = run.handlerGetTargets()
 	run.paths = run.handlerGetTargetPath()
 	run.headers = run.handlerHeader()
+	run.skipCode = make(map[string]struct{})
 	addPathsToSet(run.Cfg.Options.SkipCode, run.skipCode)
 	run.regOptions, err = identification.ParsesDefaultOptions(run.Cfg.Options.MatchPath)
 	if err != nil {

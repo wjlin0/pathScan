@@ -28,7 +28,7 @@ var defaultUserAgents = []string{
 }
 
 func (r *Runner) handlerHeader() map[string]interface{} {
-	headerMap := make(map[string]interface{}, len(r.Cfg.Options.Header)+len(r.Cfg.Options.HeaderFile)+3)
+	headerMap := make(map[string]interface{})
 
 	if len(r.Cfg.Options.UserAgent) > 0 {
 		headerMap[HeaderKeyUserAgent] = r.Cfg.Options.UserAgent
