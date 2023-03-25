@@ -36,10 +36,11 @@ type Runner struct {
 
 func NewRunner(options *Options) (*Runner, error) {
 	run := &Runner{}
-
+	var cfg *ResumeCfg
+	var err error
 	// 如果存在恢复配置，解析它并设置相应的选项
 	if options.ResumeCfg != "" {
-		cfg, err := ParserResumeCfg(options.ResumeCfg)
+		cfg, err = ParserResumeCfg(options.ResumeCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -57,20 +58,22 @@ func NewRunner(options *Options) (*Runner, error) {
 
 		// 将 ResumeCfg 字段设置为 options.ResumeCfg
 		cfg.Options.ResumeCfg = options.ResumeCfg
-	} else {
-		// 否则，创建一个新的 ResumeCfg 并设置其 Options 和 Results 字段
+	}
+	if cfg == nil {
 		run.Cfg = &ResumeCfg{
 			Rwm:     &sync.RWMutex{},
 			Options: options,
 			Results: result.NewResult(),
 		}
+	} else {
+		run.Cfg = cfg
 	}
 
 	// 配置输出方式
 	run.Cfg.Options.configureOutput()
 
 	// 验证选项是否合法
-	err := run.Cfg.Options.Validate()
+	err = run.Cfg.Options.Validate()
 	if err != nil {
 		return nil, err
 	}

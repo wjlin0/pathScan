@@ -1,0 +1,80 @@
+version: "v1.0.0"
+rules:
+  - name: "Thinkphp"
+    matchers:
+      - type: regex
+        part: header
+        regex:
+          - "ThinkPHP"
+  - name: "Apache"
+    matchers:
+      - type: regex
+        part: header
+        name: Apache
+        regex:
+          - "Server: .*?([aA]{1}pache[/]?[\\d\\.]*) ?"
+        group: 1
+  - name: "Nginx"
+    matchers:
+      - type: regex
+        name: nginx
+        part: header
+        regex:
+          - "Server: .*?([nN]{1}ginx[/]?[\\d\\.]*) ?"
+        group: 1
+  - name: "Halo"
+    matchers:
+      - type: regex
+        name: halo
+        part: body
+        group: 1
+        regex:
+          - "content=\"(Halo .*?)\""
+  - name: "PHP"
+    matchers:
+      - type: regex
+        part: header
+        regex:
+          - "X-Powered-By: (PHP[\\d\\.\\/]*?)"
+        group: 1
+  - name: "Tomcat"
+    matchers:
+      - type: regex
+        name: tomcat
+        part: body
+        regex:
+          - "([Tt]{1}omcat[/]?[\\d\\.]*)"
+        group: 1
+  - name: "AWS-EC2"
+    matchers-condition: or
+    matchers:
+      - type: regex
+        part: hedaer
+        regex:
+          - "Server: (EC2ws)"
+      - type: word
+        part: body
+        words:
+          - "Amazon EC2"
+  - name: "Django"
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "<title>The install worked successfully! Congratulations!</title>"
+          - "Django tried these URL patterns"
+          - "Django will display a standard"
+  - name: "Microsoft-IIS"
+    matchers:
+      - type: regex
+        part: header
+        name: iis
+        group: 1
+        regex:
+          - "Server: .*?(Microsoft-IIS[/]?[\\d\\.]*)"
+  - name: "Nacos"
+    matchers:
+      - type: word
+        part: body
+        words:
+          - '<img class="product-logo" src="img/nacos.png">'

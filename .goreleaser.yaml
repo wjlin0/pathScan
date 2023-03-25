@@ -28,6 +28,10 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - config/dict.zip
+      - config/match-config.yaml
+      - README.md
 checksum:
   algorithm: sha256
 snapshot:
