@@ -129,10 +129,9 @@ func (r *Runner) handlerGetFilePath(filename string) []string {
 
 func (r *Runner) handlerGetTargets() map[string]struct{} {
 	at := make(map[string]struct{})
-
 	// 处理 Url 和 UrlFile
-	addPathsToSet(r.Cfg.Options.Url, at)
-	addPathsToSet(r.Cfg.Options.UrlFile, at)
+	r.addUrlsToSet(r.Cfg.Options.Url, at)
+	r.addUrlsToSet(r.Cfg.Options.UrlFile, at)
 
 	// 处理 UrlRemote
 	if r.Cfg.Options.UrlRemote != "" {
@@ -214,7 +213,7 @@ func (r *Runner) addUrlsToSet(urlList []string, urlSet map[string]struct{}) {
 }
 func (r *Runner) addUrlToSet(u string, urlSet map[string]struct{}) {
 	u = strings.TrimSpace(u)
-	if !strings.HasPrefix(u, "http") {
+	if !((strings.HasPrefix(u, "http") && !strings.HasSuffix(u, "https")) || (strings.HasPrefix(u, "https") && !strings.HasSuffix(u, "http"))) {
 		u1 := "http://" + u
 		u2 := "https://" + u
 		r.addUrlToSet(u1, urlSet)
@@ -225,4 +224,5 @@ func (r *Runner) addUrlToSet(u string, urlSet map[string]struct{}) {
 		}
 		urlSet[u] = struct{}{}
 	}
+
 }

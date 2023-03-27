@@ -1,4 +1,4 @@
-FROM golang:1.19.3-alpine AS builder
+FROM golang:1.19.3 AS builder
 RUN go install -v github.com/wjlin0/pathScan@latest
 
 FROM alpine:3.17.1
