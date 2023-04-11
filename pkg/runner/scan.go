@@ -30,54 +30,6 @@ func (r *Runner) CustomHeader(req *http.Request) {
 	}
 }
 
-//func (r *Runner) GoTargetPath(target, path string) (*result.TargetResult, error) {
-//	_url, err := url.JoinPath(target, path)
-//	if err != nil {
-//		return nil, err
-//	}
-//	req, err := http.NewRequest("GET", _url, nil)
-//	if err != nil {
-//		return nil, err
-//	}
-//	r.CustomHeader(req)
-//	resp, err := r.client.Do(req)
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer resp.Body.Close()
-//	headerBuffer := bytes.Buffer{}
-//	err = resp.Header.Write(&headerBuffer)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	bodyBuffer := bytes.Buffer{}
-//	_, err = io.Copy(&bodyBuffer, resp.Body)
-//	if err != nil {
-//		return nil, err
-//	}
-//	bodyBytes := bodyBuffer.Bytes()
-//	// tech
-//	parse := r.regOptions.Parse([][]byte{headerBuffer.Bytes(), bodyBytes})
-//	fmt.Println(parse)
-//	// title
-//	title := ""
-//	if t := reg.FindStringSubmatch(string(bodyBytes)); len(t) >= 3 {
-//		title = t[1]
-//	}
-//	// server
-//	server := resp.Header.Get("Server")
-//	re := &result.TargetResult{
-//		Target:  target,
-//		Path:    path,
-//		Title:   title,
-//		Status:  resp.StatusCode,
-//		BodyLen: len(bodyBytes),
-//		Server:  server,
-//	}
-//	return re, nil
-//}
-
 func (r *Runner) createRequest(target, path string) (*http.Request, error) {
 	_url, err := url.JoinPath(target, path)
 	if err != nil {

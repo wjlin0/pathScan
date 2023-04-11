@@ -6,6 +6,7 @@ import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
+	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 	"golang.org/x/net/context"
 	"net/http"
@@ -32,6 +33,7 @@ type Runner struct {
 	skipCode   map[string]struct{}
 	stats      *clistats.Statistics
 	regOptions *identification.Options
+	retryable  *retryablehttp.Client
 }
 
 func NewRunner(options *Options) (*Runner, error) {
@@ -116,7 +118,8 @@ func NewRunner(options *Options) (*Runner, error) {
 	}
 
 	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
-	run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
+	//run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
+	run.retryable = newRetryableClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
 	run.targets = run.handlerGetTargets()
@@ -162,7 +165,7 @@ func (r *Runner) Run() error {
 	Range := pathCount * targetCount
 
 	gologger.Info().Msgf("存活目标总数 -> %d", targetCount)
-	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(r.Cfg.Options.Retries))
+	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(Retries))
 	time.Sleep(5 * time.Second)
 	if r.Cfg.Options.EnableProgressBar {
 		r.stats.AddStatic("paths", pathCount)
@@ -205,7 +208,10 @@ func (r *Runner) Run() error {
 
 		}
 	}
-	for currentRetries := 0; currentRetries < Retries; currentRetries++ {
+	switch {
+	// 流模式还没想好怎么做
+
+	default:
 		for p := range pathUrls {
 			for t := range targets {
 				r.wg.Add()
@@ -224,7 +230,7 @@ func (r *Runner) Run() error {
 					}
 
 					r.limiter.Take()
-					targetResult, err := r.GoTargetPath(target, path)
+					targetResult, err := r.GoTargetPathByRetryable(target, path)
 					if targetResult != nil && err == nil {
 						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
 						if _, ok := r.skipCode[strconv.Itoa(targetResult.Status)]; ok && !r.Cfg.Options.Verbose {
@@ -244,10 +250,11 @@ func (r *Runner) Run() error {
 				}(t, p)
 
 			}
+
 		}
+		r.wg.Wait()
 	}
 
-	r.wg.Wait()
 	r.Cfg.ClearResume()
 	return nil
 }
