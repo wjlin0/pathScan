@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/mapcidr"
 	iputil "github.com/projectdiscovery/utils/ip"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
+	"pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 const (

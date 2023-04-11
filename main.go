@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
-	"github.com/wjlin0/pathScan/pkg/runner"
-	"github.com/wjlin0/pathScan/pkg/util"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"pathScan/pkg/runner"
+	"pathScan/pkg/util"
 )
 
 func main() {

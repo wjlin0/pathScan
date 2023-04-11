@@ -9,10 +9,10 @@ import (
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
 	githubUpdateStore "github.com/tj/go-update/stores/github"
-	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"os"
 	"path/filepath"
+	"pathScan/pkg/util"
 	"runtime"
 	"strings"
 )
@@ -23,7 +23,7 @@ func (o *Options) DownloadDict() error {
 
 		return fmt.Errorf("打开主目录时出错：%s\n", err.Error())
 	}
-	path := filepath.Join(home, ".config", "pathScan", "dict", "v"+Version)
+	path := filepath.Join(home, ".config", "pathScan", "dict")
 	if fileutil.FileExists(filepath.Join(path, ".check")) {
 		gologger.Info().Msgf("远程字典下载成功->%s", path)
 		return nil

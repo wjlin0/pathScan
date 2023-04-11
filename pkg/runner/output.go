@@ -5,7 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/wjlin0/pathScan/pkg/result"
+	"pathScan/pkg/result"
 	"reflect"
 	"strings"
 	"time"

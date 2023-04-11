@@ -5,10 +5,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/json-iterator/go/extra"
 	"github.com/pkg/errors"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 	"io"
 	"net/http"
 	"net/url"
+	"pathScan/pkg/projectdiscovery/uncover/uncover"
 	"strconv"
 )
 

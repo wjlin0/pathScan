@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 	"io"
 	"net/http"
 	"net/url"
+	"pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 type Agent struct {

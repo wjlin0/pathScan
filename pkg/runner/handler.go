@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
-	"github.com/wjlin0/pathScan/pkg/common/uncover"
-	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"pathScan/pkg/common/uncover"
+	"pathScan/pkg/util"
 	"strings"
 )
 
@@ -115,7 +115,7 @@ func addPathsToSet(pathList []string, pathSet map[string]struct{}) {
 
 func (r *Runner) handlerGetFilePath(filename string) []string {
 
-	path := util.DataRoot("dict", "v"+Version, filename)
+	path := util.DataRoot("dict", filename)
 	out, err := fileutil.ReadFile(path)
 	if err != nil {
 		return nil

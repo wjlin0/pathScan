@@ -1,10 +1,10 @@
-version: "v1.0.0"
+version: "v1.0.1"
 rules:
   - name: "Thinkphp"
     matchers:
-      - type: regex
+      - type: word
         part: header
-        regex:
+        word:
           - "ThinkPHP"
   - name: "Apache"
     matchers:
@@ -34,8 +34,9 @@ rules:
     matchers:
       - type: regex
         part: header
+        name: php
         regex:
-          - "X-Powered-By: (PHP[\\d\\.\\/]*?)"
+          - 'X-Powered-By: (PHP/?(\d+\.\d+\.\d+)?)'
         group: 1
   - name: "Tomcat"
     matchers:
@@ -78,3 +79,50 @@ rules:
         part: body
         words:
           - '<img class="product-logo" src="img/nacos.png">'
+  - name: "WordPress"
+    matchers:
+      - type: regex
+        part: body
+        name: wordpress
+        group: 1
+        regex:
+          - '<meta name="generator" content="(WordPress (\d+\.\d+\.\d+))"'
+  - name: "Solr-Admin"
+    matchers-condition: and
+    matchers:
+      - type: regex
+        part: body
+        name: solr
+        group: 1
+        regex:
+          - '<a href="#/~logging">Logging</a>'
+      - type: word
+        part: body
+        words:
+          - '<a href="#/" id="solr"><span>Apache SOLR</span></a>'
+          - '<a href="#/~logging">Logging</a>'
+          - '<a href="#/~cloud">Cloud</a>'
+          - '<a href="#/~collections">Collections</a>'
+        condition: and
+  - name: "Phpinfo"
+    matchers-condition: and
+    matchers:
+      - type: regex
+        part: body
+        name: phpinfo
+        group: 1
+        regex:
+          - '<h1 class="p">PHP Version (\d+\.\d+\.\d+)</h1>'
+      - type: word
+        part: body
+        words:
+          - '<td class="e">System </td>'
+          - '<td class="e">Server API </td>'
+          - '<td class="e">disable_functions</td>'
+        condition: or
+  - name: "Splunk-Enterprise"
+    matchers:
+      - type: word
+        part: body
+        words:
+          - '<p>Splunk relies on JavaScript to function properly.<br>Please enable JavaScript and then refresh the page to login.</p>'

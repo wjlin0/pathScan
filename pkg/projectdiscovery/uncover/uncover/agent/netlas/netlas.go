@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
+	"pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 const (

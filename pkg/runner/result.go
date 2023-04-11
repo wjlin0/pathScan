@@ -3,8 +3,8 @@ package runner
 import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
-	"github.com/wjlin0/pathScan/pkg/result"
 	"net/http"
+	"pathScan/pkg/result"
 	"strconv"
 	"strings"
 	"sync"

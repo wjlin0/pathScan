@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
+	"pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 const (

@@ -9,11 +9,11 @@ import (
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	folderutil "github.com/projectdiscovery/utils/folder"
-	"github.com/wjlin0/pathScan/pkg/common/identification"
-	"github.com/wjlin0/pathScan/pkg/common/uncover"
-	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"os"
 	"path/filepath"
+	"pathScan/pkg/common/identification"
+	"pathScan/pkg/common/uncover"
+	ucRunner "pathScan/pkg/projectdiscovery/uncover/runner"
 	"time"
 )
 
