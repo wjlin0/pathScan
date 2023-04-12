@@ -10,7 +10,7 @@ const banner = `
 /_/
 `
 
-const Version = `v2.0.0`
+const Version = `2.0.0`
 
 // showBanner is used to show the banner to the user
 func showBanner() {

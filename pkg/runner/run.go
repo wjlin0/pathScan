@@ -209,7 +209,7 @@ func (r *Runner) Run() error {
 		}
 	}
 	switch {
-	// 流模式还没想好怎么做
+	// 流模式还没想好怎么做 打算做递归路径扫描 有会的 帮帮忙 联系我 给你权限
 
 	default:
 		for p := range pathUrls {
