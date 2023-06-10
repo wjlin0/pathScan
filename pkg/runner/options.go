@@ -9,11 +9,11 @@ import (
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
+	"github.com/wjlin0/pathScan/pkg/common/uncover"
+	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"os"
 	"path/filepath"
-	"pathScan/pkg/common/identification"
-	"pathScan/pkg/common/uncover"
-	ucRunner "pathScan/pkg/projectdiscovery/uncover/runner"
 	"time"
 )
 
@@ -21,7 +21,6 @@ type Options struct {
 	Url                   goflags.StringSlice `json:"url"`
 	UrlFile               goflags.StringSlice `json:"url_file"`
 	UrlRemote             string              `json:"url_remote"`
-	SkipUrl               goflags.StringSlice `json:"url_skip"`
 	Path                  goflags.StringSlice `json:"path"`
 	PathFile              goflags.StringSlice `json:"path_file"`
 	PathRemote            string              `json:"path_remote"`
@@ -36,7 +35,11 @@ type Options struct {
 	Silent                bool                `json:"silent"`
 	OnlyTargets           bool                `json:"only_targets"`
 	EnableProgressBar     bool                `json:"enable_progress_bar"`
+	SkipUrl               goflags.StringSlice `json:"skip_url"`
 	SkipCode              goflags.StringSlice `json:"skip_code"`
+	SkipHash              string              `json:"skip_hash"`
+	SkipBodyLen           int                 `json:"skip_body_len"`
+	SkipHashMethod        string              `json:"skip_hash_method"`
 	ErrUseLastResponse    bool                `json:"err_use_last_response"`
 	Csv                   bool                `json:"csv,omitempty"`
 	ClearResume           bool                `json:"clear_resume"`
@@ -60,6 +63,8 @@ type Options struct {
 	UpdateMatchVersion    bool                `json:"update_match_version"`
 	Method                string              `json:"method"`
 	MatchPath             string              `json:"match_path"`
+
+	GetHash bool `json:"get_hash"`
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
@@ -79,6 +84,9 @@ func ParserOptions() *Options {
 	set.CreateGroup("Skip", "跳过",
 		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码", goflags.NormalizedStringSliceOptions),
+		set.StringVarP(&options.SkipHash, "skip-hash", "sh", "", "跳过指定hash"),
+
+		set.IntVarP(&options.SkipBodyLen, "skip-body-len", "sbl", 0, "跳过body固定长度"),
 	)
 	set.CreateGroup("Dict", "扫描字典",
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
@@ -94,13 +102,17 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.EnableProgressBar, "progressbar", "pb", false, "启用进度条"),
 		set.BoolVarP(&options.Version, "version", "v", false, "输出版本"),
 	)
+	set.CreateGroup("tool", "工具",
+		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
+		set.BoolVarP(&options.GetHash, "get-hash", "gh", false, "计算hash"),
+		set.StringVarP(&options.SkipHashMethod, "skip-hash-method", "shm", "sha256", "指定hash的方法（sha256,md5,sha1）"),
+	)
 	set.CreateGroup("config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
-		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
 	)
 	set.CreateGroup("uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
@@ -112,7 +124,7 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存"),
 	)
 	set.CreateGroup("header", "请求头参数",
-		set.StringVarP(&options.Method, "method", "m", "GET", "请求方法"),
+		set.StringVarP(&options.Method, "method", "m", "GET", "请求方法（GET、POST、PUT、OPTIONS、HEAD、CONNECT）"),
 		set.StringSliceVarP(&options.UserAgent, "user-agent", "ua", nil, "User-Agent", goflags.CommaSeparatedStringSliceOptions),
 		set.StringVarP(&options.Cookie, "cookie", "c", "", "cookie"),
 		set.StringVarP(&options.Authorization, "authorization", "auth", "", "Auth请求头"),

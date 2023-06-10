@@ -1,22 +1,24 @@
 package runner
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
+	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"golang.org/x/net/context"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"pathScan/pkg/common/identification"
-	ucRunner "pathScan/pkg/projectdiscovery/uncover/runner"
-	"pathScan/pkg/result"
-	"pathScan/pkg/util"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -116,9 +118,25 @@ func NewRunner(options *Options) (*Runner, error) {
 		gologger.Print().Msgf("清除成功：%s", DefaultResumeFolderPath())
 		os.Exit(0)
 	}
+	// 计算hash
+	if run.Cfg.Options.GetHash {
+		uri := run.Cfg.Options.Url[0]
+		resp, err := http.Get(uri)
+		if err != nil {
+			return nil, err
+		}
+		buffer := bytes.Buffer{}
+		_, err = io.Copy(&buffer, resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		hash, _ := util.GetHash(buffer.Bytes(), run.Cfg.Options.SkipHashMethod)
+		fmt.Printf("[%s] %s", aurora.Green("HASH").String(), string(hash))
+		os.Exit(0)
+	}
 
 	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
-	//run.client = newClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.retryable = newRetryableClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
@@ -127,6 +145,7 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.headers = run.handlerHeader()
 	run.skipCode = make(map[string]struct{})
 	addPathsToSet(run.Cfg.Options.SkipCode, run.skipCode)
+	// 加载正则匹配规则
 	run.regOptions, err = identification.ParsesDefaultOptions(run.Cfg.Options.MatchPath)
 	if err != nil {
 		return nil, err
@@ -230,10 +249,11 @@ func (r *Runner) Run() error {
 					}
 
 					r.limiter.Take()
-					targetResult, err := r.GoTargetPathByRetryable(target, path)
+					targetResult, check, err := r.GoTargetPathByRetryable(target, path)
 					if targetResult != nil && err == nil {
 						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
-						if _, ok := r.skipCode[strconv.Itoa(targetResult.Status)]; ok && !r.Cfg.Options.Verbose {
+						// 跳过条件满足
+						if check {
 							return
 						}
 						r.Cfg.Results.AddPathByResult(targetResult.Target, targetResult.Path)

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 	"io"
 	"net/http"
-	"pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 const (

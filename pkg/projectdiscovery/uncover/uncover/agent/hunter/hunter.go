@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"pathScan/pkg/projectdiscovery/uncover/uncover"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 const (

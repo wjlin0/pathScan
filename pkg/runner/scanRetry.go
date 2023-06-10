@@ -3,12 +3,14 @@ package runner
 import (
 	"bytes"
 	http "github.com/projectdiscovery/retryablehttp-go"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"math/rand"
 	defaultHttp "net/http"
 	"net/url"
-	"pathScan/pkg/result"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -68,52 +70,77 @@ func (r *Runner) extractRetryableTitle(body []byte) string {
 	}
 	return ""
 }
-func (r *Runner) processRetryableResponse(target, path string, resp *defaultHttp.Response) (*result.TargetResult, error) {
+func (r *Runner) processRetryableResponse(target, path string, resp *defaultHttp.Response) (*result.TargetResult, bool, error) {
 	headerBytes, err := r.readRetryableHeader(resp)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	bodyBytes, err := r.readRetryableBody(resp)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	title := r.extractTitle(bodyBytes)
 	server := resp.Header.Get("Server")
+
+	re := &result.TargetResult{
+		Target:  target,
+		Path:    path,
+		Title:   title,
+		Status:  resp.StatusCode,
+		BodyLen: len(bodyBytes),
+		Server:  server,
+	}
+
+	// 跳过
+	check := r.checkSkip(re, headerBytes, bodyBytes)
+	if check {
+		return re, check, nil
+	}
 	tech := r.Parse(map[string]interface {
 	}{
 		"all_headers": headerBytes,
 		"body":        bodyBytes,
 	})
-	re := &result.TargetResult{
-		Target:     target,
-		Path:       path,
-		Title:      title,
-		Status:     resp.StatusCode,
-		BodyLen:    len(bodyBytes),
-		Server:     server,
-		Technology: tech,
-	}
-	return re, nil
+	re.Technology = tech
+	return re, false, nil
 }
+func (r *Runner) checkSkip(re *result.TargetResult, head []byte, body []byte) bool {
+	option := r.Cfg.Options
+	if _, ok := r.skipCode[strconv.Itoa(re.Status)]; ok {
+		return true
+	}
+	if option.SkipHash != "" {
+		bodyHash, _ := util.GetHash(body, option.SkipHashMethod)
+		if option.SkipHash == string(bodyHash) {
+			return true
+		}
+	}
 
-func (r *Runner) GoTargetPathByRetryable(target, path string) (*result.TargetResult, error) {
+	if option.SkipBodyLen == re.BodyLen {
+		return true
+	}
+
+	return false
+
+}
+func (r *Runner) GoTargetPathByRetryable(target, path string) (*result.TargetResult, bool, error) {
 	req, err := r.createRetryableRequest(target, path)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	resp, err := r.retryable.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer resp.Body.Close()
 
-	re, err := r.processRetryableResponse(target, path, resp)
+	re, check, err := r.processRetryableResponse(target, path, resp)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return re, nil
+	return re, check, err
 }
 
 func newRetryableClient(options *Options, errUseLastResponse bool) *http.Client {

@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
-	"pathScan/pkg/projectdiscovery/uncover/uncover"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 type OutputWriter struct {

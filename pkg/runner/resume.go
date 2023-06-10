@@ -7,10 +7,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"os"
 	"path/filepath"
-	"pathScan/pkg/result"
-	"pathScan/pkg/util"
 	"strings"
 	"sync"
 )
