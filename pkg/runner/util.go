@@ -84,14 +84,8 @@ func (o *Options) UpdateVersion() (bool, error) {
 	}
 	latest := releases[0]
 	var currentOS string
-	currentOS = strings.ToUpper(runtime.GOOS[:1]) + runtime.GOOS[1:]
-	var currentArch string
-	switch runtime.GOARCH {
-	case "amd64":
-		currentArch = "x86_64"
-	default:
-		currentArch = runtime.GOARCH
-	}
+	currentOS = strings.ToLower(runtime.GOOS[:1]) + runtime.GOOS[1:]
+	currentArch := runtime.GOARCH
 	final := latest.FindZip(currentOS, currentArch)
 	if final == nil {
 		return false, fmt.Errorf("no compatible binary found for %s/%s", currentOS, runtime.GOARCH)

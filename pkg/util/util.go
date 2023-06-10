@@ -3,9 +3,14 @@ package util
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
+	"hash"
 	"io"
 	"math/rand"
 	"os"
@@ -80,4 +85,19 @@ func FindStringSubmatch(reg, str string) []string {
 func MatchString(reg, str string) bool {
 	compile := regexp.MustCompile(reg)
 	return compile.MatchString(str)
+}
+func GetHash(body []byte, method string) ([]byte, error) {
+	var h hash.Hash
+	switch method {
+	case "md5":
+		h = md5.New()
+	case "sha1":
+		h = sha1.New()
+	case "sha256":
+		h = sha256.New()
+	default:
+		return nil, fmt.Errorf("unsupported hash method:%s", method)
+	}
+	h.Write(body)
+	return []byte(hex.EncodeToString(h.Sum(nil))), nil
 }

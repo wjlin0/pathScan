@@ -78,7 +78,7 @@ func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
 }
 
-var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/match-config.yaml")
+var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config.yaml")
 
 func ParsesDefaultOptions(u string) (*Options, error) {
 	options := &Options{}
