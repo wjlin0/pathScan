@@ -2,7 +2,7 @@ package runner
 
 import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
-	"pathScan/pkg/common/identification/matchers"
+	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"strings"
 )
 

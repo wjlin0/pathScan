@@ -5,8 +5,8 @@ import (
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"path/filepath"
-	"pathScan/pkg/common/identification/matchers"
 )
 
 type Options struct {

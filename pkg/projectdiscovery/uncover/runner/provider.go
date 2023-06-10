@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"strings"
 
-	"pathScan/pkg/projectdiscovery/uncover/uncover"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 type Provider struct {

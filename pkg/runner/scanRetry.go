@@ -2,15 +2,19 @@ package runner
 
 import (
 	"bytes"
+	"crypto/tls"
+	"github.com/projectdiscovery/gologger"
 	http "github.com/projectdiscovery/retryablehttp-go"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"math/rand"
+	"net"
 	defaultHttp "net/http"
 	"net/url"
-	"pathScan/pkg/result"
-	"pathScan/pkg/util"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -81,7 +85,7 @@ func (r *Runner) processRetryableResponse(target, path string, resp *defaultHttp
 		return nil, false, err
 	}
 
-	title := r.extractTitle(bodyBytes)
+	title := r.extractRetryableTitle(bodyBytes)
 	server := resp.Header.Get("Server")
 
 	re := &result.TargetResult{
@@ -151,4 +155,65 @@ func newRetryableClient(options *Options, errUseLastResponse bool) *http.Client 
 		HttpClient:   newClient(options, errUseLastResponse),
 	}
 	return http.NewClient(httpOptions)
+}
+func newClient(options *Options, errUseLastResponse bool) *defaultHttp.Client {
+	transport := &defaultHttp.Transport{
+		Proxy:           getProxyFunc(options),
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10},
+	}
+	if options.TimeoutTCP > 0 {
+		dial := &net.Dialer{
+			Timeout:   options.TimeoutTCP,
+			KeepAlive: 30 * time.Second,
+		}
+		transport.DialContext = dial.DialContext
+	}
+
+	client := &defaultHttp.Client{
+		Timeout:       options.TimeoutTCP,
+		CheckRedirect: getCheckRedirectFunc(errUseLastResponse),
+		Transport:     transport,
+	}
+	return client
+}
+
+// 辅助函数：获取代理设置函数
+func getProxyFunc(options *Options) func(*defaultHttp.Request) (*url.URL, error) {
+	if options.Proxy == "" {
+		return nil
+	}
+	proxyURL, err := url.Parse(options.Proxy)
+	if err != nil {
+		gologger.Error().Msgf("解析代理 URL 失败：%s", err)
+		return nil
+	}
+	if options.ProxyAuth != "" {
+		username, password, ok := parseProxyAuth(options.ProxyAuth)
+		if !ok {
+			gologger.Error().Msgf("解析代理授权信息失败：%s", options.ProxyAuth)
+			return nil
+		}
+		proxyURL.User = url.UserPassword(username, password)
+	}
+	return defaultHttp.ProxyURL(proxyURL)
+}
+
+// 辅助函数：获取 CheckRedirect 函数
+func getCheckRedirectFunc(errUseLastResponse bool) func(req *defaultHttp.Request, via []*defaultHttp.Request) error {
+	if errUseLastResponse {
+		return func(req *defaultHttp.Request, via []*defaultHttp.Request) error {
+			return defaultHttp.ErrUseLastResponse
+		}
+	} else {
+		return nil
+	}
+}
+
+// 辅助函数：解析代理授权信息（格式为“username:password”）
+func parseProxyAuth(auth string) (string, string, bool) {
+	parts := strings.SplitN(auth, ":", 2)
+	if len(parts) != 2 || parts[0] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }

@@ -46,8 +46,9 @@ Flags:
   -ps, -path string[]       路径(以逗号分割)
   -pf, -path-file string[]  从文件中,读取路径
   -pr, -path-remote string  从远程加载字典
-
-
+..................
+..................
+..................
 ```
 # 安装pathScan
 

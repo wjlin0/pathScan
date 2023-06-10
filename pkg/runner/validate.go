@@ -3,7 +3,7 @@ package runner
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"pathScan/pkg/util"
+	"github.com/wjlin0/pathScan/pkg/util"
 )
 
 func (o *Options) Validate() error {
@@ -18,9 +18,6 @@ func (o *Options) Validate() error {
 	}
 	if !(o.Method == "GET" || o.Method == "POST" || o.Method == "HEAD" || o.Method == "PUT" || o.Method == "OPTIONS" || o.Method == "CONNECT") {
 		return errors.New(fmt.Sprintf("不支持 %s 该方法", o.Method))
-	}
-	if o.Verbose && o.SkipCode != nil {
-		return errors.New("verbose下，不能指定跳过代码")
 	}
 	if o.SkipHash != "" || o.GetHash {
 		_, err := util.GetHash([]byte("1"), o.SkipHashMethod)

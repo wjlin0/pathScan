@@ -9,10 +9,10 @@ import (
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
 	githubUpdateStore "github.com/tj/go-update/stores/github"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"os"
 	"path/filepath"
-	"pathScan/pkg/util"
 	"runtime"
 	"strings"
 )
