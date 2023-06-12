@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/context"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,17 +26,19 @@ import (
 )
 
 type Runner struct {
-	wg         sizedwaitgroup.SizedWaitGroup
-	Cfg        *ResumeCfg
-	client     *http.Client
-	limiter    *ratelimit.Limiter
-	targets    map[string]struct{}
-	paths      map[string]struct{}
-	headers    map[string]interface{}
-	skipCode   map[string]struct{}
-	stats      *clistats.Statistics
-	regOptions *identification.Options
-	retryable  *retryablehttp.Client
+	wg          sizedwaitgroup.SizedWaitGroup
+	Cfg         *ResumeCfg
+	client      *http.Client
+	limiter     *ratelimit.Limiter
+	targetsBack map[string][]string
+	dirBack     map[string]struct{}
+	targets     map[string]struct{}
+	paths       map[string]struct{}
+	headers     map[string]interface{}
+	skipCode    map[string]struct{}
+	stats       *clistats.Statistics
+	regOptions  *identification.Options
+	retryable   *retryablehttp.Client
 }
 
 func NewRunner(options *Options) (*Runner, error) {
@@ -143,6 +146,18 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.targets = run.handlerGetTargets()
 	run.paths = run.handlerGetTargetPath()
 	run.headers = run.handlerHeader()
+	if run.Cfg.Options.RecursiveRun {
+		run.targetsBack = make(map[string][]string)
+		// 读文件
+		run.dirBack = make(map[string]struct{})
+		c, err := fileutil.ReadFile(run.Cfg.Options.RecursiveRunFile)
+		if err != nil {
+			return nil, err
+		}
+		for dir := range c {
+			run.dirBack[dir] = struct{}{}
+		}
+	}
 	run.skipCode = make(map[string]struct{})
 	addPathsToSet(run.Cfg.Options.SkipCode, run.skipCode)
 	// 加载正则匹配规则
@@ -185,7 +200,6 @@ func (r *Runner) Run() error {
 
 	gologger.Info().Msgf("存活目标总数 -> %d", targetCount)
 	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(Retries))
-	time.Sleep(5 * time.Second)
 	if r.Cfg.Options.EnableProgressBar {
 		r.stats.AddStatic("paths", pathCount)
 		r.stats.AddStatic("targets", targetCount)
@@ -229,6 +243,82 @@ func (r *Runner) Run() error {
 	}
 	switch {
 	// 流模式还没想好怎么做 打算做递归路径扫描 有会的 帮帮忙 联系我 给你权限
+	case r.Cfg.Options.RecursiveRun:
+		// 递归扫描逻辑
+		// 递归初始化path数组
+		gologger.Info().Msgf("启动递归扫描，扫描深度 %d", r.Cfg.Options.RecursiveRunTimes)
+		var pathArray []string
+		for p := range pathUrls {
+			pathArray = append(pathArray, p)
+		}
+		// 初始化输入的递归扫描的路径
+		for t := range targets {
+			r.targetsBack[t] = []string{}
+			for p := range pathUrls {
+				r.targetsBack[t] = append(r.targetsBack[t], p)
+			}
+		}
+		i := 1
+		for {
+			findTemp := make(map[string][]string)
+			for i := 1; i < Retries; i++ {
+				for t, v := range r.targetsBack {
+					for _, p := range v {
+						r.wg.Add()
+						go func(target, path string) {
+							defer func() {
+								if r.Cfg.Options.EnableProgressBar {
+									r.stats.IncrementCounter("packets", 1)
+								}
+								r.wg.Done()
+							}()
+							if r.Cfg.Results.HasSkipped(target, path) {
+								return
+							}
+							if r.Cfg.Results.HasPath(target, path) {
+								return
+							}
+							r.limiter.Take()
+							targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+							if targetResult != nil && err == nil {
+								r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
+								// 跳过条件满足
+								if check {
+									return
+								}
+								r.Cfg.Results.AddPathByResult(targetResult.Target, targetResult.Path)
+								r.handlerOutputTarget(targetResult)
+								switch {
+								case !r.Cfg.Options.Csv:
+									outputWriter.WriteString(targetResult.ToString())
+								case r.Cfg.Options.Csv:
+									row, _ := LivingTargetRow(targetResult)
+									outputWriter.WriteString(row)
+								}
+								// 这里得加锁
+								if _, ok := r.dirBack[targetResult.Path]; ok {
+									key, _ := url.JoinPath(target, path)
+									r.Cfg.Results.Lock()
+									findTemp[key] = pathArray
+									r.Cfg.Results.Unlock()
+								}
+							}
+						}(t, p)
+
+					}
+				}
+			}
+
+			r.wg.Wait()
+			if len(findTemp) == 0 {
+				break
+			}
+			if i >= r.Cfg.Options.RecursiveRunTimes {
+				break
+			}
+			r.targetsBack = findTemp
+			i += 1
+		}
 
 	default:
 		for p := range pathUrls {

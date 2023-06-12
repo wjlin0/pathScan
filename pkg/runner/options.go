@@ -63,12 +63,15 @@ type Options struct {
 	UpdateMatchVersion    bool                `json:"update_match_version"`
 	Method                string              `json:"method"`
 	MatchPath             string              `json:"match_path"`
-
-	GetHash bool `json:"get_hash"`
+	RecursiveRun          bool                `json:"recursive_run"`
+	RecursiveRunTimes     int                 `json:"recursive_run_times"`
+	RecursiveRunFile      string              `json:"recursive_run_file"`
+	GetHash               bool                `json:"get_hash"`
 }
 
-var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/provider-config.yaml")
-var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config/pathScan/match-config.yaml")
+var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "provider-config.yaml")
+var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config.yaml")
+var defaultRecursiveRunFile = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "dict", "dir.txt")
 
 func ParserOptions() *Options {
 	options := &Options{}
@@ -81,11 +84,15 @@ func ParserOptions() *Options {
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
 		set.StringVarP(&options.MatchPath, "match-file", "mf", "", "指纹文件"),
 	)
+	set.CreateGroup("recursive", "递归",
+		set.BoolVarP(&options.RecursiveRun, "recursive", "r", false, "递归扫描"),
+		set.IntVarP(&options.RecursiveRunTimes, "recursive-time", "rt", 3, "递归扫描深度"),
+		set.StringVarP(&options.RecursiveRunFile, "recursive-file", "rf", defaultRecursiveRunFile, "递归扫描目录"),
+	)
 	set.CreateGroup("Skip", "跳过",
 		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码", goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.SkipHash, "skip-hash", "sh", "", "跳过指定hash"),
-
 		set.IntVarP(&options.SkipBodyLen, "skip-body-len", "sbl", 0, "跳过body固定长度"),
 	)
 	set.CreateGroup("Dict", "扫描字典",
