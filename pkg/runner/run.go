@@ -280,6 +280,10 @@ func (r *Runner) Run() error {
 							}
 							r.limiter.Take()
 							targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+							if r.Cfg.Options.ResultBack != nil {
+								r.Cfg.Options.ResultBack(targetResult)
+								return
+							}
 							if targetResult != nil && err == nil {
 								r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
 								// 跳过条件满足
@@ -340,6 +344,10 @@ func (r *Runner) Run() error {
 
 					r.limiter.Take()
 					targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+					if r.Cfg.Options.ResultBack != nil {
+						r.Cfg.Options.ResultBack(targetResult)
+						return
+					}
 					if targetResult != nil && err == nil {
 						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
 						// 跳过条件满足

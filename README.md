@@ -13,11 +13,12 @@
 
 - 快速发现路径
 - 丰富的内置字典,自动下载字典,可远程加载目标或远程加载字典
-- 可恢复上次扫描进度
+- 可持续递归扫描,恢复上次扫描进度
 - 从网络空间测绘中发现目标
 - 支持使用HTTP/SOCKS5代理
 - 可自定义请求头,可自定义指纹识别规则
 - 通过hash,len指定跳过
+- 结果可回调处理
 
 # 用法
 
@@ -36,11 +37,16 @@ Flags:
   -resume string              使用resume.cfg恢复扫描
   -mf, -match-file string     指纹文件
 
+递归:
+  -r, -recursive               递归扫描
+  -rt, -recursive-time int     递归扫描深度 (default 3)
+  -rf, -recursive-file string  递归扫描目录 (default "/root/.config/pathScan/dict/dir.txt")
+
 跳过:
   -su, -skip-url string[]   跳过的目标(以逗号分割)
   -sc, -skip-code string[]  跳过状态码
   -sh, -skip-hash string    跳过指定hash
-  -sbl, -skip-body-len int  跳过body固定长度
+  -sbl, -skip-body-len int  跳过body固定长度 (default -1)
 
 扫描字典:
   -ps, -path string[]       路径(以逗号分割)
@@ -137,6 +143,67 @@ rules:
         group: 1 # 指定后匹配的名字为正则匹配后的第1个元素
 ```
 
+# 集成到自己的工具中
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/projectdiscovery/gologger"
+    "github.com/wjlin0/pathScan/pkg/result"
+    "github.com/wjlin0/pathScan/pkg/runner"
+    "github.com/wjlin0/pathScan/pkg/util"
+    "os"
+    "os/signal"
+    "path/filepath"
+    "time"
+)
+
+func main() {
+	options := &runner.Options{Url: []string{
+		"https://localhost:8000",
+	},
+		RateHttp:    2,
+		TimeoutTCP:  2 * time.Second,
+		TimeoutHttp: 2 * time.Second,
+		ResultBack: func(result *result.TargetResult) {
+			fmt.Println(result)
+		},
+		Method: "GET",
+		Path: []string{
+			"/",
+		},
+	}
+	run, err := runner.NewRunner(options)
+	if err != nil {
+		gologger.Print().Msg(fmt.Sprintf("无法创建Runner: %s", err.Error()))
+		os.Exit(0)
+	}
+	if run == nil {
+		os.Exit(0)
+	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			gologger.Info().Msg("CTRL+C 按下: Exiting")
+			filename := util.RandStr(30) + ".cfg"
+			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
+			err := run.Cfg.MarshalResume(filename)
+			if err != nil {
+				gologger.Error().Msgf("无法创建 resume 文件: %s", err.Error())
+			}
+			os.Exit(1)
+		}
+	}()
+	err = run.Run()
+	if err != nil {
+		gologger.Fatal().Msgf("无法 运行: %s", err.Error())
+	}
+	run.Cfg.CleanupResumeConfig()
+}
+```
 
 
 pathScan 支持默认配置文件位于下面两个路径，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。

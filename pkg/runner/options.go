@@ -12,6 +12,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/common/identification"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
+	"github.com/wjlin0/pathScan/pkg/result"
 	"os"
 	"path/filepath"
 	"time"
@@ -67,6 +68,7 @@ type Options struct {
 	RecursiveRunTimes     int                 `json:"recursive_run_times"`
 	RecursiveRunFile      string              `json:"recursive_run_file"`
 	GetHash               bool                `json:"get_hash"`
+	ResultBack            func(result *result.TargetResult)
 }
 
 var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "provider-config.yaml")
@@ -93,7 +95,7 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码", goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.SkipHash, "skip-hash", "sh", "", "跳过指定hash"),
-		set.IntVarP(&options.SkipBodyLen, "skip-body-len", "sbl", 0, "跳过body固定长度"),
+		set.IntVarP(&options.SkipBodyLen, "skip-body-len", "sbl", -1, "跳过body固定长度"),
 	)
 	set.CreateGroup("Dict", "扫描字典",
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
