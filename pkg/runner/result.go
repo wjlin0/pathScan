@@ -41,7 +41,9 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 				builder.WriteString(aurora.Yellow(strconv.Itoa(statusCode)).String())
 			case statusCode >= http.StatusBadRequest && statusCode < http.StatusInternalServerError:
 				builder.WriteString(aurora.Red(strconv.Itoa(statusCode)).String())
-			case statusCode > http.StatusInternalServerError:
+			case statusCode >= http.StatusInternalServerError:
+				builder.WriteString(aurora.Bold(aurora.Yellow(strconv.Itoa(statusCode))).String())
+			default:
 				builder.WriteString(aurora.Bold(aurora.Yellow(strconv.Itoa(statusCode))).String())
 			}
 		} else {

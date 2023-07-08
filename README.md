@@ -14,7 +14,7 @@
 - 快速发现路径
 - 丰富的内置字典,自动下载字典,可远程加载目标或远程加载字典
 - 可持续递归扫描,恢复上次扫描进度
-- 从网络空间测绘中发现目标
+- 从网络空间测绘中发现目标,从持续的扫描中发现目标
 - 支持使用HTTP/SOCKS5代理
 - 可自定义请求头,可自定义指纹识别规则
 - 通过hash,len指定跳过
@@ -63,37 +63,32 @@ pathScan需要**go1.19**才能安装成功。执行一下命令
 ```sh
 go install -v github.com/wjlin0/pathScan@latest
 ```
+下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
-或下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
+```sh
+wget https://github.com/wjlin0/pathScan/releases/download/v1.1.4/pathScan_v1.1.4_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.1.4/pathScan_v1.1.4_linux_amd64.zip
+```
 
-<table>
-<tr>
-<td>
 
-**Docker：**
+
+
+Docker
 
 ```sh
 docker pull wjlin0/path_scan:latest
 docker run --rm --name pathScan -it wjlin0/path_scan:latest  -t https://wjlin0.com -vb
 ```
-</td>
-</tr>
-</table>
 
-<table>
-<tr>
-<td>
 
-**自行编译：**
+自行编译
 
 ```sh
 git clone https://github.com/wjlin0/pathScan.git && cd pathScan
 go install github.com/goreleaser/goreleaser@latest
 goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
 ```
-</td>
-</tr>
-</table>
+
 
 
 

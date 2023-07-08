@@ -13,9 +13,12 @@ import (
 	"hash"
 	"io"
 	"math/rand"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -100,4 +103,67 @@ func GetHash(body []byte, method string) ([]byte, error) {
 	}
 	h.Write(body)
 	return []byte(hex.EncodeToString(h.Sum(nil))), nil
+}
+func IsSubdomainOrSameDomain(orl string, link string) bool {
+	o, _ := url.Parse(orl)
+	l, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+	if orl == link {
+		return false
+	}
+	// 如果 old 是ip,直接返回 true
+	if net.ParseIP(o.Hostname()) != nil {
+		return true
+	}
+
+	topDomain := ""
+	oldDomainLen := len(strings.Split(o.Hostname(), "."))
+	linkDomainLen := len(strings.Split(l.Hostname(), "."))
+	switch oldDomainLen {
+	case 2:
+		topDomain = o.Hostname()
+	case 1:
+		return false
+	default:
+		topDomain = strings.Join(strings.Split(o.Hostname(), ".")[1:], ".")
+	}
+	// 如果等于顶级域名返回 true
+	if linkDomainLen == len(strings.Split(topDomain, ".")) && l.Hostname() == topDomain {
+		return true
+	}
+	// 如果是子域名或者是同级域名返回 true
+	if linkDomainLen >= oldDomainLen && strings.Contains(l.Hostname(), topDomain) {
+		return true
+	}
+
+	return false
+}
+func ExtractURLs(text string) []string {
+	// 正则表达式模式匹配URL
+	pattern := `https?://[^\s<>"]+|www\.[^\s<>"]+`
+	re := regexp.MustCompile(pattern)
+	// 查找所有匹配的URL
+	urls_ := re.FindAllString(text, -1)
+	urlMap := make(map[string]struct{})
+	for _, url_ := range urls_ {
+		urlMap[url_] = struct{}{}
+	}
+	var urls []string
+	for k, _ := range urlMap {
+		urls = append(urls_, k)
+	}
+	return urls
+}
+
+func GetTrueUrl(text *url.URL) string {
+	// 获取URL的主机和方案部分
+	host := text.Host
+	scheme := text.Scheme
+
+	// 拼接主机和方案部分
+	trueURL := scheme + "://" + host
+
+	return trueURL
 }

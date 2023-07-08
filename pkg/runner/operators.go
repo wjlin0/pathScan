@@ -1,8 +1,10 @@
 package runner
 
 import (
+	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"strings"
 )
 
@@ -20,7 +22,7 @@ func Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []stri
 	return false, []string{}
 }
 
-func (r *Runner) Parse(data map[string]interface{}) []string {
+func (r *Runner) ParseTechnology(data map[string]interface{}) []string {
 	var tag []string
 	for _, sub := range r.regOptions.SubMatch {
 		execute, b := sub.Execute(data, Match)
@@ -30,6 +32,26 @@ func (r *Runner) Parse(data map[string]interface{}) []string {
 	}
 	return tag
 }
+func (r *Runner) ParseOtherUrl(oldUrl string, data map[string]interface{}) []string {
+	var all []string
+	// 提取响应包的 body 数据
+	body, ok := data["body"].([]byte)
+	if !ok {
+		return nil
+	}
+	all = util.ExtractURLs(string(body))
+	var urls []string
+	// 过滤不属于子域名或基本URL的链接
+	for _, link := range all {
+		if !util.IsSubdomainOrSameDomain(oldUrl, link) {
+			gologger.Warning().Msgf("Link '%s' does not belong to the subdomain or the same domain\n", link)
+		} else {
+			urls = append(urls, link)
+		}
+	}
+	return urls
+}
+
 func getMatchPart(part string, data map[string]interface{}) (string, bool) {
 	if part == "" {
 		part = "body"

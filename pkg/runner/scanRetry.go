@@ -74,7 +74,12 @@ func (r *Runner) extractRetryableTitle(body []byte) string {
 	}
 	return ""
 }
+
+// processRetryableResponse 解析请求并转换成 result.TargetResult 对象
 func (r *Runner) processRetryableResponse(target, path string, resp *defaultHttp.Response) (*result.TargetResult, bool, error) {
+	host, _ := url.JoinPath(target, path)
+	parse, _ := url.Parse(host)
+
 	headerBytes, err := r.readRetryableHeader(resp)
 	if err != nil {
 		return nil, false, err
@@ -87,10 +92,10 @@ func (r *Runner) processRetryableResponse(target, path string, resp *defaultHttp
 
 	title := r.extractRetryableTitle(bodyBytes)
 	server := resp.Header.Get("Server")
-
+	target = util.GetTrueUrl(parse)
 	re := &result.TargetResult{
-		Target:  target,
-		Path:    path,
+		Target:  strings.TrimRight(target, parse.Path),
+		Path:    parse.Path,
 		Title:   title,
 		Status:  resp.StatusCode,
 		BodyLen: len(bodyBytes),
@@ -102,11 +107,17 @@ func (r *Runner) processRetryableResponse(target, path string, resp *defaultHttp
 	if check {
 		return re, check, nil
 	}
-	tech := r.Parse(map[string]interface {
+	byte_ := map[string]interface {
 	}{
 		"all_headers": headerBytes,
 		"body":        bodyBytes,
-	})
+	}
+
+	tech := r.ParseTechnology(byte_)
+	if !r.Cfg.Options.FindOtherLink && !r.outputOtherToFile {
+		links := r.ParseOtherUrl(host, byte_)
+		re.OtherUrl = links
+	}
 	re.Technology = tech
 	return re, false, nil
 }

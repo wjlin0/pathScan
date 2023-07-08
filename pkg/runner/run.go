@@ -26,19 +26,20 @@ import (
 )
 
 type Runner struct {
-	wg          sizedwaitgroup.SizedWaitGroup
-	Cfg         *ResumeCfg
-	client      *http.Client
-	limiter     *ratelimit.Limiter
-	targetsBack map[string][]string
-	dirBack     map[string]struct{}
-	targets     map[string]struct{}
-	paths       map[string]struct{}
-	headers     map[string]interface{}
-	skipCode    map[string]struct{}
-	stats       *clistats.Statistics
-	regOptions  *identification.Options
-	retryable   *retryablehttp.Client
+	wg                sizedwaitgroup.SizedWaitGroup
+	Cfg               *ResumeCfg
+	client            *http.Client
+	limiter           *ratelimit.Limiter
+	targetsBack       map[string][]string
+	dirBack           map[string]struct{}
+	targets           map[string]struct{}
+	paths             map[string]struct{}
+	headers           map[string]interface{}
+	skipCode          map[string]struct{}
+	stats             *clistats.Statistics
+	regOptions        *identification.Options
+	retryable         *retryablehttp.Client
+	outputOtherToFile bool // 发现其他链接时不输出other_link 到 outputOther 指定的文件中 增加可读性
 }
 
 func NewRunner(options *Options) (*Runner, error) {
@@ -241,6 +242,32 @@ func (r *Runner) Run() error {
 
 		}
 	}
+	outputOtherWriter, _ := ucRunner.NewOutputWriter()
+	if r.Cfg.Options.OutputOtherLik != "" {
+		outputFolder := filepath.Dir(r.Cfg.Options.OutputOtherLik)
+		if fileutil.FolderExists(outputFolder) {
+			mkdirErr := os.MkdirAll(outputFolder, 0700)
+			if mkdirErr != nil {
+				return mkdirErr
+			}
+		}
+		f, err = util.AppendCreate(r.Cfg.Options.OutputOtherLik)
+		if err != nil {
+			return err
+		}
+		defer func(f *os.File) {
+			_ = f.Close()
+		}(f)
+		outputOtherWriter.AddWriters(f)
+		if r.Cfg.Options.Csv {
+			path, err := LivingTargetHeader(&result.TargetResult{})
+			if path != "" && err == nil {
+				outputOtherWriter.WriteString(path)
+			}
+		}
+	} else {
+		outputOtherWriter = outputWriter
+	}
 	switch {
 	// 流模式还没想好怎么做 打算做递归路径扫描 有会的 帮帮忙 联系我 给你权限
 	case r.Cfg.Options.RecursiveRun:
@@ -285,12 +312,18 @@ func (r *Runner) Run() error {
 								return
 							}
 							if targetResult != nil && err == nil {
-								r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
+								if r.Cfg.Results.HasSkipped(target, path) {
+									return
+								}
+								if r.Cfg.Results.HasPath(target, path) {
+									return
+								}
+								r.Cfg.Results.AddSkipped(target, path)
 								// 跳过条件满足
 								if check {
 									return
 								}
-								r.Cfg.Results.AddPathByResult(targetResult.Target, targetResult.Path)
+								r.Cfg.Results.AddPathByResult(target, path)
 								r.handlerOutputTarget(targetResult)
 								switch {
 								case !r.Cfg.Options.Csv:
@@ -325,8 +358,73 @@ func (r *Runner) Run() error {
 		}
 
 	default:
-		for p := range pathUrls {
-			for t := range targets {
+		var urls []string
+		var paths []string
+		for p, _ := range pathUrls {
+			paths = append(paths, p)
+		}
+		for t, _ := range targets {
+			urls = append(urls, t)
+		}
+
+		out := result.Rand(urls, paths)
+		var OtherLinks []string
+		for o := range out {
+			r.wg.Add()
+			go func(target, path string) {
+				defer func() {
+					if r.Cfg.Options.EnableProgressBar {
+						r.stats.IncrementCounter("packets", 1)
+					}
+					r.wg.Done()
+				}()
+				if r.Cfg.Results.HasSkipped(path, target) {
+					return
+				}
+				if r.Cfg.Results.HasPath(target, path) {
+					return
+				}
+
+				r.limiter.Take()
+				targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+				if r.Cfg.Options.ResultBack != nil {
+					r.Cfg.Options.ResultBack(targetResult)
+					return
+				}
+				if targetResult != nil && err == nil {
+					if r.Cfg.Results.HasSkipped(path, target) {
+						return
+					}
+					if r.Cfg.Results.HasPath(target, path) {
+						return
+					}
+					r.Cfg.Results.AddSkipped(target, path)
+					// 跳过条件满足
+					if check {
+						return
+					}
+					r.Cfg.Rwm.Lock()
+					if len(targetResult.OtherUrl) > 0 && !r.Cfg.Options.FindOtherLink {
+						OtherLinks = append(OtherLinks, targetResult.OtherUrl...)
+					}
+					r.Cfg.Rwm.Unlock()
+					r.Cfg.Results.AddPathByResult(target, path)
+					r.handlerOutputTarget(targetResult)
+					switch {
+					case !r.Cfg.Options.Csv:
+						outputWriter.WriteString(targetResult.ToString())
+					case r.Cfg.Options.Csv:
+						row, _ := LivingTargetRow(targetResult)
+						outputWriter.WriteString(row)
+					}
+				}
+			}(o[0], o[1])
+		}
+		r.wg.Wait()
+		if len(OtherLinks) > 0 && !r.Cfg.Options.FindOtherLink {
+			out := result.Rand(OtherLinks)
+			r.outputOtherToFile = true
+			for o := range out {
 				r.wg.Add()
 				go func(target, path string) {
 					defer func() {
@@ -349,26 +447,29 @@ func (r *Runner) Run() error {
 						return
 					}
 					if targetResult != nil && err == nil {
-						r.Cfg.Results.AddSkipped(targetResult.Path, targetResult.Target)
+						if r.Cfg.Results.HasSkipped(path, target) {
+							return
+						}
+						if r.Cfg.Results.HasPath(target, path) {
+							return
+						}
+						r.Cfg.Results.AddSkipped(target, path)
 						// 跳过条件满足
 						if check {
 							return
 						}
-						r.Cfg.Results.AddPathByResult(targetResult.Target, targetResult.Path)
+						r.Cfg.Results.AddPathByResult(target, path)
 						r.handlerOutputTarget(targetResult)
 						switch {
 						case !r.Cfg.Options.Csv:
-							outputWriter.WriteString(targetResult.ToString())
+							outputOtherWriter.WriteString(targetResult.ToString())
 						case r.Cfg.Options.Csv:
 							row, _ := LivingTargetRow(targetResult)
-							outputWriter.WriteString(row)
-
+							outputOtherWriter.WriteString(row)
 						}
 					}
-				}(t, p)
-
+				}(o[0], "")
 			}
-
 		}
 		r.wg.Wait()
 	}

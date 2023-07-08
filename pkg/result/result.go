@@ -15,6 +15,7 @@ type TargetResult struct {
 	BodyLen    int       `json:"body_len" csv:"body_len"`
 	Server     string    `json:"server" csv:"server"`
 	Technology []string  `json:"technology" csv:"technology"`
+	OtherUrl   []string  `json:"other_url" csv:"other_url"`
 }
 type Result struct {
 	sync.RWMutex
