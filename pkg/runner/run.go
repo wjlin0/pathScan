@@ -198,7 +198,7 @@ func (r *Runner) Run() error {
 	pathCount := uint64(len(pathUrls))
 	targetCount := uint64(len(targets))
 	Range := pathCount * targetCount
-
+	total := Range * uint64(r.Cfg.Options.Retries)
 	gologger.Info().Msgf("存活目标总数 -> %d", targetCount)
 	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(Retries))
 	if r.Cfg.Options.EnableProgressBar {
@@ -208,7 +208,7 @@ func (r *Runner) Run() error {
 		r.stats.AddStatic("startedAt", time.Now())
 		r.stats.AddCounter("packets", uint64(0))
 		r.stats.AddCounter("errors", uint64(0))
-		r.stats.AddCounter("total", Range*uint64(r.Cfg.Options.Retries))
+		r.stats.AddCounter("total", total)
 		if err := r.stats.Start(makePrintCallback(), time.Duration(5)*time.Second); err != nil {
 			gologger.Warning().Msgf("Couldn't start statistics: %s\n", err)
 		}
@@ -336,6 +336,8 @@ func (r *Runner) Run() error {
 								if _, ok := r.dirBack[targetResult.Path]; ok {
 									key, _ := url.JoinPath(target, path)
 									r.Cfg.Results.Lock()
+									total += uint64(len(pathArray))
+									r.stats.AddCounter("total", total)
 									findTemp[key] = pathArray
 									r.Cfg.Results.Unlock()
 								}
@@ -405,6 +407,8 @@ func (r *Runner) Run() error {
 					}
 					r.Cfg.Rwm.Lock()
 					if len(targetResult.OtherUrl) > 0 && !r.Cfg.Options.FindOtherLink {
+						total += uint64(len(targetResult.OtherUrl))
+						r.stats.AddCounter("total", total)
 						OtherLinks = append(OtherLinks, targetResult.OtherUrl...)
 					}
 					r.Cfg.Rwm.Unlock()
@@ -483,6 +487,7 @@ const bufferSize = 128
 func makePrintCallback() func(stats clistats.StatisticsClient) {
 	builder := &strings.Builder{}
 	builder.Grow(bufferSize)
+
 	return func(stats clistats.StatisticsClient) {
 		builder.WriteRune('[')
 		startedAt, _ := stats.GetStatic("startedAt")
