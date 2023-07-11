@@ -337,7 +337,9 @@ func (r *Runner) Run() error {
 									key, _ := url.JoinPath(target, path)
 									r.Cfg.Results.Lock()
 									total += uint64(len(pathArray))
-									r.stats.AddCounter("total", total)
+									if r.Cfg.Options.EnableProgressBar {
+										r.stats.AddCounter("total", total)
+									}
 									findTemp[key] = pathArray
 									r.Cfg.Results.Unlock()
 								}
@@ -408,7 +410,10 @@ func (r *Runner) Run() error {
 					r.Cfg.Rwm.Lock()
 					if len(targetResult.OtherUrl) > 0 && !r.Cfg.Options.FindOtherLink {
 						total += uint64(len(targetResult.OtherUrl))
-						r.stats.AddCounter("total", total)
+						if r.Cfg.Options.EnableProgressBar {
+							r.stats.AddCounter("total", total)
+						}
+
 						OtherLinks = append(OtherLinks, targetResult.OtherUrl...)
 					}
 					r.Cfg.Rwm.Unlock()
