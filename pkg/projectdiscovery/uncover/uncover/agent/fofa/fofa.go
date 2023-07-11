@@ -39,16 +39,22 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 		return nil, errors.New("empty fofa keys")
 	}
 	results := make(chan uncover.Result)
+	var NewSize int
+	if query.Limit > Size*5 {
+		NewSize = query.Limit / 5
+	} else {
+		NewSize = Size
+	}
+
 	go func() {
 		defer close(results)
-
 		var numberOfResults int
 		page := 1
 		for {
 			fofaRequest := &FofaRequest{
 				Query:  query.Query,
 				Fields: Fields,
-				Size:   Size,
+				Size:   NewSize,
 				Page:   page,
 			}
 			fofaResponse := agent.query(URL, session, fofaRequest, results)

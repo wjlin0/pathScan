@@ -35,7 +35,12 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 		return nil, errors.New("empty quake keys")
 	}
 	results := make(chan uncover.Result)
-
+	var NewSize int
+	if query.Limit > Size*5 {
+		NewSize = query.Limit / 5
+	} else {
+		NewSize = Size
+	}
 	go func() {
 		defer close(results)
 
@@ -43,7 +48,7 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 		for {
 			quakeRequest := &Request{
 				Query:       query.Query,
-				Size:        Size,
+				Size:        NewSize,
 				Start:       numberOfResults,
 				IgnoreCache: true,
 				Include:     []string{"ip", "port", "hostname", "service.name", "service.http.host"},
