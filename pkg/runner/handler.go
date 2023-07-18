@@ -180,7 +180,7 @@ func (r *Runner) handlerGetTargets() map[string]struct{} {
 			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
 		}
 		gologger.Info().Msgf("正在运行: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery)
+		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
 		if err != nil {
 			gologger.Error().Label("WRN").Msg(err.Error())
 		} else {

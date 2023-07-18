@@ -39,7 +39,8 @@ func GetUncoverSupportedAgents() string {
 	uncoverSupportedAgents := []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "zone", "binary"}
 	return strings.Join(uncoverSupportedAgents, ",")
 }
-func GetTargetsFromUncover(delay, limit int, field, output string, csv bool, engine, query []string) (chan string, error) {
+
+func GetTargetsFromUncover(delay, limit int, field, output string, csv bool, engine, query []string, proxy, auth string) (chan string, error) {
 	uncoverOptions := &ucRunner.Options{
 		Provider:   &ucRunner.Provider{},
 		Delay:      delay,
@@ -61,9 +62,9 @@ func GetTargetsFromUncover(delay, limit int, field, output string, csv bool, eng
 	if !uncoverOptions.Provider.HasKeys() {
 		return nil, errors.New("no keys provided")
 	}
-	return getTargets(uncoverOptions, field)
+	return getTargets(uncoverOptions, field, proxy, auth)
 }
-func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, error) {
+func getTargets(uncoverOptions *ucRunner.Options, field string, proxy, auth string) (chan string, error) {
 	var rateLimiter *ratelimit.Limiter
 	// create rateLimiter for uncover delay
 
@@ -139,7 +140,7 @@ func getTargets(uncoverOptions *ucRunner.Options, field string) (chan string, er
 				go func(agent uncover.Agent, uq *uncover.Query) {
 					defer swg.Done()
 					keys := uncoverOptions.Provider.GetKeys()
-					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout)
+					session, err := uncover.NewSession(&keys, uncoverOptions.Retries, uncoverOptions.Timeout, util.GetProxyFunc(proxy, auth))
 					if err != nil {
 						gologger.Error().Label(agent.Name()).Msgf("couldn't create uncover new session: %s", err)
 					}
