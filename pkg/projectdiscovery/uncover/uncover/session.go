@@ -16,7 +16,7 @@ type Session struct {
 	RetryMax int
 }
 
-func NewSession(keys *Keys, retryMax, timeout int) (*Session, error) {
+func NewSession(keys *Keys, retryMax, timeout int, proxyFunc func(*http.Request) (*url.URL, error)) (*Session, error) {
 	Transport := &http.Transport{
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 100,
@@ -24,7 +24,7 @@ func NewSession(keys *Keys, retryMax, timeout int) (*Session, error) {
 			InsecureSkipVerify: true,
 		},
 		ResponseHeaderTimeout: time.Duration(timeout) * time.Second,
-		Proxy:                 http.ProxyFromEnvironment,
+		Proxy:                 proxyFunc,
 	}
 
 	httpclient := &http.Client{

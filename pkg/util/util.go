@@ -14,6 +14,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	defaultHttp "net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -21,6 +22,47 @@ import (
 	"strings"
 	"time"
 )
+
+// ParseProxyAuth 辅助函数：解析代理授权信息（格式为“username:password”）
+func ParseProxyAuth(auth string) (string, string, bool) {
+	parts := strings.SplitN(auth, ":", 2)
+	if len(parts) != 2 || parts[0] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
+}
+
+// GetCheckRedirectFunc 辅助函数：获取 CheckRedirect 函数
+func GetCheckRedirectFunc(errUseLastResponse bool) func(req *defaultHttp.Request, via []*defaultHttp.Request) error {
+	if errUseLastResponse {
+		return func(req *defaultHttp.Request, via []*defaultHttp.Request) error {
+			return defaultHttp.ErrUseLastResponse
+		}
+	} else {
+		return nil
+	}
+}
+
+// GetProxyFunc 辅助函数：获取代理设置函数
+func GetProxyFunc(proxy, auth string) func(*defaultHttp.Request) (*url.URL, error) {
+	if proxy == "" {
+		return nil
+	}
+	proxyURL, err := url.Parse(proxy)
+	if err != nil {
+		gologger.Error().Msgf("解析代理 URL 失败：%s", err)
+		return nil
+	}
+	if auth != "" {
+		username, password, ok := ParseProxyAuth(auth)
+		if !ok {
+			gologger.Error().Msgf("解析代理授权信息失败：%s", auth)
+			return nil
+		}
+		proxyURL.User = url.UserPassword(username, password)
+	}
+	return defaultHttp.ProxyURL(proxyURL)
+}
 
 // Unzip 覆盖解压
 func Unzip(p string, reader *bytes.Reader) error {
