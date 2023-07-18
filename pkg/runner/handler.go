@@ -8,7 +8,6 @@ import (
 	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 )
@@ -107,9 +106,15 @@ func (r *Runner) handlerGetTargetPath() map[string]struct{} {
 func addPathsToSet(pathList []string, pathSet map[string]struct{}) {
 	for _, p := range pathList {
 		p = strings.TrimSpace(p)
-		if p != "" {
-			pathSet[p] = struct{}{}
+		if p == "" {
+			continue
 		}
+		// 统一 path 前有 /
+		if !strings.HasPrefix(p, "/") {
+			p = "/" + p
+		}
+		pathSet[p] = struct{}{}
+
 	}
 }
 
@@ -219,8 +224,9 @@ func (r *Runner) addUrlToSet(u string, urlSet map[string]struct{}) {
 		r.addUrlToSet(u1, urlSet)
 		r.addUrlToSet(u2, urlSet)
 	} else {
-		if !strings.HasSuffix(u, "/") {
-			u, _ = url.JoinPath(u, "/")
+		// 统一后缀无 /
+		if strings.HasSuffix(u, "/") {
+			u = strings.TrimRight(u, "/")
 		}
 		urlSet[u] = struct{}{}
 	}

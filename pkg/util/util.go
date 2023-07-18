@@ -2,6 +2,7 @@ package util
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
@@ -9,6 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/projectdiscovery/gologger"
+	http "github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"hash"
 	"io"
@@ -208,4 +210,146 @@ func GetTrueUrl(text *url.URL) string {
 	trueURL := scheme + "://" + host
 
 	return trueURL
+}
+
+func GetRequestPackage(request *http.Request) string {
+	if request == nil {
+		return ""
+	}
+	var bodyBytes []byte
+	// 备份请求体
+	if request.Body != nil {
+		bodyBytes, _ = io.ReadAll(request.Body)
+		request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	// 拼接请求行
+	requestLine := fmt.Sprintf("%s %s %s\r\n", request.Method, request.URL.Path, request.Proto)
+
+	// 拼接请求头
+	var headers strings.Builder
+
+	//单独拼接Host
+	headers.WriteString(fmt.Sprintf("Host: %s\r\n", request.Host))
+
+	for key, values := range request.Header {
+		for _, value := range values {
+			if strings.ToLower(key) == "host" {
+				continue
+			}
+			headers.WriteString(fmt.Sprintf("%s: %s\r\n", key, value))
+		}
+	}
+	body := string(bodyBytes)
+	// 拼接空行
+	blankLine := "\r\n"
+	// 将请求行、请求头和空行合并成原始请求包内容
+	requestPackage := strings.Join([]string{requestLine, headers.String(), blankLine, body}, "")
+
+	return requestPackage
+}
+
+func GetResponsePackage(response *defaultHttp.Response, getBody bool) string {
+	if response == nil {
+		return ""
+	}
+	var responsePackage strings.Builder
+
+	var bodyBytes []byte
+	// 备份请求体
+	if response.Body != nil {
+		bodyBytes, _ = io.ReadAll(response.Body)
+		response.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	// 拼接响应行
+	statusLine := fmt.Sprintf("%s %s %s\r\n", response.Proto, response.Status, defaultHttp.StatusText(response.StatusCode))
+
+	// 拼接响应头
+	var headers strings.Builder
+	for key, values := range response.Header {
+		for _, value := range values {
+			headers.WriteString(fmt.Sprintf("%s: %s\r\n", key, value))
+		}
+	}
+
+	// 拼接空行
+	blankLine := "\r\n"
+	body := string(bodyBytes)
+	responsePackage.WriteString(statusLine)
+	responsePackage.WriteString(headers.String())
+	responsePackage.WriteString(blankLine)
+	if getBody {
+		responsePackage.WriteString(body)
+	}
+
+	// 将响应行、响应头和空行合并成原始响应包内容
+
+	return responsePackage.String()
+}
+
+// ReadFile 从指定文件中读取数据
+func ReadFile(filename string) (string, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// ReplaceStringsInFile 用于读取文件，替换其中的特定字符串，并在原文件上进行修改
+func ReplaceStringsInFile(templateFile, oldString, newString string) error {
+	// 打开模板文件
+	file, err := os.OpenFile(templateFile, os.O_RDWR, 0666)
+	if err != nil {
+		return fmt.Errorf("error opening template file: %w", err)
+	}
+	defer file.Close()
+
+	// 逐行读取模板文件并进行替换后写回原文件
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		updatedLine := strings.Replace(line, oldString, newString, -1)
+		lines = append(lines, updatedLine)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading template file: %w", err)
+	}
+
+	// 清空文件内容
+	file.Truncate(0)
+
+	// 将替换后的内容写回文件
+	file.Seek(0, 0)
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		_, err := fmt.Fprintln(writer, line)
+		if err != nil {
+			return fmt.Errorf("error writing to template file: %w", err)
+		}
+	}
+	writer.Flush()
+
+	return nil
+}
+
+// WriteFile 将数据写入指定文件
+func WriteFile(filename string, string2 string) error {
+	// 打开文件，如果文件不存在则创建，如果文件已存在则截断文件（清空文件内容）
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// 写入数据
+	_, err = file.Write([]byte(string2))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

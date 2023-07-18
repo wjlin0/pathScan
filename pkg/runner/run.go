@@ -215,7 +215,7 @@ func (r *Runner) Run() error {
 	}
 	var f *os.File
 	outputWriter, _ := ucRunner.NewOutputWriter()
-	if r.Cfg.Options.Output != "" {
+	if r.Cfg.Options.Output != "" && !r.Cfg.Options.Html {
 		outputFolder := filepath.Dir(r.Cfg.Options.Output)
 		if fileutil.FolderExists(outputFolder) {
 			mkdirErr := os.MkdirAll(outputFolder, 0700)
@@ -268,6 +268,10 @@ func (r *Runner) Run() error {
 	} else {
 		outputOtherWriter = outputWriter
 	}
+	if r.Cfg.Options.Html && r.Cfg.Options.Output != "" {
+		InitHtmlOutput(r.Cfg.Options.Output)
+	}
+
 	switch {
 	// 流模式还没想好怎么做 打算做递归路径扫描 有会的 帮帮忙 联系我 给你权限
 	case r.Cfg.Options.RecursiveRun:
@@ -306,12 +310,18 @@ func (r *Runner) Run() error {
 								return
 							}
 							r.limiter.Take()
-							targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+							mapResult, err := r.GoTargetPathByRetryable(target, path)
+							if err != nil {
+								return
+							}
+							check := mapResult["check"].(bool)
+							targetResult := mapResult["re"].(*result.TargetResult)
+
 							if r.Cfg.Options.ResultBack != nil {
 								r.Cfg.Options.ResultBack(targetResult)
 								return
 							}
-							if targetResult != nil && err == nil {
+							if targetResult != nil {
 								if r.Cfg.Results.HasSkipped(target, path) {
 									return
 								}
@@ -390,7 +400,12 @@ func (r *Runner) Run() error {
 				}
 
 				r.limiter.Take()
-				targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+				mapResult, err := r.GoTargetPathByRetryable(target, path)
+				if err != nil {
+					return
+				}
+				check := mapResult["check"].(bool)
+				targetResult := mapResult["re"].(*result.TargetResult)
 				if r.Cfg.Options.ResultBack != nil {
 					r.Cfg.Options.ResultBack(targetResult)
 					return
@@ -407,24 +422,29 @@ func (r *Runner) Run() error {
 					if check {
 						return
 					}
+					link := mapResult["links"].([]string)
 					r.Cfg.Rwm.Lock()
-					if len(targetResult.OtherUrl) > 0 && !r.Cfg.Options.FindOtherLink {
-						total += uint64(len(targetResult.OtherUrl))
+					if len(link) > 0 && !r.Cfg.Options.FindOtherLink {
+						total += uint64(len(link))
 						if r.Cfg.Options.EnableProgressBar {
 							r.stats.AddCounter("total", total)
 						}
-
-						OtherLinks = append(OtherLinks, targetResult.OtherUrl...)
+						OtherLinks = append(OtherLinks, link...)
 					}
 					r.Cfg.Rwm.Unlock()
 					r.Cfg.Results.AddPathByResult(target, path)
 					r.handlerOutputTarget(targetResult)
 					switch {
-					case !r.Cfg.Options.Csv:
-						outputWriter.WriteString(targetResult.ToString())
 					case r.Cfg.Options.Csv:
 						row, _ := LivingTargetRow(targetResult)
-						outputWriter.WriteString(row)
+						outputOtherWriter.WriteString(row)
+					case r.Cfg.Options.Html:
+						outputOtherWriter.WriteString(targetResult.ToString())
+						r.Cfg.Rwm.Lock()
+						HtmlOutput(mapResult, r.Cfg.Options.Output)
+						r.Cfg.Rwm.Unlock()
+					default:
+						outputOtherWriter.WriteString(targetResult.ToString())
 					}
 				}
 			}(o[0], o[1])
@@ -450,7 +470,12 @@ func (r *Runner) Run() error {
 					}
 
 					r.limiter.Take()
-					targetResult, check, err := r.GoTargetPathByRetryable(target, path)
+					mapResult, err := r.GoTargetPathByRetryable(target, path)
+					if err != nil {
+						return
+					}
+					check := mapResult["check"].(bool)
+					targetResult := mapResult["re"].(*result.TargetResult)
 					if r.Cfg.Options.ResultBack != nil {
 						r.Cfg.Options.ResultBack(targetResult)
 						return
@@ -470,11 +495,14 @@ func (r *Runner) Run() error {
 						r.Cfg.Results.AddPathByResult(target, path)
 						r.handlerOutputTarget(targetResult)
 						switch {
-						case !r.Cfg.Options.Csv:
-							outputOtherWriter.WriteString(targetResult.ToString())
 						case r.Cfg.Options.Csv:
 							row, _ := LivingTargetRow(targetResult)
 							outputOtherWriter.WriteString(row)
+						case r.Cfg.Options.Html:
+							outputOtherWriter.WriteString(targetResult.ToString())
+							HtmlOutput(mapResult, r.Cfg.Options.Output)
+						default:
+							outputOtherWriter.WriteString(targetResult.ToString())
 						}
 					}
 				}(o[0], "")

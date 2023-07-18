@@ -28,5 +28,8 @@ func (o *Options) Validate() error {
 	if o.GetHash && len(o.Url) == 0 {
 		return errors.New("缺失计算hash的对象")
 	}
+	if o.Csv && o.Html {
+		return errors.New("不能同时指定 csv 格式和 html 格式")
+	}
 	return nil
 }
