@@ -3,9 +3,13 @@ package runner
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -68,4 +72,37 @@ func LivingTargetRow(path *result.TargetResult) (string, error) {
 	}
 	encoder.Flush()
 	return strings.TrimSpace(buffer.String()), nil
+}
+
+func InitHtmlOutput(path string) {
+	home, _ := os.UserHomeDir()
+	jsPath := filepath.Join(home, ".config", "pathScan", "js")
+	template, _ := util.ReadFile(filepath.Join(jsPath, "template.html"))
+	antdMinCss, _ := util.ReadFile(filepath.Join(jsPath, "antd.min.css"))
+	vueMinJs, _ := util.ReadFile(filepath.Join(jsPath, "vue.min.js"))
+	antdMinJs, _ := util.ReadFile(filepath.Join(jsPath, "antd.min.js"))
+	template = strings.Replace(template, "<!-- antd.min.css -->", fmt.Sprintf("<style>%s</style>", antdMinCss), -1)
+	template = strings.Replace(template, "<!-- vue.min.js -->", fmt.Sprintf("<script>%s</script>", vueMinJs), -1)
+	template = strings.Replace(template, "<!-- antd.min.js -->", fmt.Sprintf("<script>%s</script>", antdMinJs), -1)
+	_ = util.WriteFile(path, template)
+}
+
+func HtmlOutput(m map[string]interface{}, path string) {
+	outMap := make(map[string]interface{})
+	outMap["request"] = m["request"]
+	outMap["response"] = m["response"]
+	re := m["re"].(*result.TargetResult)
+	outMap["target"] = re.Target
+	outMap["path"] = re.Path
+	outMap["timestamp"] = re.TimeStamp
+	outMap["status"] = re.Status
+	outMap["technology"] = re.Technology
+	jsonData, _ := json.Marshal(outMap)
+
+	output := fmt.Sprintf("data.push(%s);\n  //?a", string(jsonData))
+
+	file, _ := util.ReadFile(path)
+	output = strings.Replace(file, "//?a", output, 1)
+	util.WriteFile(path, output)
+
 }

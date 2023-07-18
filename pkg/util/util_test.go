@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	http "github.com/projectdiscovery/retryablehttp-go"
 	"net/url"
 	"testing"
 )
@@ -72,4 +73,24 @@ func TestGetTrueUrl(t *testing.T) {
 			t.Errorf("错误的结果。URL: %s，期望: %s，实际: %s", urlString, expectedResult, result)
 		}
 	}
+}
+
+func TestGetRequestPackage(t *testing.T) {
+	request, err := http.NewRequest("GET", "https://www.wjlin0.com/", "a=1")
+	if err != nil {
+		return
+	}
+	request.Header.Add("Authorization", "none")
+	fmt.Println(GetRequestPackage(request))
+
+}
+func TestGetResponsePackage(t *testing.T) {
+	response, err := http.DefaultClient().Get("https://www.wjlin0.com/")
+	if err != nil {
+		return
+	}
+	if err != nil {
+		return
+	}
+	fmt.Println(GetResponsePackage(response, false))
 }

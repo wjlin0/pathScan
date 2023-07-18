@@ -44,6 +44,7 @@ type Options struct {
 	ErrUseLastResponse    bool                              `json:"err_use_last_response"`
 	Csv                   bool                              `json:"csv,omitempty"`
 	ClearResume           bool                              `json:"clear_resume"`
+	Html                  bool                              `json:"html,omitempty"`
 	Version               bool                              `json:"version"`
 	Uncover               bool                              `json:"uncover"`
 	UncoverQuery          goflags.StringSlice               `json:"uncover_query"`
@@ -108,6 +109,7 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.Output, "output", "o", "", "输出文件路径（可忽略）"),
 		set.StringVarP(&options.OutputOtherLik, "output-other", "oo", "", "请请求中发现其他URL输出文件路径（默认与output一致）"),
 		set.BoolVar(&options.Csv, "csv", false, "csv格式输出"),
+		set.BoolVar(&options.Html, "html", false, "html格式输出"),
 		set.BoolVarP(&options.NoColor, "no-color", "nc", false, "无颜色输出"),
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Silent, "silent", "sl", false, "管道模式"),
