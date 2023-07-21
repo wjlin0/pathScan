@@ -1,11 +1,13 @@
 package runner
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"os"
@@ -95,14 +97,55 @@ func HtmlOutput(m map[string]interface{}, path string) {
 	outMap["target"] = re.Target
 	outMap["path"] = re.Path
 	outMap["timestamp"] = re.TimeStamp
+	outMap["title"] = re.Title
 	outMap["status"] = re.Status
 	outMap["technology"] = re.Technology
 	jsonData, _ := json.Marshal(outMap)
-
 	output := fmt.Sprintf("data.push(%s);\n  //?a", string(jsonData))
 
 	file, _ := util.ReadFile(path)
 	output = strings.Replace(file, "//?a", output, 1)
 	util.WriteFile(path, output)
+}
 
+func (r *Runner) OutputHandler(target, path string, mapResult map[string]interface{}, outputWriter *runner.OutputWriter) {
+	targetResult := mapResult["re"].(*result.TargetResult)
+	r.Cfg.Results.AddPathByResult(target, path)
+	r.handlerOutputTarget(targetResult)
+	var outputStr string
+	switch {
+	case r.Cfg.Options.Csv:
+		row, _ := LivingTargetRow(targetResult)
+		outputStr = row
+	case r.Cfg.Options.Html && r.Cfg.Options.Output != "":
+		outputStr = targetResult.ToString()
+		r.Cfg.Rwm.Lock()
+		HtmlOutput(mapResult, r.Cfg.Options.Output)
+		r.Cfg.Rwm.Unlock()
+	default:
+		outputStr = targetResult.ToString()
+	}
+	outputWriter.WriteString(outputStr)
+}
+func checkInitHtml(filepath string) bool {
+	// 打开文件
+	file, err := os.Open(filepath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	// 创建一个Scanner来读取文件内容
+	scanner := bufio.NewScanner(file)
+
+	// 遍历每一行，查找是否存在目标字符串
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "<title>HTML格式报告</title>") {
+			return true
+		}
+	}
+
+	// 如果未找到目标字符串，则返回false
+	return false
 }

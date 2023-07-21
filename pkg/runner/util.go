@@ -3,21 +3,19 @@ package runner
 import (
 	"bytes"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	http "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/tj/go-update"
-	"github.com/tj/go-update/progress"
 	githubUpdateStore "github.com/tj/go-update/stores/github"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
-func (o *Options) DownloadDict() error {
+func DownloadDict() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 
@@ -35,9 +33,9 @@ func (o *Options) DownloadDict() error {
 		return fmt.Errorf("打开 %s 出错:%s\n", path, err.Error())
 	}
 
-	dictUrl := "https://github.com/wjlin0/pathScan/releases/download/v" + Version + "/dict.zip"
+	dictUrl := "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/dict.zip"
 
-	client := newClient(o, false)
+	client := http.DefaultClient()
 	resp, err := client.Get(dictUrl)
 	if err != nil {
 		return err
@@ -56,49 +54,6 @@ func (o *Options) DownloadDict() error {
 	}
 	gologger.Info().Msgf("远程字典下载成功->%s", path)
 	return nil
-}
-
-func (o *Options) UpdateVersion() (bool, error) {
-	var command string
-	switch runtime.GOOS {
-	case "windows":
-		command = "pathScan.exe"
-	default:
-		command = "pathScan"
-	}
-	m := &update.Manager{
-		Command: command,
-		Store: &githubUpdateStore.Store{
-			Owner:   "wjlin0",
-			Repo:    "pathScan",
-			Version: Version,
-		},
-	}
-	releases, err := m.LatestReleases()
-	if err != nil {
-		return false, errors.Wrap(err, "无法获取最新版本")
-	}
-	if len(releases) == 0 {
-		gologger.Info().Msgf("已经为最新版本%v", Version)
-		return true, nil
-	}
-	latest := releases[0]
-	var currentOS string
-	currentOS = strings.ToLower(runtime.GOOS[:1]) + runtime.GOOS[1:]
-	currentArch := runtime.GOARCH
-	final := latest.FindZip(currentOS, currentArch)
-	if final == nil {
-		return false, fmt.Errorf("no compatible binary found for %s/%s", currentOS, runtime.GOARCH)
-	}
-	tarball, err := final.DownloadProxy(progress.Reader)
-	if err != nil {
-		return false, errors.Wrap(err, "could not download latest release")
-	}
-	if err := m.Install(tarball); err != nil {
-		return false, errors.Wrap(err, "could not install latest release")
-	}
-	gologger.Info().Msgf("Successfully updated to Nuclei %s\n", latest.Version)
-	return true, nil
 }
 
 func CheckVersion() error {

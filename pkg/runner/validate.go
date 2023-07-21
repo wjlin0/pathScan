@@ -13,7 +13,7 @@ func (o *Options) Validate() error {
 	if o.Verbose && o.Silent {
 		return errors.New("同时指定了详细模式和通道模式")
 	}
-	if o.TimeoutTCP <= 0 && o.TimeoutHttp <= 0 {
+	if o.TimeoutHttp <= 0 {
 		return errors.New("时间不能小于0")
 	}
 	if !(o.Method == "GET" || o.Method == "POST" || o.Method == "HEAD" || o.Method == "PUT" || o.Method == "OPTIONS" || o.Method == "CONNECT") {

@@ -26,7 +26,7 @@ import (
 )
 
 type Runner struct {
-	wg                sizedwaitgroup.SizedWaitGroup
+	wg                *sizedwaitgroup.SizedWaitGroup
 	Cfg               *ResumeCfg
 	client            *http.Client
 	limiter           *ratelimit.Limiter
@@ -37,12 +37,15 @@ type Runner struct {
 	headers           map[string]interface{}
 	skipCode          map[string]struct{}
 	stats             *clistats.Statistics
-	regOptions        *identification.Options
+	regOptions        []*identification.Options
 	retryable         *retryablehttp.Client
 	outputOtherToFile bool // 发现其他链接时不输出other_link 到 outputOther 指定的文件中 增加可读性
+	otherLinkChan     chan string
+	pathContext       *context.Context
 }
 
 func NewRunner(options *Options) (*Runner, error) {
+
 	run := &Runner{}
 	var cfg *ResumeCfg
 	var err error
@@ -85,31 +88,40 @@ func NewRunner(options *Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 初始化
+	if !run.Cfg.Options.NotInit {
+		err = InitPathScan()
+		if err != nil {
+			gologger.Error().Msg(err.Error())
+			return nil, err
+		}
+	}
+
 	// 检查版本更新
 	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
 		err := CheckVersion()
 		if err != nil {
-			gologger.Error().Msgf(err.Error())
+			gologger.Error().Msg(err.Error())
 		}
 	}
 
 	// 下载字典或更新版本
 	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
 		if run.Cfg.Options.UpdatePathDictVersion {
-			err = run.Cfg.Options.DownloadDict()
+			err = DownloadDict()
 			if err != nil {
 				gologger.Error().Msgf(err.Error())
 			}
 		}
 		if run.Cfg.Options.UpdatePathScanVersion {
-			ok, err := run.Cfg.Options.UpdateVersion()
+			ok, err := UpdateVersion()
 			if err != nil && ok == false {
 				gologger.Error().Msg(err.Error())
 			}
 		}
 		if run.Cfg.Options.UpdateMatchVersion {
-			err := run.Cfg.Options.DownloadFile(defaultMatchConfigLocation, "https://github.com/wjlin0/pathScan/releases/download/v"+Version+"/match-config.yaml")
-			if err != nil {
+			ok, err := UpdateMatch()
+			if err != nil && ok == false {
 				gologger.Error().Msg(err.Error())
 			}
 		}
@@ -143,7 +155,8 @@ func NewRunner(options *Options) (*Runner, error) {
 	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
 	run.retryable = newRetryableClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
-	run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
+	run.wg = new(sizedwaitgroup.SizedWaitGroup)
+	*run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
 	run.targets = run.handlerGetTargets()
 	run.paths = run.handlerGetTargetPath()
 	run.headers = run.handlerHeader()
@@ -160,58 +173,42 @@ func NewRunner(options *Options) (*Runner, error) {
 		}
 	}
 	run.skipCode = make(map[string]struct{})
-	addPathsToSet(run.Cfg.Options.SkipCode, run.skipCode)
+	for _, status := range run.Cfg.Options.SkipCode {
+		run.skipCode[status] = struct{}{}
+	}
 	// 加载正则匹配规则
-	run.regOptions, err = identification.ParsesDefaultOptions(run.Cfg.Options.MatchPath)
+	matchPath := run.Cfg.Options.MatchPath
+	if matchPath == "" {
+		matchPath = defaultMatchDir
+	}
+
+	run.regOptions, err = identification.ParserHandler(matchPath)
 	if err != nil {
 		return nil, err
 	}
-	if run.regOptions.Version != "" {
-		gologger.Info().Msgf("使用 pathScan匹配规则 %s", run.regOptions.Version)
-	}
 
-	// 如果启用了进度条，则创建统计信息引擎
-	if run.Cfg.Options.EnableProgressBar {
-		stats, err := clistats.New()
-		if err != nil {
-			gologger.Warning().Msgf("无法创建进度条引擎：%s\n", err)
-		} else {
-			run.stats = stats
-		}
-	}
+	// 创建通道
+	run.otherLinkChan = make(chan string)
 
 	// 返回 Runner 实例和无误差
 	return run, nil
 }
 
 func (r *Runner) Run() error {
-
-	targets := r.targets
-	pathUrls := r.paths
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var urls []string
+	var paths []string
+	for p, _ := range r.targets {
+		urls = append(urls, p)
+	}
+	for t, _ := range r.paths {
+		paths = append(paths, t)
+	}
 	Retries := r.Cfg.Options.Retries
 	var err error
-
 	if r.Cfg.Options.OnlyTargets {
-		pathUrls = map[string]struct{}{"/": {}}
-	}
-
-	pathCount := uint64(len(pathUrls))
-	targetCount := uint64(len(targets))
-	Range := pathCount * targetCount
-	total := Range * uint64(r.Cfg.Options.Retries)
-	gologger.Info().Msgf("存活目标总数 -> %d", targetCount)
-	gologger.Info().Msgf("请求总数 -> %d", Range*uint64(Retries))
-	if r.Cfg.Options.EnableProgressBar {
-		r.stats.AddStatic("paths", pathCount)
-		r.stats.AddStatic("targets", targetCount)
-		r.stats.AddStatic("retries", r.Cfg.Options.Retries)
-		r.stats.AddStatic("startedAt", time.Now())
-		r.stats.AddCounter("packets", uint64(0))
-		r.stats.AddCounter("errors", uint64(0))
-		r.stats.AddCounter("total", total)
-		if err := r.stats.Start(makePrintCallback(), time.Duration(5)*time.Second); err != nil {
-			gologger.Warning().Msgf("Couldn't start statistics: %s\n", err)
-		}
+		paths = []string{"/"}
 	}
 	var f *os.File
 	outputWriter, _ := ucRunner.NewOutputWriter()
@@ -268,249 +265,66 @@ func (r *Runner) Run() error {
 	} else {
 		outputOtherWriter = outputWriter
 	}
-	if r.Cfg.Options.Html && r.Cfg.Options.Output != "" {
+	if r.Cfg.Options.Html && r.Cfg.Options.Output != "" && !checkInitHtml(r.Cfg.Options.Output) {
 		InitHtmlOutput(r.Cfg.Options.Output)
+
 	}
 
 	switch {
-	// 流模式还没想好怎么做 打算做递归路径扫描 有会的 帮帮忙 联系我 给你权限
+	// 流模式还没想好怎么做 有会的 帮帮忙 联系我 给你权限
 	case r.Cfg.Options.RecursiveRun:
 		// 递归扫描逻辑
 		// 递归初始化path数组
 		gologger.Info().Msgf("启动递归扫描，扫描深度 %d", r.Cfg.Options.RecursiveRunTimes)
-		var pathArray []string
-		for p := range pathUrls {
-			pathArray = append(pathArray, p)
-		}
+
 		// 初始化输入的递归扫描的路径
-		for t := range targets {
+		for _, t := range urls {
 			r.targetsBack[t] = []string{}
-			for p := range pathUrls {
+			for _, p := range paths {
 				r.targetsBack[t] = append(r.targetsBack[t], p)
 			}
 		}
 		i := 1
 		for {
-			findTemp := make(map[string][]string)
+			findTemp := new(map[string][]string)
+			*findTemp = make(map[string][]string)
 			for i := 1; i < Retries; i++ {
 				for t, v := range r.targetsBack {
 					for _, p := range v {
 						r.wg.Add()
-						go func(target, path string) {
-							defer func() {
-								if r.Cfg.Options.EnableProgressBar {
-									r.stats.IncrementCounter("packets", 1)
-								}
-								r.wg.Done()
-							}()
-							if r.Cfg.Results.HasSkipped(target, path) {
-								return
-							}
-							if r.Cfg.Results.HasPath(target, path) {
-								return
-							}
-							r.limiter.Take()
-							mapResult, err := r.GoTargetPathByRetryable(target, path)
-							if err != nil {
-								return
-							}
-							check := mapResult["check"].(bool)
-							targetResult := mapResult["re"].(*result.TargetResult)
-
-							if r.Cfg.Options.ResultBack != nil {
-								r.Cfg.Options.ResultBack(targetResult)
-								return
-							}
-							if targetResult != nil {
-								if r.Cfg.Results.HasSkipped(target, path) {
-									return
-								}
-								if r.Cfg.Results.HasPath(target, path) {
-									return
-								}
-								r.Cfg.Results.AddSkipped(target, path)
-								// 跳过条件满足
-								if check {
-									return
-								}
-								r.Cfg.Results.AddPathByResult(target, path)
-								r.handlerOutputTarget(targetResult)
-								switch {
-								case !r.Cfg.Options.Csv:
-									outputWriter.WriteString(targetResult.ToString())
-								case r.Cfg.Options.Csv:
-									row, _ := LivingTargetRow(targetResult)
-									outputWriter.WriteString(row)
-								}
-								// 这里得加锁
-								if _, ok := r.dirBack[targetResult.Path]; ok {
-									key, _ := url.JoinPath(target, path)
-									r.Cfg.Results.Lock()
-									total += uint64(len(pathArray))
-									if r.Cfg.Options.EnableProgressBar {
-										r.stats.AddCounter("total", total)
-									}
-									findTemp[key] = pathArray
-									r.Cfg.Results.Unlock()
-								}
-							}
-						}(t, p)
-
+						go r.GoHandler(t, p, outputWriter, ctx, paths, findTemp, r.wg)
+						// 这里得加锁
 					}
 				}
 			}
-
 			r.wg.Wait()
-			if len(findTemp) == 0 {
+
+			if len(*findTemp) == 0 {
 				break
 			}
 			if i >= r.Cfg.Options.RecursiveRunTimes {
 				break
 			}
-			r.targetsBack = findTemp
+			r.targetsBack = *findTemp
 			i += 1
 		}
 
 	default:
-		var urls []string
-		var paths []string
-		for p, _ := range pathUrls {
-			paths = append(paths, p)
-		}
-		for t, _ := range targets {
-			urls = append(urls, t)
-		}
-
+		wg := new(sizedwaitgroup.SizedWaitGroup)
+		*wg = sizedwaitgroup.New(r.Cfg.Options.RateHttp)
+		r.wg.Add()
+		go r.GoOtherLink(outputOtherWriter, ctx, r.wg)
 		out := result.Rand(urls, paths)
-		var OtherLinks []string
+
 		for o := range out {
-			r.wg.Add()
-			go func(target, path string) {
-				defer func() {
-					if r.Cfg.Options.EnableProgressBar {
-						r.stats.IncrementCounter("packets", 1)
-					}
-					r.wg.Done()
-				}()
-				if r.Cfg.Results.HasSkipped(path, target) {
-					return
-				}
-				if r.Cfg.Results.HasPath(target, path) {
-					return
-				}
-
-				r.limiter.Take()
-				mapResult, err := r.GoTargetPathByRetryable(target, path)
-				if err != nil {
-					return
-				}
-				check := mapResult["check"].(bool)
-				targetResult := mapResult["re"].(*result.TargetResult)
-				if r.Cfg.Options.ResultBack != nil {
-					r.Cfg.Options.ResultBack(targetResult)
-					return
-				}
-				if targetResult != nil && err == nil {
-					if r.Cfg.Results.HasSkipped(path, target) {
-						return
-					}
-					if r.Cfg.Results.HasPath(target, path) {
-						return
-					}
-					r.Cfg.Results.AddSkipped(target, path)
-					// 跳过条件满足
-					if check {
-						return
-					}
-					link := mapResult["links"].([]string)
-					r.Cfg.Rwm.Lock()
-					if len(link) > 0 && !r.Cfg.Options.FindOtherLink {
-						total += uint64(len(link))
-						if r.Cfg.Options.EnableProgressBar {
-							r.stats.AddCounter("total", total)
-						}
-						OtherLinks = append(OtherLinks, link...)
-					}
-					r.Cfg.Rwm.Unlock()
-					r.Cfg.Results.AddPathByResult(target, path)
-					r.handlerOutputTarget(targetResult)
-					switch {
-					case r.Cfg.Options.Csv:
-						row, _ := LivingTargetRow(targetResult)
-						outputOtherWriter.WriteString(row)
-					case r.Cfg.Options.Html:
-						outputOtherWriter.WriteString(targetResult.ToString())
-						r.Cfg.Rwm.Lock()
-						HtmlOutput(mapResult, r.Cfg.Options.Output)
-						r.Cfg.Rwm.Unlock()
-					default:
-						outputOtherWriter.WriteString(targetResult.ToString())
-					}
-				}
-			}(o[0], o[1])
+			wg.Add()
+			go r.GoHandler(o[0], o[1], outputWriter, ctx, nil, nil, wg)
 		}
-		r.wg.Wait()
-		if len(OtherLinks) > 0 && !r.Cfg.Options.FindOtherLink {
-			out := result.Rand(OtherLinks)
-			r.outputOtherToFile = true
-			for o := range out {
-				r.wg.Add()
-				go func(target, path string) {
-					defer func() {
-						if r.Cfg.Options.EnableProgressBar {
-							r.stats.IncrementCounter("packets", 1)
-						}
-						r.wg.Done()
-					}()
-					if r.Cfg.Results.HasSkipped(path, target) {
-						return
-					}
-					if r.Cfg.Results.HasPath(target, path) {
-						return
-					}
-
-					r.limiter.Take()
-					mapResult, err := r.GoTargetPathByRetryable(target, path)
-					if err != nil {
-						return
-					}
-					check := mapResult["check"].(bool)
-					targetResult := mapResult["re"].(*result.TargetResult)
-					if r.Cfg.Options.ResultBack != nil {
-						r.Cfg.Options.ResultBack(targetResult)
-						return
-					}
-					if targetResult != nil && err == nil {
-						if r.Cfg.Results.HasSkipped(path, target) {
-							return
-						}
-						if r.Cfg.Results.HasPath(target, path) {
-							return
-						}
-						r.Cfg.Results.AddSkipped(target, path)
-						// 跳过条件满足
-						if check {
-							return
-						}
-						r.Cfg.Results.AddPathByResult(target, path)
-						r.handlerOutputTarget(targetResult)
-						switch {
-						case r.Cfg.Options.Csv:
-							row, _ := LivingTargetRow(targetResult)
-							outputOtherWriter.WriteString(row)
-						case r.Cfg.Options.Html:
-							outputOtherWriter.WriteString(targetResult.ToString())
-							HtmlOutput(mapResult, r.Cfg.Options.Output)
-						default:
-							outputOtherWriter.WriteString(targetResult.ToString())
-						}
-					}
-				}(o[0], "")
-			}
-		}
-		r.wg.Wait()
+		wg.Wait()
+		time.Sleep(5)
+		cancel()
 	}
-
+	r.wg.Wait()
 	r.Cfg.ClearResume()
 	return nil
 }
@@ -560,5 +374,70 @@ func makePrintCallback() func(stats clistats.StatisticsClient) {
 
 		fmt.Fprintf(os.Stderr, "%s", builder.String())
 		builder.Reset()
+	}
+}
+
+func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWriter, ctx context.Context, paths []string, findTemp *map[string][]string, wg *sizedwaitgroup.SizedWaitGroup) {
+	defer func() {
+		wg.Done()
+	}()
+	if r.Cfg.Results.HasSkipped(path, target) {
+		return
+	}
+	if r.Cfg.Results.HasPath(target, path) {
+		return
+	}
+	r.limiter.Take()
+	mapResult, err := r.GoTargetPathByRetryable(target, path)
+	if err != nil {
+		gologger.Warning().Msgf("发生错误: %s", err)
+		return
+	}
+	check := mapResult["check"].(bool)
+	targetResult := mapResult["re"].(*result.TargetResult)
+	if r.Cfg.Options.ResultBack != nil {
+		r.Cfg.Options.ResultBack(targetResult)
+		return
+	}
+	if targetResult != nil && err == nil {
+		if r.Cfg.Results.HasSkipped(path, target) {
+			return
+		}
+		if r.Cfg.Results.HasPath(target, path) {
+			return
+		}
+		r.Cfg.Results.AddSkipped(target, path)
+		// 跳过条件满足
+		if check {
+			return
+		}
+		link := mapResult["links"].([]string)
+
+		// 这里得加锁
+		if r.Cfg.Options.RecursiveRun {
+			if _, ok := r.dirBack[targetResult.Path]; ok {
+				key, _ := url.JoinPath(target, path)
+				r.Cfg.Results.Lock()
+				(*findTemp)[key] = paths
+				r.Cfg.Results.Unlock()
+			}
+		}
+
+		// 处理输出
+		r.OutputHandler(target, path, mapResult, outputWriter)
+
+		// 处理link 加锁
+		if len(link) > 0 && !r.Cfg.Options.FindOtherLink && !r.Cfg.Options.RecursiveRun {
+			go func() {
+				for _, l := range link {
+					select {
+					case r.otherLinkChan <- l:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+		}
+
 	}
 }

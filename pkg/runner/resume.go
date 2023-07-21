@@ -15,8 +15,6 @@ import (
 	"sync"
 )
 
-const defaultResumeFileName = `resume.cfg`
-
 type ResumeCfg struct {
 	Rwm     *sync.RWMutex
 	Options *Options       `json:"options"`

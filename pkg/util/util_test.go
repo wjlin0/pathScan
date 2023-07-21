@@ -4,6 +4,8 @@ import (
 	"fmt"
 	http "github.com/projectdiscovery/retryablehttp-go"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -23,6 +25,7 @@ func TestIsSubdomainOrSameDomain(t *testing.T) {
 		{"https://1.2.3.4:8080/", "https://1.2.3.4", true},
 		{"https://1.2.3.4:8090", "https://1.2.3.5", true},
 		{"https://1.2.3.4", "https://example.com", true},
+		{"https://www.baidu.com", "baidu.com/more", true},
 	}
 
 	for _, test := range tests {
@@ -31,6 +34,31 @@ func TestIsSubdomainOrSameDomain(t *testing.T) {
 			t.Errorf("Expected IsSubdomainOrSameDomain(%q, %q) to be %t, but got %t", test.orl, test.link, test.valid, valid)
 		}
 	}
+}
+func TestExtractHost(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"www.baidu.com/more", "www.baidu.com"},
+		{"baidu.com:8080/path", "baidu.com:8080"},
+		{"baidu.com", "baidu.com"},
+		{"example.com/path", "example.com"},
+		{"https://www.example.com/path", "www.example.com"},
+		{"https://www.example.com:8080", "www.example.com:8080"},
+	}
+
+	for _, test := range tests {
+		result := ExtractHost(test.input)
+		if result != test.expected {
+			t.Errorf("Input: %s, Expected: %s, Got: %s", test.input, test.expected, result)
+		}
+	}
+}
+func TestListFilesWithExtension(t *testing.T) {
+	dir, _ := os.UserHomeDir()
+	dir = filepath.Join(dir, "nuclei-templates")
+	fmt.Println(ListFilesWithExtension(dir, ".yaml"))
 }
 func TestExtractURLs(t *testing.T) {
 	text := `<p>移步 -&gt; https://book.wjlin0.com 顾大嫂但是</p>

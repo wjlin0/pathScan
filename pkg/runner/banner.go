@@ -1,16 +1,33 @@
 package runner
 
-import "github.com/projectdiscovery/gologger"
+import (
+	"github.com/projectdiscovery/gologger"
+	folderutil "github.com/projectdiscovery/utils/folder"
+	"path/filepath"
+)
 
-const banner = `
+const (
+	banner = `
                __   __    ____               
    ___  ___ _ / /_ / /   / __/____ ___ _ ___ 
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.1.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.1.5
 /_/
 `
+	Version               = `1.1.5`
+	defaultResumeFileName = `resume.cfg`
+	userName              = "wjlin0"
+	repoName              = "pathScan-match"
+)
 
-const Version = `1.1.4`
+var (
+	defaultPathScanDir            = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan")
+	defaultMatchDir               = filepath.Join(defaultPathScanDir, "match-config")
+	defaultJsDir                  = filepath.Join(defaultPathScanDir, "js")
+	defaultPathDict               = filepath.Join(defaultPathScanDir, "dict")
+	defaultProviderConfigLocation = filepath.Join(defaultPathScanDir, "provider-config.yaml")
+	defaultRecursiveRunFile       = filepath.Join(defaultPathDict, "dir.txt")
+)
 
 // showBanner is used to show the banner to the user
 func showBanner() {

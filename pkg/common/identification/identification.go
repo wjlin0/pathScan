@@ -6,11 +6,11 @@ import (
 	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"path/filepath"
 )
 
 type Options struct {
-	Version  string       `yaml:"version"`
 	SubMatch []*Operators `yaml:"rules"`
 }
 
@@ -80,7 +80,7 @@ func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 
 var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config.yaml")
 
-func ParsesDefaultOptions(u string) (*Options, error) {
+func parsesOptions(u string) (*Options, error) {
 	options := &Options{}
 	var err error
 	if u != "" {
@@ -105,4 +105,60 @@ func ParsesDefaultOptions(u string) (*Options, error) {
 }
 func (o *Options) loadConfigFrom(location string) error {
 	return fileutil.Unmarshal(fileutil.YAML, []byte(location), o)
+}
+
+func parserOptionsByDir(dir string) ([]*Options, error) {
+	var options []*Options
+	extension, err := util.ListFilesWithExtension(dir, ".yaml")
+	if err != nil {
+		return nil, err
+	}
+	for _, ext := range extension {
+		o := &Options{}
+		err := o.loadConfigFrom(ext)
+		if err != nil {
+			gologger.Warning().Msg(err.Error())
+			continue
+		}
+		options = append(options, o)
+	}
+	for i, o := range options {
+		var errorIndices []int
+		for j, sub := range o.SubMatch {
+			err := sub.Compile()
+			if err != nil {
+				gologger.Warning().Msg(err.Error())
+				errorIndices = append(errorIndices, j)
+			}
+		}
+		// 根据错误项的索引，删除 SubMatch 切片中对应的项
+		for k := len(errorIndices) - 1; k >= 0; k-- {
+			index := errorIndices[k]
+			o.SubMatch = append(o.SubMatch[:index], o.SubMatch[index+1:]...)
+		}
+		// 更新 options 中对应项的 SubMatch 切片
+		options[i] = o
+	}
+
+	return options, nil
+}
+
+func ParserHandler(path string) ([]*Options, error) {
+	var options []*Options
+	var err error
+	switch {
+	case fileutil.FolderExists(path):
+		options, err = parserOptionsByDir(path)
+		if err != nil {
+			return nil, err
+		}
+	case fileutil.FileExists(path):
+		option, err := parsesOptions(path)
+		if err != nil {
+			return nil, err
+		}
+		options = append(options, option)
+	default:
+	}
+	return options, nil
 }

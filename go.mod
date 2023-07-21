@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/fatih/color v1.14.1
+	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
@@ -22,6 +23,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	golang.org/x/net v0.8.0
+	golang.org/x/oauth2 v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -39,8 +41,8 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
@@ -80,6 +82,8 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/protobuf v1.29.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
