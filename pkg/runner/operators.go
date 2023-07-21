@@ -24,12 +24,15 @@ func Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []stri
 
 func (r *Runner) ParseTechnology(data map[string]interface{}) []string {
 	var tag []string
-	for _, sub := range r.regOptions.SubMatch {
-		execute, b := sub.Execute(data, Match)
-		if b && !(len(execute) == 1 && execute[0] == "") {
-			tag = append(tag, execute...)
+	for _, options := range r.regOptions {
+		for _, sub := range options.SubMatch {
+			execute, b := sub.Execute(data, Match)
+			if b && !(len(execute) == 1 && execute[0] == "") {
+				tag = append(tag, execute...)
+			}
 		}
 	}
+
 	return tag
 }
 func (r *Runner) ParseOtherUrl(oldUrl string, data map[string]interface{}) []string {
@@ -42,11 +45,22 @@ func (r *Runner) ParseOtherUrl(oldUrl string, data map[string]interface{}) []str
 	all = util.ExtractURLs(string(body))
 	var urls []string
 	// 过滤不属于子域名或基本URL的链接
+
 	for _, link := range all {
+		if link == "" {
+			continue
+		}
 		if !util.IsSubdomainOrSameDomain(oldUrl, link) {
 			gologger.Warning().Msgf("Link '%s' does not belong to the subdomain or the same domain\n", link)
+		} else if util.IsBlackPath(link) {
+
 		} else {
-			urls = append(urls, link)
+			if !strings.HasPrefix(link, "http") && !util.IsBlackPath("https://"+link) {
+				urls = append(urls, "http://"+link)
+				urls = append(urls, "https://", link)
+			} else {
+				urls = append(urls, link)
+			}
 		}
 	}
 	return urls

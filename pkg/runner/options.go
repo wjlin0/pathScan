@@ -3,18 +3,13 @@ package runner
 import (
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
-	folderutil "github.com/projectdiscovery/utils/folder"
-	"github.com/wjlin0/pathScan/pkg/common/identification"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
-	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -35,7 +30,6 @@ type Options struct {
 	Verbose               bool                              `json:"verbose"`
 	Silent                bool                              `json:"silent"`
 	OnlyTargets           bool                              `json:"only_targets"`
-	EnableProgressBar     bool                              `json:"enable_progress_bar"`
 	SkipUrl               goflags.StringSlice               `json:"skip_url"`
 	SkipCode              goflags.StringSlice               `json:"skip_code"`
 	SkipHash              string                            `json:"skip_hash"`
@@ -60,7 +54,6 @@ type Options struct {
 	Authorization         string                            `json:"authorization"`
 	Header                goflags.StringSlice               `json:"header"`
 	HeaderFile            goflags.StringSlice               `json:"header_file"`
-	TimeoutTCP            time.Duration                     `json:"timeout_tcp"`
 	TimeoutHttp           time.Duration                     `json:"timeout_http"`
 	UpdateMatchVersion    bool                              `json:"update_match_version"`
 	Method                string                            `json:"method"`
@@ -72,11 +65,9 @@ type Options struct {
 	FindOtherLink         bool                              `json:"find_other_link"`
 	OutputOtherLik        string                            `json:"output_other_lik"`
 	ResultBack            func(result *result.TargetResult) `json:"-"`
+	NotInit               bool                              `json:"not_init"`
+	Body                  string                            `json:"body"`
 }
-
-var defaultProviderConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "provider-config.yaml")
-var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config.yaml")
-var defaultRecursiveRunFile = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "dict", "dir.txt")
 
 func ParserOptions() *Options {
 	options := &Options{}
@@ -113,7 +104,6 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.NoColor, "no-color", "nc", false, "无颜色输出"),
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Silent, "silent", "sl", false, "管道模式"),
-		set.BoolVarP(&options.EnableProgressBar, "progressbar", "pb", false, "启用进度条"),
 		set.BoolVarP(&options.Version, "version", "v", false, "输出版本"),
 	)
 	set.CreateGroup("tool", "工具",
@@ -124,6 +114,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
+		set.BoolVarP(&options.NotInit, "not-init", "ni", false, "跳过初始化"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
@@ -145,10 +136,10 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.Authorization, "authorization", "auth", "", "Auth请求头"),
 		set.StringSliceVar(&options.Header, "header", nil, "自定义请求头,以逗号隔开", goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.HeaderFile, "header-file", "hf", nil, "从文件中加载自定义请求头", goflags.FileStringSliceOptions),
+		set.StringVarP(&options.Body, "body", "b", "", "自定义请求体"),
 	)
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHttp, "rate-http", "rh", 50, "允许每秒钟最大http请求数"),
-		set.DurationVarP(&options.TimeoutTCP, "timeout-tcp", "tt", 10*time.Second, "TCP连接超时"),
 		set.DurationVarP(&options.TimeoutHttp, "timeout-http", "th", 5*time.Second, "Http连接超时"),
 	)
 	set.CreateGroup("update", "更新",
@@ -164,17 +155,7 @@ func ParserOptions() *Options {
 		gologger.Print().Msgf("pathScan version: %s", Version)
 		os.Exit(0)
 	}
-	// create default provider file if it doesn't exist
-	if !fileutil.FileExists(defaultProviderConfigLocation) {
-		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), ucRunner.Provider{}); err != nil {
-			gologger.Warning().Msgf("无法写入提供程序默认文件: %s\n", err)
-		}
-	}
-	if !fileutil.FileExists(defaultMatchConfigLocation) {
-		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultMatchConfigLocation), identification.Options{}); err != nil {
-			gologger.Warning().Msgf("无法写入提供程序默认文件: %s\n", err)
-		}
-	}
+
 	return options
 }
 

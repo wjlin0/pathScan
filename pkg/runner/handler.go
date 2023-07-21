@@ -5,11 +5,14 @@ import (
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
+	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const (
@@ -198,7 +201,6 @@ func (r *Runner) handlerGetTargets() map[string]struct{} {
 			}
 		}
 	}
-
 	// 从结果中删除 SkipUrl 指定的 URL
 	for _, skip := range r.Cfg.Options.SkipUrl {
 		delete(at, skip)
@@ -231,4 +233,126 @@ func (r *Runner) addUrlToSet(u string, urlSet map[string]struct{}) {
 		urlSet[u] = struct{}{}
 	}
 
+}
+
+func InitPathScan() error {
+	if fileutil.FileExists(filepath.Join(defaultPathScanDir, ".check")) {
+		return nil
+	}
+	gologger.Info().Msg("正在进行初始化....")
+	var err error
+	err = InitJs()
+	if err != nil {
+		return err
+	}
+	err = InitConfig()
+	if err != nil {
+		return err
+	}
+	err = InitMatch()
+	if err != nil {
+		return err
+	}
+	err = InitPathDict()
+	if err != nil {
+		return err
+	}
+	_, err = os.Create(filepath.Join(defaultPathScanDir, ".check"))
+	if err != nil {
+		return err
+	}
+	gologger.Info().Msg("初始化完成....")
+	return nil
+}
+
+func InitJs() error {
+	if fileutil.FileExists(filepath.Join(defaultJsDir, ".check")) {
+		return nil
+	}
+	if !fileutil.FolderExists(defaultJsDir) {
+		err := fileutil.CreateFolders(defaultJsDir)
+		if err != nil {
+			return err
+		}
+	}
+	MapDownloadPath := map[string][]string{
+		"template": {
+			filepath.Join(defaultJsDir, "template.html"), "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/template.html",
+		},
+		"antdCss": {
+			filepath.Join(defaultJsDir, "antd.min.css"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.css",
+		},
+		"andJs": {
+			filepath.Join(defaultJsDir, "antd.min.js"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.js",
+		},
+		"vueJs": {
+			filepath.Join(defaultJsDir, "vue.min.js"), "https://unpkg.com/vue@2.7.14/dist/vue.min.js",
+		},
+	}
+	errChan := make(chan error)
+	var wg sync.WaitGroup
+	for _, v := range MapDownloadPath {
+		wg.Add(1)
+		go func(path, httppath string) {
+			defer wg.Done()
+			err := fileutil.DownloadFile(path, httppath)
+			if err != nil {
+				errChan <- err
+			}
+		}(v[0], v[1])
+	}
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+	for err := range errChan {
+		if err != nil {
+			return err
+		}
+	}
+	_, err := os.Create(filepath.Join(defaultJsDir, ".check"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func InitMatch() error {
+	if fileutil.FileExists(filepath.Join(defaultMatchDir, ".check")) {
+		return nil
+	}
+	_, err := UpdateMatch()
+	if err != nil {
+		return err
+	}
+	_, err = os.Create(filepath.Join(defaultMatchDir, ".check"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func InitConfig() error {
+	// create default provider file if it doesn't exist
+	if !fileutil.FileExists(defaultProviderConfigLocation) {
+		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), ucRunner.Provider{}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func InitPathDict() error {
+	if fileutil.FileExists(filepath.Join(defaultPathDict, ".check")) {
+		return nil
+	}
+	err := DownloadDict()
+	if err != nil {
+		return err
+	}
+	_, err = os.Create(filepath.Join(defaultPathDict, ".check"))
+	if err != nil {
+		return err
+	}
+	return nil
 }

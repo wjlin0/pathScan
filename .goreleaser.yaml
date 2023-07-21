@@ -31,7 +31,7 @@ archives:
         format: zip
     files:
       - config/dict.zip
-      - config/match-config.yaml
+      - config/template.html
       - README.md
 checksum:
   algorithm: sha256

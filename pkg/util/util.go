@@ -12,8 +12,10 @@ import (
 	"github.com/projectdiscovery/gologger"
 	http "github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
+	folderutil "github.com/projectdiscovery/utils/folder"
 	"hash"
 	"io"
+	"io/fs"
 	"math/rand"
 	"net"
 	defaultHttp "net/http"
@@ -74,7 +76,7 @@ func Unzip(p string, reader *bytes.Reader) error {
 		return fmt.Errorf("failed to uncompress zip file: %w", err)
 	}
 	for _, f := range zipReader.File {
-		filePath := filepath.Join(p, filepath.Base(f.Name))
+		filePath := filepath.Join(p, f.Name)
 		if f.FileInfo().IsDir() {
 			err := fileutil.CreateFolders(filePath)
 			if err != nil {
@@ -100,6 +102,98 @@ func Unzip(p string, reader *bytes.Reader) error {
 	}
 	return nil
 
+}
+
+// compareAndWriteTemplates compares and returns the stats of a template update operations.
+func Nunzip(p string, zipReader *zip.Reader) error {
+
+	// We use file-checksums that are md5 hashes to store the list of files->hashes
+	// that have been downloaded previously.
+	// If the path isn't found in new update after being read from the previous checksum,
+	// it is removed. This allows us fine-grained control over the download process
+	// as well as solves a long problem with nuclei-template updates.
+	configuredTemplateDirectory := p
+	for _, zipTemplateFile := range zipReader.File {
+		templateAbsolutePath, skipFile, err := calculateTemplateAbsolutePath(zipTemplateFile.Name, configuredTemplateDirectory)
+		if err != nil {
+			return err
+		}
+		if skipFile {
+			continue
+		}
+
+		_, err = writeUnZippedTemplateFile(templateAbsolutePath, zipTemplateFile)
+		if err != nil {
+			return err
+		}
+
+		_, err = filepath.Rel(configuredTemplateDirectory, templateAbsolutePath)
+		if err != nil {
+			return fmt.Errorf("could not calculate relative path for template: %s. %w", templateAbsolutePath, err)
+		}
+
+	}
+	return nil
+}
+func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip.File) (string, error) {
+	templateFile, err := os.OpenFile(templateAbsolutePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", fmt.Errorf("could not create template file: %w", err)
+	}
+
+	zipTemplateFileReader, err := zipTemplateFile.Open()
+	if err != nil {
+		_ = templateFile.Close()
+		return "", fmt.Errorf("could not open archive to extract file: %w", err)
+	}
+
+	md5Hash := md5.New()
+
+	// Save file and also read into hash.Hash for md5
+	if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, md5Hash)); err != nil {
+		_ = templateFile.Close()
+		return "", fmt.Errorf("could not write template file: %w", err)
+	}
+
+	if err := templateFile.Close(); err != nil {
+		return "", fmt.Errorf("could not close file newly created template file: %w", err)
+	}
+
+	checksum := hex.EncodeToString(md5Hash.Sum(nil))
+	return checksum, nil
+}
+func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
+	directory, fileName := filepath.Split(zipFilePath)
+
+	if !strings.EqualFold(fileName, ".new-additions") {
+		if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
+			return "", true, nil
+		}
+	}
+
+	var (
+		directoryPathChunks                 []string
+		relativeDirectoryPathWithoutZipRoot string
+	)
+	if folderutil.IsUnixOS() {
+		directoryPathChunks = strings.Split(directory, string(os.PathSeparator))
+	} else if folderutil.IsWindowsOS() {
+		pathInfo, _ := folderutil.NewPathInfo(directory)
+		directoryPathChunks = pathInfo.Parts
+	}
+	relativeDirectoryPathWithoutZipRoot = filepath.Join(directoryPathChunks[1:]...)
+
+	if strings.HasPrefix(relativeDirectoryPathWithoutZipRoot, ".") {
+		return "", true, nil
+	}
+
+	templateDirectory := filepath.Join(configuredTemplateDirectory, relativeDirectoryPathWithoutZipRoot)
+
+	if err := os.MkdirAll(templateDirectory, 0755); err != nil {
+		return "", false, fmt.Errorf("failed to create template folder: %s. %w", templateDirectory, err)
+	}
+
+	return filepath.Join(templateDirectory, fileName), false, nil
 }
 
 func RandStr(length int) string {
@@ -148,6 +242,29 @@ func GetHash(body []byte, method string) ([]byte, error) {
 	h.Write(body)
 	return []byte(hex.EncodeToString(h.Sum(nil))), nil
 }
+
+func ExtractHost(rawURL string) string {
+	// 找到第一个斜杠或冒号的位置
+	slashIndex := strings.Index(rawURL, "/")
+	colonIndex := strings.Index(rawURL, ":")
+	// 在斜杠和冒号之间取较小的索引值
+	var index int
+	if slashIndex != -1 && colonIndex != -1 {
+		index = slashIndex
+	} else if slashIndex != -1 {
+		index = slashIndex
+	} else if colonIndex != -1 {
+		index = colonIndex
+	} else {
+		// 如果没有斜杠和冒号，则直接返回原始URL
+		return rawURL
+	}
+	// 截取索引位置之前的部分作为主机名
+	host := rawURL[:index]
+
+	return host
+}
+
 func IsSubdomainOrSameDomain(orl string, link string) bool {
 	o, _ := url.Parse(orl)
 	l, err := url.Parse(link)
@@ -161,24 +278,32 @@ func IsSubdomainOrSameDomain(orl string, link string) bool {
 	if net.ParseIP(o.Hostname()) != nil {
 		return true
 	}
+	linkHostname := l.Hostname()
+	oldHostname := o.Hostname()
+	// 没有 协议 的情况，使用正则匹配 提取出 linkHostname
+	if l.Host == "" {
+		linkHostname = ExtractHost(l.Path)
+	}
 
 	topDomain := ""
-	oldDomainLen := len(strings.Split(o.Hostname(), "."))
-	linkDomainLen := len(strings.Split(l.Hostname(), "."))
+	oldDomainLen := len(strings.Split(oldHostname, "."))
+
+	linkDomainLen := len(strings.Split(linkHostname, "."))
+
 	switch oldDomainLen {
 	case 2:
-		topDomain = o.Hostname()
+		topDomain = oldHostname
 	case 1:
 		return false
 	default:
-		topDomain = strings.Join(strings.Split(o.Hostname(), ".")[1:], ".")
+		topDomain = strings.Join(strings.Split(oldHostname, ".")[1:], ".")
 	}
 	// 如果等于顶级域名返回 true
-	if linkDomainLen == len(strings.Split(topDomain, ".")) && l.Hostname() == topDomain {
+	if linkDomainLen == len(strings.Split(topDomain, ".")) && linkHostname == topDomain {
 		return true
 	}
 	// 如果是子域名或者是同级域名返回 true
-	if linkDomainLen >= oldDomainLen && strings.Contains(l.Hostname(), topDomain) {
+	if linkDomainLen >= oldDomainLen && strings.Contains(linkHostname, topDomain) {
 		return true
 	}
 
@@ -186,7 +311,7 @@ func IsSubdomainOrSameDomain(orl string, link string) bool {
 }
 func ExtractURLs(text string) []string {
 	// 正则表达式模式匹配URL
-	pattern := `https?://[^\s<>"]+|www\.[^\s<>"]+`
+	pattern := `https?://[^\s<>"]+|www\.[^\s<>()"]+`
 	re := regexp.MustCompile(pattern)
 	// 查找所有匹配的URL
 	urls_ := re.FindAllString(text, -1)
@@ -208,8 +333,36 @@ func GetTrueUrl(text *url.URL) string {
 
 	// 拼接主机和方案部分
 	trueURL := scheme + "://" + host
-
 	return trueURL
+}
+func ListFilesWithExtension(rootPath, extension string) ([]string, error) {
+	var files []string
+
+	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !d.IsDir() && filepath.Ext(d.Name()) == extension {
+			files = append(files, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
+func JoinPath(target, path string) string {
+	target = strings.TrimRight(target, "/")
+	if !strings.HasPrefix(path, "/") {
+		path = fmt.Sprintf("/%s", path)
+	}
+	return fmt.Sprintf("%s%s", target, path)
 }
 
 func GetRequestPackage(request *http.Request) string {
@@ -352,4 +505,23 @@ func WriteFile(filename string, string2 string) error {
 	}
 
 	return nil
+}
+
+func IsBlackPath(link string) bool {
+	extensions := []string{".js", ".png", ".jpg", ".css", ".ico"}
+
+	u, err := url.Parse(link)
+	if err != nil {
+		return false // 解析错误，链接无效
+	}
+
+	path := u.Path
+
+	for _, ext := range extensions {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+
+	return false
 }

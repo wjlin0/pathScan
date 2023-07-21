@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"crypto/tls"
 	http "github.com/projectdiscovery/retryablehttp-go"
+	"github.com/remeh/sizedwaitgroup"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
+	"golang.org/x/net/context"
 	"io"
 	"math/rand"
 	"net"
@@ -13,7 +16,6 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -41,7 +43,11 @@ func (r *Runner) createRetryableRequest(target, path string) (*http.Request, err
 	if r.Cfg.Options.Method != "" {
 		method = r.Cfg.Options.Method
 	}
-	req, err := http.NewRequest(method, _url, nil)
+	var body []byte
+	if r.Cfg.Options.Body != "" {
+		body = []byte(r.Cfg.Options.Body)
+	}
+	req, err := http.NewRequest(method, _url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +84,11 @@ func (r *Runner) extractRetryableTitle(body []byte) string {
 // processRetryableResponse 解析请求并转换成 result.TargetResult 对象
 func (r *Runner) processRetryableResponse(target, path string, req *http.Request, resp *defaultHttp.Response) (map[string]interface{}, error) {
 
-	host, _ := url.JoinPath(target, path)
-	parse, _ := url.Parse(host)
+	host := util.JoinPath(target, path)
+	parse, err := url.Parse(host)
+	if err != nil {
+		return nil, err
+	}
 	m := make(map[string]interface{})
 	headerBytes, err := r.readRetryableHeader(resp)
 	if err != nil {
@@ -95,12 +104,13 @@ func (r *Runner) processRetryableResponse(target, path string, req *http.Request
 	server := resp.Header.Get("Server")
 	target = util.GetTrueUrl(parse)
 	re := &result.TargetResult{
-		Target:  strings.TrimRight(target, parse.Path),
-		Path:    parse.Path,
-		Title:   title,
-		Status:  resp.StatusCode,
-		BodyLen: len(bodyBytes),
-		Server:  server,
+		TimeStamp: time.Now(),
+		Target:    target,
+		Path:      parse.Path,
+		Title:     title,
+		Status:    resp.StatusCode,
+		BodyLen:   len(bodyBytes),
+		Server:    server,
 	}
 	m["re"] = re
 	// 跳过
@@ -141,6 +151,7 @@ func (r *Runner) checkSkip(re *result.TargetResult, head []byte, body []byte) bo
 	}
 
 	if option.SkipBodyLen == re.BodyLen {
+
 		return true
 	}
 
@@ -179,18 +190,50 @@ func newClient(options *Options, errUseLastResponse bool) *defaultHttp.Client {
 		Proxy:           util.GetProxyFunc(options.Proxy, options.ProxyAuth),
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10},
 	}
-	if options.TimeoutTCP > 0 {
+	if options.TimeoutHttp > 0 {
 		dial := &net.Dialer{
-			Timeout:   options.TimeoutTCP,
+			Timeout:   options.TimeoutHttp,
 			KeepAlive: 30 * time.Second,
 		}
 		transport.DialContext = dial.DialContext
 	}
 
 	client := &defaultHttp.Client{
-		Timeout:       options.TimeoutTCP,
+		Timeout:       options.TimeoutHttp,
 		CheckRedirect: util.GetCheckRedirectFunc(errUseLastResponse),
 		Transport:     transport,
 	}
 	return client
+}
+func (r *Runner) GoOtherLink(outputOtherWriter *runner.OutputWriter, ctx context.Context, wg *sizedwaitgroup.SizedWaitGroup) {
+	defer func() {
+		wg.Done()
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case target := <-r.otherLinkChan:
+			//fmt.Println(target)
+			parse, err := url.Parse(target)
+			if err != nil {
+				continue
+			}
+			target = util.GetTrueUrl(parse)
+			path := parse.Path
+			r.wg.Add()
+			go r.GoHandler(target, path, outputOtherWriter, ctx, nil, nil, r.wg)
+		}
+	}
+	//for target := range r.otherLinkChan {
+	//	parse, err := url.Parse(target)
+	//	if err != nil {
+	//		continue
+	//	}
+	//	target = util.GetTrueUrl(parse)
+	//	path := parse.Path
+	//	r.wg.Add()
+	//	go r.GoHandler(target, path, outputOtherWriter, total, ctx, nil, nil, r.wg)
+	//}
+
 }
