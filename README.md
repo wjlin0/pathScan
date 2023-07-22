@@ -1,4 +1,4 @@
-<h4 align="center">pathScan 是一个用Go编写的路径扫描工具，它允许您快速可靠的扫描URL地址。这是一个非常简单的工具。</h4>
+<h4 align="center">pathScan 是一个用Go编写的路径扫描、信息收集、指纹探索工具，它允许您快速可靠的扫描URL地址。这是一个非常简单的工具。</h4>
 
 <p align="center">
 <img src="https://img.shields.io/github/go-mod/go-version/wjlin0/pathScan?filename=go.mod" alt="">
@@ -36,25 +36,6 @@ Flags:
   -tr, -target-remote string  从远程加载目标
   -resume string              使用resume.cfg恢复扫描
   -mf, -match-file string     指纹文件
-
-递归:
-  -r, -recursive               递归扫描
-  -rt, -recursive-time int     递归扫描深度 (default 3)
-  -rf, -recursive-file string  递归扫描目录 (default "/root/.config/pathScan/dict/dir.txt")
-
-跳过:
-  -su, -skip-url string[]   跳过的目标(以逗号分割)
-  -sc, -skip-code string[]  跳过状态码
-  -sh, -skip-hash string    跳过指定hash
-  -sbl, -skip-body-len int  跳过body固定长度 (default -1)
-
-扫描字典:
-  -ps, -path string[]       路径(以逗号分割)
-  -pf, -path-file string[]  从文件中,读取路径
-  -pr, -path-remote string  从远程加载字典
-..................
-..................
-..................
 ```
 # 安装pathScan
 
