@@ -33,7 +33,7 @@ func (r *Runner) handlerHeader() map[string]interface{} {
 	headerMap := make(map[string]interface{})
 
 	if len(r.Cfg.Options.UserAgent) > 0 {
-		headerMap[HeaderKeyUserAgent] = r.Cfg.Options.UserAgent
+		headerMap[HeaderKeyUserAgent] = []string(r.Cfg.Options.UserAgent)
 	}
 	if r.Cfg.Options.Cookie != "" {
 		headerMap[HeaderKeyCookie] = r.Cfg.Options.Cookie
