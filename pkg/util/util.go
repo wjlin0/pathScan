@@ -274,9 +274,9 @@ func IsSubdomainOrSameDomain(orl string, link string) bool {
 	if orl == link {
 		return false
 	}
-	// 如果 old 是ip,直接返回 true
+	// 如果 old 是ip,直接返回 false
 	if net.ParseIP(o.Hostname()) != nil {
-		return true
+		return false
 	}
 	linkHostname := l.Hostname()
 	oldHostname := o.Hostname()
@@ -311,7 +311,7 @@ func IsSubdomainOrSameDomain(orl string, link string) bool {
 }
 func ExtractURLs(text string) []string {
 	// 正则表达式模式匹配URL
-	pattern := `https?://[^\s<>"]+|www\.[^\s<>()"]+`
+	pattern := `https?://[^\s<>"]+|www\.[^\s<>()'"]+`
 	re := regexp.MustCompile(pattern)
 	// 查找所有匹配的URL
 	urls_ := re.FindAllString(text, -1)
