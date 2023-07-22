@@ -109,6 +109,9 @@ func HtmlOutput(m map[string]interface{}, path string) {
 }
 
 func (r *Runner) OutputHandler(target, path string, mapResult map[string]interface{}, outputWriter *runner.OutputWriter) {
+	if mapResult["re"] == nil {
+		return
+	}
 	targetResult := mapResult["re"].(*result.TargetResult)
 	r.Cfg.Results.AddPathByResult(target, path)
 	r.handlerOutputTarget(targetResult)

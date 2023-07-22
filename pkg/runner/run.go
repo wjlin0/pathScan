@@ -393,6 +393,7 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 		gologger.Warning().Msgf("发生错误: %s", err)
 		return
 	}
+
 	check := mapResult["check"].(bool)
 	targetResult := mapResult["re"].(*result.TargetResult)
 	if r.Cfg.Options.ResultBack != nil {
@@ -411,7 +412,6 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 		if check {
 			return
 		}
-		link := mapResult["links"].([]string)
 
 		// 这里得加锁
 		if r.Cfg.Options.RecursiveRun {
@@ -427,7 +427,8 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 		r.OutputHandler(target, path, mapResult, outputWriter)
 
 		// 处理link 加锁
-		if len(link) > 0 && !r.Cfg.Options.FindOtherLink && !r.Cfg.Options.RecursiveRun {
+		if !r.Cfg.Options.RecursiveRun && !r.Cfg.Options.FindOtherLink && mapResult["links"] != nil {
+			link := mapResult["links"].([]string)
 			go func() {
 				for _, l := range link {
 					select {
