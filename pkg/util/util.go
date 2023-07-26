@@ -165,7 +165,7 @@ func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip
 func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory string) (string, bool, error) {
 	directory, fileName := filepath.Split(zipFilePath)
 
-	if !strings.EqualFold(fileName, ".new-additions") {
+	if !strings.EqualFold(fileName, ".version") {
 		if strings.TrimSpace(fileName) == "" || strings.HasPrefix(fileName, ".") || strings.EqualFold(fileName, "README.md") {
 			return "", true, nil
 		}
@@ -311,7 +311,7 @@ func IsSubdomainOrSameDomain(orl string, link string) bool {
 }
 func ExtractURLs(text string) []string {
 	// 正则表达式模式匹配URL
-	pattern := `https?://[^\s<>"]+|www\.[^\s<>()'"]+`
+	pattern := `https?://[^\s<>()'"]+|www\.[^\s<>()'"]+`
 	re := regexp.MustCompile(pattern)
 	// 查找所有匹配的URL
 	urls_ := re.FindAllString(text, -1)
@@ -508,7 +508,7 @@ func WriteFile(filename string, string2 string) error {
 }
 
 func IsBlackPath(link string) bool {
-	extensions := []string{".js", ".png", ".jpg", ".css", ".ico"}
+	extensions := []string{".js", ".png", ".jpg", ".jpeg", ".gif", ".css", ".ico", ".svg", ".woff", ".ttf", ".eot", ".mp3", ".wav", ".mp4", ".avi"}
 
 	u, err := url.Parse(link)
 	if err != nil {
@@ -523,5 +523,49 @@ func IsBlackPath(link string) bool {
 		}
 	}
 
+	return false
+}
+
+func AddStrToMap(str string, m map[string]struct{}, protocol string) {
+	switch protocol {
+	case "url":
+		str = strings.TrimRight(str, "/")
+		if !strings.HasPrefix(str, "http") {
+			for _, str = range []string{fmt.Sprintf("http://%s", str), fmt.Sprintf("https://%s", str)} {
+				m[str] = struct{}{}
+			}
+		} else {
+			m[str] = struct{}{}
+		}
+
+	case "path":
+		if len(str) == 0 || str[0] != '/' {
+			str = fmt.Sprintf("/%s", str)
+		}
+		m[str] = struct{}{}
+	default:
+		m[str] = struct{}{}
+	}
+
+}
+func FindStringInFile(filepath string, target string) bool {
+	// 打开文件
+	file, err := os.Open(filepath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	// 创建一个Scanner来读取文件内容
+	scanner := bufio.NewScanner(file)
+
+	// 遍历每一行，查找是否存在目标字符串
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), target) {
+			return true
+		}
+	}
+
+	// 如果未找到目标字符串，则返回false
 	return false
 }

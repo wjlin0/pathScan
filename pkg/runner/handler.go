@@ -2,12 +2,12 @@ package runner
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/util"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -56,45 +56,42 @@ func (r *Runner) handlerHeader() map[string]interface{} {
 	return headerMap
 }
 
-func (r *Runner) handlerGetTargetPath() map[string]struct{} {
+func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 	at := make(map[string]struct{})
-
+	protocol := "path"
 	// 处理 Path 和 PathFile
-	addPathsToSet(r.Cfg.Options.Path, at)
-	addPathsToSet(r.Cfg.Options.PathFile, at)
+	for _, path := range append(r.Cfg.Options.Path, r.Cfg.Options.PathFile...) {
+		util.AddStrToMap(path, at, protocol)
+	}
 	// 处理 PathRemote
 	if r.Cfg.Options.PathRemote != "" {
 		resp, err := r.client.Get(r.Cfg.Options.PathRemote)
 		if err != nil {
-			gologger.Warning().Msgf("从远程加载字典失败: %s", err)
-		} else {
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					gologger.Warning().Msgf("关闭响应体失败: %s", err)
-				}
-			}(resp.Body)
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				gologger.Warning().Msgf("读取响应体失败：%s", err)
-			} else {
-				for _, p := range strings.Split(string(body), "\n") {
-					p = strings.TrimSpace(p)
-					if p == "" {
-						continue
-					}
-					at[p] = struct{}{}
-				}
-				gologger.Debug().Msg("从远程加载字典完成")
+			return nil, fmt.Errorf("从远程加载字典失败: %s", err)
+		}
+		defer resp.Body.Close()
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			path := strings.TrimSpace(scanner.Text())
+			if path != "" {
+				util.AddStrToMap(path, at, protocol)
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("读取响应体失败：%s", err)
+		}
+		gologger.Debug().Msg("从远程加载 URL 列表完成")
+
 	}
 
 	// 如果未指定路径，则处理默认文件名
 	if len(at) == 0 && len(r.targets) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
-		u := r.handlerGetFilePath("main.txt")
-		if u != nil {
-			addPathsToSet(u, at)
+		out, err := fileutil.ReadFile(filepath.Join(defaultPathDict, "main.txt"))
+		if err != nil {
+			return nil, err
+		}
+		for path := range out {
+			util.AddStrToMap(path, at, protocol)
 		}
 	}
 	// 如果没有添加任何路径，则将根目录添加到结果中
@@ -102,23 +99,7 @@ func (r *Runner) handlerGetTargetPath() map[string]struct{} {
 		at["/"] = struct{}{}
 	}
 
-	return at
-}
-
-// 辅助函数：将路径列表添加到集合中
-func addPathsToSet(pathList []string, pathSet map[string]struct{}) {
-	for _, p := range pathList {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		// 统一 path 前有 /
-		if !strings.HasPrefix(p, "/") {
-			p = "/" + p
-		}
-		pathSet[p] = struct{}{}
-
-	}
+	return at, nil
 }
 
 func (r *Runner) handlerGetFilePath(filename string) []string {
@@ -135,49 +116,44 @@ func (r *Runner) handlerGetFilePath(filename string) []string {
 	return str
 }
 
-func (r *Runner) handlerGetTargets() map[string]struct{} {
+func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 	at := make(map[string]struct{})
+	protocol := "url"
 	// 处理 Url 和 UrlFile
-	r.addUrlsToSet(r.Cfg.Options.Url, at)
-	r.addUrlsToSet(r.Cfg.Options.UrlFile, at)
+	for _, url := range append(r.Cfg.Options.Url, r.Cfg.Options.UrlFile...) {
+		util.AddStrToMap(url, at, protocol)
+	}
 
 	// 处理 UrlRemote
 	if r.Cfg.Options.UrlRemote != "" {
 		resp, err := http.Get(r.Cfg.Options.UrlRemote)
 		if err != nil {
-			gologger.Warning().Msgf("从远程加载 URL 列表失败：%s", err)
-		} else {
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					gologger.Warning().Msgf("关闭响应体失败: %s", err)
-				}
-			}(resp.Body)
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				gologger.Warning().Msgf("读取响应体失败：%s", err)
-			} else {
-				for _, u := range strings.Split(string(body), "\n") {
-					u = strings.TrimSpace(u)
-					if u == "" {
-						continue
-					}
-					r.addUrlToSet(u, at)
-				}
-				gologger.Debug().Msg("从远程加载 URL 列表完成")
+			return nil, fmt.Errorf("从远程加载 URL 列表失败：%s", err)
+		}
+		defer resp.Body.Close()
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			url := strings.TrimSpace(scanner.Text())
+			if url != "" {
+				util.AddStrToMap(url, at, protocol)
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("读取响应体失败：%s", err)
+		}
+		gologger.Info().Msg("从远程加载 URL列表完成")
 	}
 
 	// 处理从标准输入读取的 URL
-	if r.Cfg.Options.Silent && fileutil.HasStdin() {
+	if r.Cfg.Options.UrlChannel && fileutil.HasStdin() {
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
 			u := strings.TrimSpace(s.Text())
-			if u == "" {
-				continue
+			if u != "" {
+				util.AddStrToMap(u, at, protocol)
 			}
-			r.addUrlToSet(u, at)
+
 		}
 		os.Stdin.Close()
 	}
@@ -190,14 +166,12 @@ func (r *Runner) handlerGetTargets() map[string]struct{} {
 		gologger.Info().Msgf("正在运行: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
 		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
 		if err != nil {
-			gologger.Error().Label("WRN").Msg(err.Error())
-		} else {
-			for c := range ch {
-				c = strings.TrimSpace(c)
-				if c == "" {
-					continue
-				}
-				r.addUrlToSet(c, at)
+			return nil, err
+		}
+		for c := range ch {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				util.AddStrToMap(c, at, protocol)
 			}
 		}
 	}
@@ -205,34 +179,7 @@ func (r *Runner) handlerGetTargets() map[string]struct{} {
 	for _, skip := range r.Cfg.Options.SkipUrl {
 		delete(at, skip)
 	}
-
-	return at
-}
-
-// 辅助函数：将 URL 列表添加到集合中
-func (r *Runner) addUrlsToSet(urlList []string, urlSet map[string]struct{}) {
-	for _, u := range urlList {
-		u = strings.TrimSpace(u)
-		if u != "" {
-			r.addUrlToSet(u, urlSet)
-		}
-	}
-}
-func (r *Runner) addUrlToSet(u string, urlSet map[string]struct{}) {
-	u = strings.TrimSpace(u)
-	if !((strings.HasPrefix(u, "http") && !strings.HasSuffix(u, "https")) || (strings.HasPrefix(u, "https") && !strings.HasSuffix(u, "http"))) {
-		u1 := "http://" + u
-		u2 := "https://" + u
-		r.addUrlToSet(u1, urlSet)
-		r.addUrlToSet(u2, urlSet)
-	} else {
-		// 统一后缀无 /
-		if strings.HasSuffix(u, "/") {
-			u = strings.TrimRight(u, "/")
-		}
-		urlSet[u] = struct{}{}
-	}
-
+	return at, nil
 }
 
 func InitPathScan() error {

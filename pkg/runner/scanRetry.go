@@ -125,7 +125,7 @@ func (r *Runner) processRetryableResponse(target, path string, req *http.Request
 	}
 
 	tech := r.ParseTechnology(byte_)
-	if !r.Cfg.Options.FindOtherLink && !r.outputOtherToFile {
+	if r.Cfg.Options.FindOtherLink || r.Cfg.Options.FindOtherDomain {
 		links := r.ParseOtherUrl(host, byte_)
 		m["links"] = links
 	}
@@ -214,7 +214,6 @@ func (r *Runner) GoOtherLink(outputOtherWriter *runner.OutputWriter, ctx context
 		case <-ctx.Done():
 			return
 		case target := <-r.otherLinkChan:
-			//fmt.Println(target)
 			parse, err := url.Parse(target)
 			if err != nil {
 				continue
@@ -225,15 +224,5 @@ func (r *Runner) GoOtherLink(outputOtherWriter *runner.OutputWriter, ctx context
 			go r.GoHandler(target, path, outputOtherWriter, ctx, nil, nil, r.wg)
 		}
 	}
-	//for target := range r.otherLinkChan {
-	//	parse, err := url.Parse(target)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	target = util.GetTrueUrl(parse)
-	//	path := parse.Path
-	//	r.wg.Add()
-	//	go r.GoHandler(target, path, outputOtherWriter, total, ctx, nil, nil, r.wg)
-	//}
 
 }

@@ -1,10 +1,10 @@
 package runner
 
 import (
-	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"github.com/wjlin0/pathScan/pkg/util"
+	"net/url"
 	"strings"
 )
 
@@ -50,19 +50,35 @@ func (r *Runner) ParseOtherUrl(oldUrl string, data map[string]interface{}) []str
 		if link == "" {
 			continue
 		}
-		if !util.IsSubdomainOrSameDomain(oldUrl, link) {
-			gologger.Warning().Msgf("Link '%s' does not belong to the subdomain or the same domain\n", link)
-		} else if util.IsBlackPath(link) {
-
+		var links []string
+		if !strings.HasPrefix(link, "http") {
+			links = append(links, "http://"+link)
+			links = append(links, "https://"+link)
 		} else {
-			if !strings.HasPrefix(link, "http") && !util.IsBlackPath("https://"+link) {
-				urls = append(urls, "http://"+link)
-				urls = append(urls, "https://", link)
-			} else {
+			links = append(links, link)
+		}
+		for _, link := range links {
+			if _, err := url.Parse(link); err != nil {
+				continue
+			}
+			switch {
+			case r.Cfg.Options.FindOtherDomain:
+				parse, _ := url.Parse(link)
+				urls = append(urls, util.GetTrueUrl(parse))
+			case r.Cfg.Options.FindOtherLink:
+				if !util.IsSubdomainOrSameDomain(oldUrl, link) {
+					continue
+				}
+
+				if util.IsBlackPath(link) {
+					continue
+				}
 				urls = append(urls, link)
 			}
 		}
+
 	}
+
 	return urls
 }
 

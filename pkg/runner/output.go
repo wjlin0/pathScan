@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
@@ -10,7 +9,6 @@ import (
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -76,19 +74,39 @@ func LivingTargetRow(path *result.TargetResult) (string, error) {
 	return strings.TrimSpace(buffer.String()), nil
 }
 
-func InitHtmlOutput(path string) {
-	home, _ := os.UserHomeDir()
-	jsPath := filepath.Join(home, ".config", "pathScan", "js")
-	template, _ := util.ReadFile(filepath.Join(jsPath, "template.html"))
-	antdMinCss, _ := util.ReadFile(filepath.Join(jsPath, "antd.min.css"))
-	vueMinJs, _ := util.ReadFile(filepath.Join(jsPath, "vue.min.js"))
-	antdMinJs, _ := util.ReadFile(filepath.Join(jsPath, "antd.min.js"))
+func InitHtmlOutput(path string) error {
+	jsPath := defaultJsDir
+	template, err := util.ReadFile(filepath.Join(jsPath, "template.html"))
+	if err != nil {
+		return err
+	}
+
+	antdMinCss, err := util.ReadFile(filepath.Join(jsPath, "antd.min.css"))
+	if err != nil {
+		return err
+	}
+
+	vueMinJs, err := util.ReadFile(filepath.Join(jsPath, "vue.min.js"))
+	if err != nil {
+		return err
+	}
+
+	antdMinJs, err := util.ReadFile(filepath.Join(jsPath, "antd.min.js"))
+	if err != nil {
+		return err
+	}
+
 	template = strings.Replace(template, "<!-- antd.min.css -->", fmt.Sprintf("<style>%s</style>", antdMinCss), -1)
 	template = strings.Replace(template, "<!-- vue.min.js -->", fmt.Sprintf("<script>%s</script>", vueMinJs), -1)
 	template = strings.Replace(template, "<!-- antd.min.js -->", fmt.Sprintf("<script>%s</script>", antdMinJs), -1)
-	_ = util.WriteFile(path, template)
-}
 
+	err = util.WriteFile(path, template)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 func HtmlOutput(m map[string]interface{}, path string) {
 	outMap := make(map[string]interface{})
 	outMap["request"] = m["request"]
@@ -129,26 +147,4 @@ func (r *Runner) OutputHandler(target, path string, mapResult map[string]interfa
 		outputStr = targetResult.ToString()
 	}
 	outputWriter.WriteString(outputStr)
-}
-func checkInitHtml(filepath string) bool {
-	// 打开文件
-	file, err := os.Open(filepath)
-	if err != nil {
-		return false
-	}
-	defer file.Close()
-
-	// 创建一个Scanner来读取文件内容
-	scanner := bufio.NewScanner(file)
-
-	// 遍历每一行，查找是否存在目标字符串
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "<title>HTML格式报告</title>") {
-			return true
-		}
-	}
-
-	// 如果未找到目标字符串，则返回false
-	return false
 }

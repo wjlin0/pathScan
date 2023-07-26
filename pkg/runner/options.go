@@ -17,6 +17,7 @@ type Options struct {
 	Url                   goflags.StringSlice               `json:"url"`
 	UrlFile               goflags.StringSlice               `json:"url_file"`
 	UrlRemote             string                            `json:"url_remote"`
+	UrlChannel            bool                              `json:"url_channel"`
 	Path                  goflags.StringSlice               `json:"path"`
 	PathFile              goflags.StringSlice               `json:"path_file"`
 	PathRemote            string                            `json:"path_remote"`
@@ -67,6 +68,7 @@ type Options struct {
 	ResultBack            func(result *result.TargetResult) `json:"-"`
 	NotInit               bool                              `json:"not_init"`
 	Body                  string                            `json:"body"`
+	FindOtherDomain       bool                              `json:"find_other_domain"`
 }
 
 func ParserOptions() *Options {
@@ -77,6 +79,7 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.Url, "target", "t", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.UrlFile, "target-file", "tf", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
 		set.StringVarP(&options.UrlRemote, "target-remote", "tr", "", "从远程加载目标"),
+		set.BoolVarP(&options.UrlChannel, "target-channel", "tc", false, "从通道中加载目标"),
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
 		set.StringVarP(&options.MatchPath, "match-file", "mf", "", "指纹文件"),
 	)
@@ -118,7 +121,8 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
-		set.BoolVarP(&options.FindOtherLink, "scan-other", "so", false, "不允许从响应中中发现其他URL"),
+		set.BoolVarP(&options.FindOtherLink, "scan-other", "so", false, "从响应中中发现其他URL"),
+		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
 	)
 	set.CreateGroup("uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),

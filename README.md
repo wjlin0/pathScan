@@ -3,7 +3,7 @@
 <p align="center">
 <img src="https://img.shields.io/github/go-mod/go-version/wjlin0/pathScan?filename=go.mod" alt="">
 <a href="https://github.com/wjlin0/pathScan/releases/"><img src="https://img.shields.io/github/release/wjlin0/pathScan" alt=""></a> 
-<a href="https://hub.docker.com/repository/docker/wjlin0/path_scan/general" ><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/wjlin0/path_scan"></a>
+<a href="https://github.com/wjlin0/pathScan" ><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/wjlin0/pathScan"></a>
 <a href="https://github.com/wjlin0/pathScan/releases"><img src="https://img.shields.io/github/downloads/wjlin0/pathScan/total" alt=""></a> 
 <a href="https://github.com/wjlin0/pathScan"><img src="https://img.shields.io/github/last-commit/wjlin0/PathScan" alt=""></a> 
 <a href="https://wjlin0.com/"><img src="https://img.shields.io/badge/wjlin0-blog-green" alt=""></a>
@@ -11,7 +11,7 @@
 
 # 特征
 
-- 快速发现路径
+- 快速发现路径、快速从网络空间中收集信息、指纹识别
 - 丰富的内置字典,自动下载字典,可远程加载目标或远程加载字典
 - 可持续递归扫描,恢复上次扫描进度
 - 从网络空间测绘中发现目标,从持续的扫描中发现目标
@@ -78,9 +78,7 @@ goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
 ```text
 pathScan -t https://wjlin0.com
 # 从管道中加载
-cat url.txt | pathScan -silent
-# 使用搜索引擎
-pathScan -uc -ue "fofa" -uq "domain=baidu.com"
+cat url.txt | pathScan -tc
 # 恢复上次扫描
 pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 # 输出
@@ -90,8 +88,14 @@ pathScan -t https://wjlin0.com -header User-Agent:pathScan/1.8,Cookie:a=1  -head
 # 跳过指定hash,指定长度
 pathScan -t https://wjlin0.com -sh 291583051dfea8f6e512e25121cb09209b8e57402f0d32dcd8d1b611f16a3b20 -sbl 114763
 ```
+# 收集某个资产
+```sh
+pathScan -ue fofa -uc -uq "baidu.com" -sd
+```
 # 自定义指纹
 
+采用配置文件的方式，可自定义加载指纹识别库 -> [pathScan-match](https://github.com/wjlin0/pathScan-match) 
+如果您掌握某些系统的指纹识别方法 欢迎至指纹识别库中提交 pull
 ```yaml
 version: "v1.0.0"
 rules:
@@ -185,7 +189,11 @@ func main() {
 pathScan 支持默认配置文件位于下面两个路径，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 - $HOME/.config/pathScan/config.yaml
 - $HOME/.config/pathScan/provider-config.yaml
-- $HOME/.config/pathScan/match-config.yaml
+
+# 警告
+> ~~由于这个项目是自己一个人开发，在发布前没有做什么测试，都是在后面自己使用的时候发现问题才回去修复bug，所以大家尽量看到有新版本，即使更新~~
+> 
+> ~~我向下适配也做得不好，可能一些在线校对的（比如 字典、html模板等下载），不会去适配低版本，为了大家的体验还是尽量选择更新~~
 
 # 感谢
 

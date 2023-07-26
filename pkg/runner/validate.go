@@ -31,5 +31,8 @@ func (o *Options) Validate() error {
 	if o.Csv && o.Html {
 		return errors.New("不能同时指定 csv 格式和 html 格式")
 	}
+	if o.FindOtherDomain && o.FindOtherLink {
+		return errors.New("不能同时指定 so 格式和 sd 格式")
+	}
 	return nil
 }

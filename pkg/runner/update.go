@@ -2,11 +2,15 @@ package runner
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/google/go-github/github"
+	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	retryableHttp "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
 	githubUpdateStore "github.com/tj/go-update/stores/github"
@@ -16,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -51,7 +56,6 @@ func downloadReleaseAndUnzip(ctx context.Context, path, downloadURL string) erro
 
 	return nil
 }
-
 func getLatestReleaseFromGithub() (*github.RepositoryRelease, error) {
 	var (
 		gitHubClient *github.Client
@@ -88,7 +92,6 @@ func getGHClientIncognito() *github.Client {
 	var tc *http.Client
 	return github.NewClient(tc)
 }
-
 func UpdateMatch() (bool, error) {
 	fromGithub, err := getLatestReleaseFromGithub()
 	if err != nil {
@@ -141,4 +144,114 @@ func UpdateVersion() (bool, error) {
 	}
 	gologger.Info().Msgf("Successfully updated to pathScan %s\n", latest.Version)
 	return true, nil
+}
+func DownloadDict() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+
+		return fmt.Errorf("打开主目录时出错：%s\n", err.Error())
+	}
+	path := filepath.Join(home, ".config", "pathScan", "dict")
+	if fileutil.FileExists(filepath.Join(path, ".check")) {
+		gologger.Info().Msgf("远程字典下载成功->%s", path)
+		return nil
+	}
+	gologger.Info().Msg("本地不存在字典,正在下载...")
+	err = fileutil.CreateFolder(path)
+	if err != nil {
+
+		return fmt.Errorf("打开 %s 出错:%s\n", path, err.Error())
+	}
+
+	dictUrl := "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/dict.zip"
+
+	client := retryableHttp.DefaultClient()
+	resp, err := client.Get(dictUrl)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var buffer bytes.Buffer
+	_, err = io.Copy(&buffer, resp.Body)
+	if err != nil {
+
+		return fmt.Errorf("下载 %s 文件出错: %s\n", dictUrl, err.Error())
+	}
+	reader := bytes.NewReader(buffer.Bytes())
+	err = util.Unzip(path, reader)
+	if err != nil {
+		return fmt.Errorf("解压出错: %s\n", err.Error())
+	}
+	gologger.Info().Msgf("远程字典下载成功->%s", path)
+	return nil
+}
+func CheckVersion() error {
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "pathScan.exe"
+	default:
+		command = "pathScan"
+	}
+	m := &update.Manager{
+		Command: command,
+		Store: &githubUpdateStore.Store{
+			Owner:   "wjlin0",
+			Repo:    "pathScan",
+			Version: Version,
+		},
+	}
+	releases, err := m.LatestReleases()
+	if err != nil {
+		return err
+	}
+	if len(releases) != 0 {
+		gologger.Error().Label("OUT").Msgf("你的版本( v%s )较低. 最新为 %s", Version, releases[0].Version)
+	} else {
+		gologger.Info().Msgf("Current pathScan version: %s %s", Version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+
+	}
+	return nil
+
+}
+func CheckMatchVersion() error {
+	var command string
+	switch runtime.GOOS {
+	case "windows":
+		command = "pathScan.exe"
+	default:
+		command = "pathScan"
+	}
+	open, err := os.Open(filepath.Join(defaultMatchDir, ".version"))
+	if err != nil {
+		return err
+	}
+	defer open.Close()
+	scanner := bufio.NewScanner(open)
+	var version string
+	if scanner.Scan() {
+		// 获取第一行的内容
+		version = scanner.Text()
+	} else {
+		return nil
+	}
+	m := &update.Manager{
+		Command: command,
+		Store: &githubUpdateStore.Store{
+			Owner:   "wjlin0",
+			Repo:    "pathScan-match",
+			Version: version,
+		},
+	}
+	releases, err := m.LatestReleases()
+	if err != nil {
+		return err
+	}
+	if len(releases) != 0 {
+		gologger.Error().Label("OUT").Msgf("pathScan-match 版本( %s )较低. 最新为 %s", version, releases[0].Version)
+	} else {
+		gologger.Info().Msgf("Current pathScan-match version: %s %s", version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+	}
+	return nil
+
 }

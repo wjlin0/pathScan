@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/logrusorgru/aurora"
-	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
@@ -20,28 +19,23 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
 
 type Runner struct {
-	wg                *sizedwaitgroup.SizedWaitGroup
-	Cfg               *ResumeCfg
-	client            *http.Client
-	limiter           *ratelimit.Limiter
-	targetsBack       map[string][]string
-	dirBack           map[string]struct{}
-	targets           map[string]struct{}
-	paths             map[string]struct{}
-	headers           map[string]interface{}
-	skipCode          map[string]struct{}
-	stats             *clistats.Statistics
-	regOptions        []*identification.Options
-	retryable         *retryablehttp.Client
-	outputOtherToFile bool // 发现其他链接时不输出other_link 到 outputOther 指定的文件中 增加可读性
-	otherLinkChan     chan string
-	pathContext       *context.Context
+	wg            *sizedwaitgroup.SizedWaitGroup
+	Cfg           *ResumeCfg
+	client        *http.Client
+	limiter       *ratelimit.Limiter
+	dirBack       map[string]struct{}
+	targets       map[string]struct{}
+	paths         map[string]struct{}
+	headers       map[string]interface{}
+	skipCode      map[string]struct{}
+	regOptions    []*identification.Options
+	retryable     *retryablehttp.Client
+	otherLinkChan chan string
 }
 
 func NewRunner(options *Options) (*Runner, error) {
@@ -82,7 +76,6 @@ func NewRunner(options *Options) (*Runner, error) {
 
 	// 配置输出方式
 	run.Cfg.Options.configureOutput()
-
 	// 验证选项是否合法
 	err = run.Cfg.Options.Validate()
 	if err != nil {
@@ -98,13 +91,16 @@ func NewRunner(options *Options) (*Runner, error) {
 	}
 
 	// 检查版本更新
-	if !run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.Silent {
+	if (!run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.UpdateMatchVersion) && !run.Cfg.Options.Silent {
 		err := CheckVersion()
 		if err != nil {
 			gologger.Error().Msg(err.Error())
 		}
+		err = CheckMatchVersion()
+		if err != nil {
+			gologger.Error().Msg(err.Error())
+		}
 	}
-
 	// 下载字典或更新版本
 	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
 		if run.Cfg.Options.UpdatePathDictVersion {
@@ -157,11 +153,13 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
 	run.wg = new(sizedwaitgroup.SizedWaitGroup)
 	*run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
-	run.targets = run.handlerGetTargets()
-	run.paths = run.handlerGetTargetPath()
+	run.targets, err = run.handlerGetTargets()
+	run.paths, err = run.handlerGetTargetPath()
+	if err != nil {
+		return nil, err
+	}
 	run.headers = run.handlerHeader()
 	if run.Cfg.Options.RecursiveRun {
-		run.targetsBack = make(map[string][]string)
 		// 读文件
 		run.dirBack = make(map[string]struct{})
 		c, err := fileutil.ReadFile(run.Cfg.Options.RecursiveRunFile)
@@ -186,10 +184,8 @@ func NewRunner(options *Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// 创建通道
 	run.otherLinkChan = make(chan string)
-
 	// 返回 Runner 实例和无误差
 	return run, nil
 }
@@ -214,39 +210,31 @@ func (r *Runner) Run() error {
 	outputWriter, _ := ucRunner.NewOutputWriter()
 	if r.Cfg.Options.Output != "" && !r.Cfg.Options.Html {
 		outputFolder := filepath.Dir(r.Cfg.Options.Output)
-		if fileutil.FolderExists(outputFolder) {
-			mkdirErr := os.MkdirAll(outputFolder, 0700)
-			if mkdirErr != nil {
-				return mkdirErr
-			}
+		if err = os.MkdirAll(outputFolder, 0700); err != nil {
+			return err
 		}
 		f, err = util.AppendCreate(r.Cfg.Options.Output)
 		if err != nil {
 			return err
 		}
-		defer func(f *os.File) {
-			_ = f.Close()
-		}(f)
+		defer f.Close()
 		outputWriter.AddWriters(f)
 	}
 	if r.Cfg.Options.Csv {
 		path, err := LivingTargetHeader(&result.TargetResult{})
-		if path != "" && err == nil {
-			if !r.Cfg.Options.Silent {
-				fmt.Println(path)
-			}
-			outputWriter.WriteString(path)
-
+		if err != nil {
+			return err
 		}
+		if !r.Cfg.Options.Silent {
+			fmt.Println(path)
+		}
+		outputWriter.WriteString(path)
 	}
 	outputOtherWriter, _ := ucRunner.NewOutputWriter()
 	if r.Cfg.Options.OutputOtherLik != "" {
 		outputFolder := filepath.Dir(r.Cfg.Options.OutputOtherLik)
-		if fileutil.FolderExists(outputFolder) {
-			mkdirErr := os.MkdirAll(outputFolder, 0700)
-			if mkdirErr != nil {
-				return mkdirErr
-			}
+		if mkdirErr := os.MkdirAll(outputFolder, 0700); mkdirErr != nil {
+			return mkdirErr
 		}
 		f, err = util.AppendCreate(r.Cfg.Options.OutputOtherLik)
 		if err != nil {
@@ -265,9 +253,10 @@ func (r *Runner) Run() error {
 	} else {
 		outputOtherWriter = outputWriter
 	}
-	if r.Cfg.Options.Html && r.Cfg.Options.Output != "" && !checkInitHtml(r.Cfg.Options.Output) {
-		InitHtmlOutput(r.Cfg.Options.Output)
-
+	if r.Cfg.Options.Html && r.Cfg.Options.Output != "" && !util.FindStringInFile(r.Cfg.Options.Output, `<title>HTML格式报告</title>`) {
+		if err = InitHtmlOutput(r.Cfg.Options.Output); err != nil {
+			return err
+		}
 	}
 
 	switch {
@@ -276,12 +265,12 @@ func (r *Runner) Run() error {
 		// 递归扫描逻辑
 		// 递归初始化path数组
 		gologger.Info().Msgf("启动递归扫描，扫描深度 %d", r.Cfg.Options.RecursiveRunTimes)
-
+		targetsMap := make(map[string][]string)
 		// 初始化输入的递归扫描的路径
 		for _, t := range urls {
-			r.targetsBack[t] = []string{}
+			targetsMap[t] = []string{}
 			for _, p := range paths {
-				r.targetsBack[t] = append(r.targetsBack[t], p)
+				targetsMap[t] = append(targetsMap[t], p)
 			}
 		}
 		i := 1
@@ -289,11 +278,10 @@ func (r *Runner) Run() error {
 			findTemp := new(map[string][]string)
 			*findTemp = make(map[string][]string)
 			for i := 1; i < Retries; i++ {
-				for t, v := range r.targetsBack {
+				for t, v := range targetsMap {
 					for _, p := range v {
 						r.wg.Add()
 						go r.GoHandler(t, p, outputWriter, ctx, paths, findTemp, r.wg)
-						// 这里得加锁
 					}
 				}
 			}
@@ -305,10 +293,10 @@ func (r *Runner) Run() error {
 			if i >= r.Cfg.Options.RecursiveRunTimes {
 				break
 			}
-			r.targetsBack = *findTemp
+			targetsMap = *findTemp
 			i += 1
 		}
-
+		fmt.Println(targetsMap)
 	default:
 		wg := new(sizedwaitgroup.SizedWaitGroup)
 		*wg = sizedwaitgroup.New(r.Cfg.Options.RateHttp)
@@ -321,60 +309,12 @@ func (r *Runner) Run() error {
 			go r.GoHandler(o[0], o[1], outputWriter, ctx, nil, nil, wg)
 		}
 		wg.Wait()
-		time.Sleep(5)
+		time.Sleep(5 * time.Second)
 		cancel()
 	}
 	r.wg.Wait()
 	r.Cfg.ClearResume()
 	return nil
-}
-
-const bufferSize = 128
-
-func makePrintCallback() func(stats clistats.StatisticsClient) {
-	builder := &strings.Builder{}
-	builder.Grow(bufferSize)
-
-	return func(stats clistats.StatisticsClient) {
-		builder.WriteRune('[')
-		startedAt, _ := stats.GetStatic("startedAt")
-		duration := time.Since(startedAt.(time.Time))
-		builder.WriteString(clistats.FmtDuration(duration))
-		builder.WriteRune(']')
-
-		hosts, _ := stats.GetStatic("targets")
-		builder.WriteString(" | Targets: ")
-		builder.WriteString(clistats.String(hosts))
-
-		ports, _ := stats.GetStatic("paths")
-		builder.WriteString(" | Paths: ")
-		builder.WriteString(clistats.String(ports))
-
-		retries, _ := stats.GetStatic("retries")
-		builder.WriteString(" | Retries: ")
-		builder.WriteString(clistats.String(retries))
-
-		packets, _ := stats.GetCounter("packets")
-		total, _ := stats.GetCounter("total")
-
-		builder.WriteString(" | PPS: ")
-		builder.WriteString(clistats.String(uint64(float64(packets) / duration.Seconds())))
-
-		builder.WriteString(" | Packets: ")
-		builder.WriteString(clistats.String(packets))
-		builder.WriteRune('/')
-		builder.WriteString(clistats.String(total))
-		builder.WriteRune(' ')
-		builder.WriteRune('(')
-		//nolint:gomnd // this is not a magic number
-		builder.WriteString(clistats.String(uint64(float64(packets) / float64(total) * 100.0)))
-		builder.WriteRune('%')
-		builder.WriteRune(')')
-		builder.WriteRune('\n')
-
-		fmt.Fprintf(os.Stderr, "%s", builder.String())
-		builder.Reset()
-	}
 }
 
 func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWriter, ctx context.Context, paths []string, findTemp *map[string][]string, wg *sizedwaitgroup.SizedWaitGroup) {
@@ -427,7 +367,7 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 		r.OutputHandler(target, path, mapResult, outputWriter)
 
 		// 处理link 加锁
-		if !r.Cfg.Options.RecursiveRun && !r.Cfg.Options.FindOtherLink && mapResult["links"] != nil {
+		if !r.Cfg.Options.RecursiveRun && r.Cfg.Options.FindOtherLink && mapResult["links"] != nil {
 			link := mapResult["links"].([]string)
 			go func() {
 				for _, l := range link {
