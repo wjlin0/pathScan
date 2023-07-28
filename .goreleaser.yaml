@@ -31,7 +31,6 @@ archives:
         format: zip
     files:
       - config/dict.zip
-      - config/template.html
       - README.md
 checksum:
   algorithm: sha256
@@ -43,13 +42,3 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
-dockers:
-  - image_templates:
-      - "wjlin0/path_scan:{{ .Tag }}"
-      - "wjlin0/path_scan:latest"
-    dockerfile: Dockerfile
-    skip_push: false
-    build_flag_templates:
-      - "--no-cache"
-    push_flags:
-      - "--tls-verify=false"

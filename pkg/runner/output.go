@@ -112,15 +112,18 @@ func HtmlOutput(m map[string]interface{}, path string) {
 	outMap["request"] = m["request"]
 	outMap["response"] = m["response"]
 	re := m["re"].(*result.TargetResult)
-	outMap["target"] = re.Target
+	outMap["target"] = re.URL
 	outMap["path"] = re.Path
+	outMap["host"] = re.Host
+	outMap["A"] = re.A
+	outMap["CNAME"] = re.CNAME
 	outMap["timestamp"] = re.TimeStamp
 	outMap["title"] = re.Title
 	outMap["status"] = re.Status
 	outMap["technology"] = re.Technology
+
 	jsonData, _ := json.Marshal(outMap)
 	output := fmt.Sprintf("data.push(%s);\n  //?a", string(jsonData))
-
 	file, _ := util.ReadFile(path)
 	output = strings.Replace(file, "//?a", output, 1)
 	util.WriteFile(path, output)

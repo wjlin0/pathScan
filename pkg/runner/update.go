@@ -2,7 +2,6 @@ package runner
 
 import (
 	"archive/zip"
-	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/google/go-github/github"
@@ -22,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -205,16 +205,30 @@ func CheckVersion() error {
 	if err != nil {
 		return err
 	}
-	if len(releases) != 0 {
-		gologger.Error().Label("OUT").Msgf("你的版本( v%s )较低. 最新为 %s", Version, releases[0].Version)
-	} else {
-		gologger.Info().Msgf("Current pathScan version: %s %s", Version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
-
+	currentMsg := fmt.Sprintf("Current pathScan version: %s %s", Version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+	if len(releases) == 0 {
+		gologger.Info().Msgf(currentMsg)
+		return nil
 	}
+	newVersion, err := strconv.Atoi(strings.Replace(strings.Replace(releases[0].Version, ".", "", -1), "v", "", 1))
+	if err != nil {
+		gologger.Info().Msgf(currentMsg)
+		return nil
+	}
+	oldVersion, err := strconv.Atoi(strings.Replace(Version, ".", "", -1))
+	if err != nil {
+		gologger.Info().Msgf(currentMsg)
+		return nil
+	}
+	if newVersion > oldVersion {
+		gologger.Error().Label("OUT").Msgf("Your current pathScan v%s are outdated. Latest is %s", Version, releases[0].Version)
+		return nil
+	}
+	gologger.Info().Msgf(currentMsg)
 	return nil
 
 }
-func CheckMatchVersion() error {
+func CheckMatchVersion() (error, bool) {
 	var command string
 	switch runtime.GOOS {
 	case "windows":
@@ -222,19 +236,7 @@ func CheckMatchVersion() error {
 	default:
 		command = "pathScan"
 	}
-	open, err := os.Open(filepath.Join(defaultMatchDir, ".version"))
-	if err != nil {
-		return err
-	}
-	defer open.Close()
-	scanner := bufio.NewScanner(open)
-	var version string
-	if scanner.Scan() {
-		// 获取第一行的内容
-		version = scanner.Text()
-	} else {
-		return nil
-	}
+	version := strings.Replace(PathScanMatchVersion, "v", "", 1)
 	m := &update.Manager{
 		Command: command,
 		Store: &githubUpdateStore.Store{
@@ -245,13 +247,28 @@ func CheckMatchVersion() error {
 	}
 	releases, err := m.LatestReleases()
 	if err != nil {
-		return err
+		return err, false
 	}
-	if len(releases) != 0 {
-		gologger.Error().Label("OUT").Msgf("pathScan-match 版本( %s )较低. 最新为 %s", version, releases[0].Version)
-	} else {
-		gologger.Info().Msgf("Current pathScan-match version: %s %s", version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+	currentMsg := fmt.Sprintf("Current pathScan-match version: %s %s", version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+	if len(releases) == 0 {
+		gologger.Info().Msgf(currentMsg)
+		return nil, false
 	}
-	return nil
+	newVersion, err := strconv.Atoi(strings.Replace(strings.Replace(releases[0].Version, ".", "", -1), "v", "", 1))
+	if err != nil {
+		gologger.Info().Msgf(currentMsg)
+		return nil, false
+	}
+	oldVersion, err := strconv.Atoi(strings.Replace(version, ".", "", -1))
+	if err != nil {
+		gologger.Info().Msgf(currentMsg)
+		return nil, false
+	}
+	if newVersion > oldVersion {
+		gologger.Error().Label("OUT").Msgf("Your current pathScan-match %s are outdated. Latest is %s", version, releases[0].Version)
+		return nil, true
+	}
+	gologger.Info().Msgf(currentMsg)
+	return nil, false
 
 }

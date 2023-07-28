@@ -104,7 +104,12 @@
       <a-descriptions-item label="目标" :span="1">
         <a :href="fullURL(text.target,text.path)">{{ fullURL(text.target,text.path) }}</a>
       </a-descriptions-item>
-
+      <a-descriptions-item label="A" :span="1">
+        {{ text.A }}
+      </a-descriptions-item>
+      <a-descriptions-item label="CNAME" :span="1">
+        {{ text.CNAME }}
+      </a-descriptions-item>
       <a-descriptions-item label="状态码" :span="1">
         {{ text.status }}
       </a-descriptions-item>
@@ -150,6 +155,19 @@
       },
     },
     { title: '目标', dataIndex: 'target', key: 'target' ,scopedSlots: {filterDropdown: 'filterDropdown', filterIcon: 'filterIcon', customRender: 'customRender',},
+      onFilter: (value, record) =>
+              record.target
+                      .toString()
+                      .toLowerCase()
+                      .includes(value.toLowerCase()),
+      onFilterDropdownVisibleChange: visible => {
+        if (visible) {
+          setTimeout(() => {
+            this.searchInput.focus();
+          });
+        }
+      }, },
+    { title: 'Host', dataIndex: 'host', key: 'host' ,scopedSlots: {filterDropdown: 'filterDropdown', filterIcon: 'filterIcon', customRender: 'customRender',},
       onFilter: (value, record) =>
               record.target
                       .toString()
@@ -209,6 +227,9 @@
   const innerColumns = [
     { title: '时间', dataIndex: 'timestamp', key: 'timestamp' },
     { title: '目标', dataIndex: 'target', key: 'target' },
+    { title: 'Host', dataIndex: 'host', key: 'host' },
+    { title: 'A', dataIndex: 'A', key: 'A' },
+    { title: 'CNAME', dataIndex: 'CNAME', key: 'CNAME' },
     { title: '标题', dataIndex: 'title', key: 'title' },
     { title: '状态码', dataIndex: 'status', key: 'status' },
     { title: '指纹', dataIndex: 'technology', key: 'technology',},

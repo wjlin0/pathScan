@@ -50,13 +50,23 @@ func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 			builder.WriteString(strconv.Itoa(statusCode))
 		}
 		builder.WriteRune(']')
-		if re.BodyLen != 0 {
-			bodyLen := re.BodyLen
+
+		if re.ContentLength != 0 {
+			bodyLen := int(re.ContentLength)
 			builder.WriteString(" [")
 			if !nocolor {
 				builder.WriteString(aurora.Magenta(strconv.Itoa(bodyLen)).String())
 			} else {
 				builder.WriteString(strconv.Itoa(bodyLen))
+			}
+			builder.WriteRune(']')
+		}
+		if re.Host != "" {
+			builder.WriteString(" [")
+			if !nocolor {
+				builder.WriteString(aurora.Magenta(re.Host).String())
+			} else {
+				builder.WriteString(re.Host)
 			}
 			builder.WriteRune(']')
 		}

@@ -11,10 +11,10 @@ const (
                __   __    ____               
    ___  ___ _ / /_ / /   / __/____ ___ _ ___ 
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.2.1
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.3.0
 /_/
 `
-	Version               = `1.2.1`
+	Version               = `1.3.0`
 	defaultResumeFileName = `resume.cfg`
 	userName              = "wjlin0"
 	repoName              = "pathScan-match"
@@ -27,6 +27,7 @@ var (
 	defaultPathDict               = filepath.Join(defaultPathScanDir, "dict")
 	defaultProviderConfigLocation = filepath.Join(defaultPathScanDir, "provider-config.yaml")
 	defaultRecursiveRunFile       = filepath.Join(defaultPathDict, "dir.txt")
+	PathScanMatchVersion          = ""
 )
 
 // showBanner is used to show the banner to the user

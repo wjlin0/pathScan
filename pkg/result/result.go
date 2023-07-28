@@ -7,14 +7,17 @@ import (
 )
 
 type TargetResult struct {
-	TimeStamp  time.Time `json:"timestamp" csv:"timestamp"`
-	Target     string    `json:"target" csv:"target"`
-	Path       string    `json:"path"  csv:"path"`
-	Title      string    `json:"title" csv:"title"`
-	Status     int       `json:"status" csv:"status"`
-	BodyLen    int       `json:"body_len" csv:"body_len"`
-	Server     string    `json:"server" csv:"server"`
-	Technology []string  `json:"technology" csv:"technology"`
+	TimeStamp     time.Time `json:"timestamp" csv:"timestamp"`
+	URL           string    `json:"url" csv:"url"`
+	Path          string    `json:"path"  csv:"path"`
+	Title         string    `json:"title" csv:"title"`
+	Host          string    `json:"host" csv:"host"`
+	A             []string  `json:"a" csv:"a"`
+	CNAME         []string  `json:"cname" csv:"cname"`
+	Status        int       `json:"status" csv:"status"`
+	ContentLength int64     `json:"content_length" csv:"content_length"`
+	Server        string    `json:"server" csv:"server"`
+	Technology    []string  `json:"technology" csv:"technology"`
 }
 type Result struct {
 	sync.RWMutex
@@ -30,9 +33,9 @@ func NewResult() *Result {
 	return &Result{TargetPaths: targetPaths, Targets: targets, Skipped: skipped}
 }
 func (tr *TargetResult) ToString() string {
-	path, err := url.JoinPath(tr.Target, tr.Path)
+	path, err := url.JoinPath(tr.URL, tr.Path)
 	if err != nil {
-		return tr.Target
+		return tr.URL
 	}
 	return path
 }

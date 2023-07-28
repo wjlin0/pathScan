@@ -31,11 +31,13 @@ Usage:
 
 Flags:
 输入:
-  -t, -target string[]        目标(以逗号分割)
-  -tf, -target-file string[]  从文件中,读取目标
+  -u, -url string[]           目标(以逗号分割)
+  -list string[]              从文件中,读取目标
   -tr, -target-remote string  从远程加载目标
+  -tc, -target-channel        从通道中加载目标
   -resume string              使用resume.cfg恢复扫描
   -mf, -match-file string     指纹文件
+
 ```
 # 安装pathScan
 
@@ -57,8 +59,9 @@ wget https://github.com/wjlin0/pathScan/releases/download/v1.1.4/pathScan_v1.1.4
 Docker
 
 ```sh
-docker pull wjlin0/path_scan:latest
-docker run --rm --name pathScan -it wjlin0/path_scan:latest  -t https://wjlin0.com -vb
+# 已提供docker文件自行编译
+docker build -t pathScan .
+docker run --rm --name pathScan -it pathScan  -u https://wjlin0.com -vb
 ```
 
 
@@ -82,15 +85,15 @@ cat url.txt | pathScan -tc
 # 恢复上次扫描
 pathScan -resume Hc7wUXRoH2G1RjrNgjB2OMzXlXo1Hg.cfg
 # 输出
-pathScan -t https://wjlin0.com -csv -output 1.csv
+pathScan -u https://wjlin0.com -csv -output 1.csv
 # 自定义请求头
-pathScan -t https://wjlin0.com -header User-Agent:pathScan/1.8,Cookie:a=1  -header a:1
+pathScan -u https://wjlin0.com -header User-Agent:pathScan/1.8,Cookie:a=1  -header a:1
 # 跳过指定hash,指定长度
-pathScan -t https://wjlin0.com -sh 291583051dfea8f6e512e25121cb09209b8e57402f0d32dcd8d1b611f16a3b20 -sbl 114763
+pathScan -u https://wjlin0.com -sh 291583051dfea8f6e512e25121cb09209b8e57402f0d32dcd8d1b611f16a3b20 -sbl 114763
 ```
 # 收集某个资产
 ```sh
-pathScan -ue fofa -uc -uq "baidu.com" -sd
+pathScan -ue fofa,quake,zoomeye -uc -uq "baidu.com" -sd -o output/baidu/baidu.csv -csv
 ```
 # 自定义指纹
 

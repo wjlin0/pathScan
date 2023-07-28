@@ -3,6 +3,7 @@ package runner
 import (
 	"bytes"
 	"crypto/tls"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	http "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
@@ -81,11 +82,57 @@ func (r *Runner) extractRetryableTitle(body []byte) string {
 	return ""
 }
 
-// processRetryableResponse 解析请求并转换成 result.TargetResult 对象
-func (r *Runner) processRetryableResponse(target, path string, req *http.Request, resp *defaultHttp.Response) (map[string]interface{}, error) {
+func (r *Runner) checkSkip(re *result.TargetResult, head []byte, body []byte) bool {
+	option := r.Cfg.Options
+	if _, ok := r.skipCode[strconv.Itoa(re.Status)]; ok {
+		return true
+	}
+	if option.SkipHash != "" {
+		bodyHash, _ := util.GetHash(body, option.SkipHashMethod)
+		if option.SkipHash == string(bodyHash) {
+			return true
+		}
+	}
+	if option.SkipBodyLen == int(re.ContentLength) {
+		return true
+	}
 
+	return false
+
+}
+
+func (r *Runner) GoTargetPathByRetryable(target, path string) (map[string]interface{}, error) {
+	req, err := r.createRetryableRequest(target, path)
+	if err != nil {
+		return nil, err
+	}
+	r.limiter.Take()
+	resp, err := r.retryable.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var ip string
+
+	parse, err := url.Parse(target)
+	if err != nil {
+		return nil, err
+	}
+	// hp.Dialer.GetDialedIP would return only the last dialed one
+	ip = r.dialer.GetDialedIP(parse.Host)
+	if ip == "" {
+		if onlyHost, _, err := net.SplitHostPort(parse.Host); err == nil {
+			ip = r.dialer.GetDialedIP(onlyHost)
+		}
+	}
+	r.limiter.Take()
+	ips, cname, _ := r.getDNSData(parse.Host)
+	if len(ips) > 1 && ip == "" {
+		ip = ips[0]
+	}
 	host := util.JoinPath(target, path)
-	parse, err := url.Parse(host)
+	parse, err = url.Parse(host)
 	if err != nil {
 		return nil, err
 	}
@@ -104,13 +151,16 @@ func (r *Runner) processRetryableResponse(target, path string, req *http.Request
 	server := resp.Header.Get("Server")
 	target = util.GetTrueUrl(parse)
 	re := &result.TargetResult{
-		TimeStamp: time.Now(),
-		Target:    target,
-		Path:      parse.Path,
-		Title:     title,
-		Status:    resp.StatusCode,
-		BodyLen:   len(bodyBytes),
-		Server:    server,
+		TimeStamp:     time.Now(),
+		URL:           target,
+		Path:          parse.Path,
+		Title:         title,
+		Host:          ip,
+		Status:        resp.StatusCode,
+		CNAME:         cname,
+		A:             ips,
+		ContentLength: int64(len(bodyBytes)),
+		Server:        server,
 	}
 	m["re"] = re
 	// 跳过
@@ -136,64 +186,46 @@ func (r *Runner) processRetryableResponse(target, path string, req *http.Request
 	} else {
 		m["response"] = util.GetResponsePackage(resp, true)
 	}
-	return m, nil
-}
-func (r *Runner) checkSkip(re *result.TargetResult, head []byte, body []byte) bool {
-	option := r.Cfg.Options
-	if _, ok := r.skipCode[strconv.Itoa(re.Status)]; ok {
-		return true
-	}
-	if option.SkipHash != "" {
-		bodyHash, _ := util.GetHash(body, option.SkipHashMethod)
-		if option.SkipHash == string(bodyHash) {
-			return true
-		}
-	}
 
-	if option.SkipBodyLen == re.BodyLen {
-
-		return true
-	}
-
-	return false
-
-}
-func (r *Runner) GoTargetPathByRetryable(target, path string) (map[string]interface{}, error) {
-	req, err := r.createRetryableRequest(target, path)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := r.retryable.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	m, err := r.processRetryableResponse(target, path, req, resp)
-	if err != nil {
-		return nil, err
-	}
 	return m, err
 }
+func (r *Runner) getDNSData(hostname string) (ips, cnames []string, err error) {
+	dnsData, err := r.dialer.GetDNSData(hostname)
+	if err != nil {
+		return nil, nil, err
+	}
+	ips = make([]string, 0, len(dnsData.A)+len(dnsData.AAAA))
+	ips = append(ips, dnsData.A...)
+	ips = append(ips, dnsData.AAAA...)
+	cnames = dnsData.CNAME
+	return
+}
 
-func newRetryableClient(options *Options, errUseLastResponse bool) *http.Client {
+func newRetryableClient(options *Options, errUseLastResponse bool, dialer *fastdialer.Dialer) *http.Client {
+
 	httpOptions := http.Options{
 		Timeout:      options.TimeoutHttp,
 		RetryMax:     options.Retries,
 		RetryWaitMax: options.TimeoutHttp,
-		HttpClient:   newClient(options, errUseLastResponse),
+		HttpClient:   newClient(options, errUseLastResponse, dialer),
 	}
 	return http.NewClient(httpOptions)
 }
-func newClient(options *Options, errUseLastResponse bool) *defaultHttp.Client {
+func newClient(options *Options, errUseLastResponse bool, dialer *fastdialer.Dialer) *defaultHttp.Client {
+
 	transport := &defaultHttp.Transport{
-		Proxy:           util.GetProxyFunc(options.Proxy, options.ProxyAuth),
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10},
+		DialContext: dialer.Dial,
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.DialTLS(ctx, network, addr)
+		},
+		MaxIdleConnsPerHost: -1,
+		Proxy:               util.GetProxyFunc(options.Proxy, options.ProxyAuth),
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10},
 	}
 	if options.TimeoutHttp > 0 {
 		dial := &net.Dialer{
 			Timeout:   options.TimeoutHttp,
-			KeepAlive: 30 * time.Second,
+			KeepAlive: options.TimeoutHttp,
 		}
 		transport.DialContext = dial.DialContext
 	}

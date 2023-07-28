@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/logrusorgru/aurora"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
@@ -19,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -26,8 +28,9 @@ import (
 type Runner struct {
 	wg            *sizedwaitgroup.SizedWaitGroup
 	Cfg           *ResumeCfg
-	client        *http.Client
 	limiter       *ratelimit.Limiter
+	client        *http.Client
+	dialer        *fastdialer.Dialer
 	dirBack       map[string]struct{}
 	targets       map[string]struct{}
 	paths         map[string]struct{}
@@ -82,24 +85,36 @@ func NewRunner(options *Options) (*Runner, error) {
 		return nil, err
 	}
 	// 初始化
-	if !run.Cfg.Options.NotInit {
-		err = InitPathScan()
-		if err != nil {
-			gologger.Error().Msg(err.Error())
-			return nil, err
-		}
+
+	err = InitPathScan()
+	if err != nil {
+		return nil, err
 	}
 
+	PathScanMatchVersion, err = util.GetMatchVersion(defaultMatchDir)
+	if err != nil {
+		return nil, err
+	}
 	// 检查版本更新
 	if (!run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.UpdateMatchVersion) && !run.Cfg.Options.Silent {
 		err := CheckVersion()
 		if err != nil {
 			gologger.Error().Msg(err.Error())
 		}
-		err = CheckMatchVersion()
+		err, ok := CheckMatchVersion()
 		if err != nil {
 			gologger.Error().Msg(err.Error())
 		}
+		if ok && err == nil && !run.Cfg.Options.SkipAutoUpdateMatch {
+			ok, err = UpdateMatch()
+			if err != nil && ok == false {
+				gologger.Error().Msg(err.Error())
+			} else {
+				gologger.Info().Msgf("Successfully updated pathScan-match (%s) to %s. GoodLuck!", PathScanMatchVersion, defaultMatchDir)
+			}
+
+		}
+
 	}
 	// 下载字典或更新版本
 	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
@@ -127,7 +142,7 @@ func NewRunner(options *Options) (*Runner, error) {
 	// 清除恢复文件夹
 	if run.Cfg.Options.ClearResume {
 		_ = os.RemoveAll(DefaultResumeFolderPath())
-		gologger.Print().Msgf("清除成功：%s", DefaultResumeFolderPath())
+		gologger.Print().Msgf("Successfully cleaned up folder：%s", DefaultResumeFolderPath())
 		os.Exit(0)
 	}
 	// 计算hash
@@ -149,12 +164,27 @@ func NewRunner(options *Options) (*Runner, error) {
 	}
 
 	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
-	run.retryable = newRetryableClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse)
-	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHttp), time.Duration(1)*time.Second)
+	fastOptons := fastdialer.Options{
+		BaseResolvers:     fastdialer.DefaultResolvers,
+		MaxRetries:        options.Retries,
+		HostsFile:         true,
+		ResolversFile:     true,
+		CacheType:         fastdialer.Disk,
+		DialerTimeout:     options.TimeoutHttp,
+		DialerKeepAlive:   options.TimeoutHttp,
+		WithDialerHistory: true,
+	}
+	dialer, err := fastdialer.NewDialer(fastOptons)
+	if err != nil {
+		return nil, err
+	}
+	run.retryable = newRetryableClient(run.Cfg.Options, run.Cfg.Options.ErrUseLastResponse, dialer)
+	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateHTTP), time.Duration(1)*time.Second)
 	run.wg = new(sizedwaitgroup.SizedWaitGroup)
-	*run.wg = sizedwaitgroup.New(run.Cfg.Options.RateHttp)
+	*run.wg = sizedwaitgroup.New(run.Cfg.Options.Thread)
 	run.targets, err = run.handlerGetTargets()
 	run.paths, err = run.handlerGetTargetPath()
+	run.dialer = dialer
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +197,7 @@ func NewRunner(options *Options) (*Runner, error) {
 			return nil, err
 		}
 		for dir := range c {
+			dir = strings.TrimRight(dir, "/")
 			run.dirBack[dir] = struct{}{}
 		}
 	}
@@ -184,6 +215,12 @@ func NewRunner(options *Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 统计数目
+	regNum := 0
+	for _, rOptions := range run.regOptions {
+		regNum += len(rOptions.SubMatch)
+	}
+	gologger.Info().Msgf("pathScan-match templates loaded for current scan: %d", regNum)
 	// 创建通道
 	run.otherLinkChan = make(chan string)
 	// 返回 Runner 实例和无误差
@@ -206,6 +243,9 @@ func (r *Runner) Run() error {
 	if r.Cfg.Options.OnlyTargets {
 		paths = []string{"/"}
 	}
+	startTime := time.Now()
+	gologger.Info().Msgf("There are %d requested URLs", len(urls))
+	gologger.Info().Msgf("There are %d requested paths", len(paths))
 	var f *os.File
 	outputWriter, _ := ucRunner.NewOutputWriter()
 	if r.Cfg.Options.Output != "" && !r.Cfg.Options.Html {
@@ -294,12 +334,15 @@ func (r *Runner) Run() error {
 				break
 			}
 			targetsMap = *findTemp
+			for k, _ := range targetsMap {
+				gologger.Debug().Msgf("发现新的请求 ->", k)
+			}
 			i += 1
 		}
-		fmt.Println(targetsMap)
+		//fmt.Println(targetsMap)
 	default:
 		wg := new(sizedwaitgroup.SizedWaitGroup)
-		*wg = sizedwaitgroup.New(r.Cfg.Options.RateHttp)
+		*wg = sizedwaitgroup.New(r.Cfg.Options.Thread)
 		r.wg.Add()
 		go r.GoOtherLink(outputOtherWriter, ctx, r.wg)
 		out := result.Rand(urls, paths)
@@ -309,11 +352,16 @@ func (r *Runner) Run() error {
 			go r.GoHandler(o[0], o[1], outputWriter, ctx, nil, nil, wg)
 		}
 		wg.Wait()
-		time.Sleep(5 * time.Second)
+		if len(urls)*len(paths) < 6 {
+			time.Sleep(5 * time.Second)
+		}
 		cancel()
 	}
 	r.wg.Wait()
+	r.Close()
 	r.Cfg.ClearResume()
+	endTime := time.Now()
+	gologger.Info().Msgf("This task takes %v seconds", endTime.Sub(startTime).Seconds())
 	return nil
 }
 
@@ -327,7 +375,7 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 	if r.Cfg.Results.HasPath(target, path) {
 		return
 	}
-	r.limiter.Take()
+
 	mapResult, err := r.GoTargetPathByRetryable(target, path)
 	if err != nil {
 		gologger.Warning().Msgf("发生错误: %s", err)
@@ -362,7 +410,6 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 				r.Cfg.Results.Unlock()
 			}
 		}
-
 		// 处理输出
 		r.OutputHandler(target, path, mapResult, outputWriter)
 
@@ -381,4 +428,8 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 		}
 
 	}
+}
+
+func (r *Runner) Close() {
+	r.dialer.Close()
 }

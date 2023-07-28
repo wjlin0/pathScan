@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Group"}
+var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Group", "Alias"}
 
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {

@@ -1,6 +1,7 @@
 package matchers
 
 import (
+	"fmt"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
 	"strings"
@@ -70,7 +71,12 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 		}
 		currentMatches := regex.FindStringSubmatch(corpus)
 		if !(matcher.Group <= 0) && (len(currentMatches)-1 >= matcher.Group) {
-			currentMatches = []string{currentMatches[matcher.Group]}
+
+			if matcher.Alias {
+				currentMatches = []string{fmt.Sprintf("%s/%s", matcher.Name, currentMatches[matcher.Group])}
+			} else {
+				currentMatches = []string{currentMatches[matcher.Group]}
+			}
 		}
 		// If the condition was an OR, return on the first match.
 		if matcher.condition == ORCondition && !matcher.MatchAll {

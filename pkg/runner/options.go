@@ -23,7 +23,8 @@ type Options struct {
 	PathRemote            string                            `json:"path_remote"`
 	ResumeCfg             string                            `json:"resume_cfg"`
 	Output                string                            `json:"output"`
-	RateHttp              int                               `json:"rate_http"`
+	RateHTTP              int                               `json:"rate_http"`
+	Thread                int                               `json:"thread"`
 	Retries               int                               `json:"retries"`
 	Proxy                 string                            `json:"proxy"`
 	ProxyAuth             string                            `json:"proxy_auth"`
@@ -69,6 +70,7 @@ type Options struct {
 	NotInit               bool                              `json:"not_init"`
 	Body                  string                            `json:"body"`
 	FindOtherDomain       bool                              `json:"find_other_domain"`
+	SkipAutoUpdateMatch   bool                              `json:"skip_auto_update_match"`
 }
 
 func ParserOptions() *Options {
@@ -76,8 +78,8 @@ func ParserOptions() *Options {
 	set := goflags.NewFlagSet()
 	set.SetDescription("PathScan Go 扫描、信息收集工具")
 	set.CreateGroup("Input", "输入",
-		set.StringSliceVarP(&options.Url, "target", "t", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
-		set.StringSliceVarP(&options.UrlFile, "target-file", "tf", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.Url, "url", "u", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVar(&options.UrlFile, "list", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
 		set.StringVarP(&options.UrlRemote, "target-remote", "tr", "", "从远程加载目标"),
 		set.BoolVarP(&options.UrlChannel, "target-channel", "tc", false, "从通道中加载目标"),
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
@@ -117,7 +119,6 @@ func ParserOptions() *Options {
 	set.CreateGroup("config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
-		set.BoolVarP(&options.NotInit, "not-init", "ni", false, "跳过初始化"),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
@@ -143,13 +144,15 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.Body, "body", "b", "", "自定义请求体"),
 	)
 	set.CreateGroup("rate", "速率",
-		set.IntVarP(&options.RateHttp, "rate-http", "rh", 50, "允许每秒钟最大http请求数"),
+		set.IntVarP(&options.RateHTTP, "rate-http", "rh", 150, "允许最大http请求数"),
+		set.IntVarP(&options.Thread, "thread", "t", 60, "允许每秒钟最大http请求数"),
 		set.DurationVarP(&options.TimeoutHttp, "timeout-http", "th", 5*time.Second, "Http连接超时"),
 	)
 	set.CreateGroup("update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
 		set.BoolVarP(&options.UpdatePathDictVersion, "update-dict", "ud", false, "更新字典版本"),
 		set.BoolVarP(&options.UpdateMatchVersion, "update-match", "um", false, "更新指纹识别库"),
+		set.BoolVarP(&options.SkipAutoUpdateMatch, "auto-match", "am", false, "跳过自动更新"),
 	)
 	_ = set.Parse()
 	if !options.Silent {
@@ -157,6 +160,7 @@ func ParserOptions() *Options {
 	}
 	if options.Version {
 		gologger.Print().Msgf("pathScan version: %s", Version)
+
 		os.Exit(0)
 	}
 

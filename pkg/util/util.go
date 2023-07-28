@@ -13,6 +13,7 @@ import (
 	http "github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"golang.org/x/net/proxy"
 	"hash"
 	"io"
 	"io/fs"
@@ -568,4 +569,32 @@ func FindStringInFile(filepath string, target string) bool {
 
 	// 如果未找到目标字符串，则返回false
 	return false
+}
+func GetMatchVersion(defaultMatchDir string) (string, error) {
+	open, err := os.Open(filepath.Join(defaultMatchDir, ".version"))
+	if err != nil {
+		return "", err
+	}
+	defer open.Close()
+	scanner := bufio.NewScanner(open)
+	var version string
+	if scanner.Scan() {
+		// 获取第一行的内容
+		version = scanner.Text()
+	} else {
+		return "", nil
+	}
+	return version, nil
+}
+
+func NewProxyDialer(proxyUrl, proxyAuth string) (proxy.Dialer, error) {
+	var auther *proxy.Auth
+	if proxyAuth != "" {
+		auth := strings.Split(proxyAuth, ":")
+		auther = &proxy.Auth{
+			User:     auth[0],
+			Password: auth[1],
+		}
+	}
+	return proxy.SOCKS5("tcp", proxyUrl, auther, proxy.Direct)
 }
