@@ -96,7 +96,7 @@ func NewRunner(options *Options) (*Runner, error) {
 		return nil, err
 	}
 	// 检查版本更新
-	if (!run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.UpdateMatchVersion) && !run.Cfg.Options.Silent {
+	if (!run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.UpdateMatchVersion) && !run.Cfg.Options.Silent && !run.Cfg.Options.UpdateHTMLTemplateVersion {
 		err := CheckVersion()
 		if err != nil {
 			gologger.Error().Msg(err.Error())
@@ -117,7 +117,7 @@ func NewRunner(options *Options) (*Runner, error) {
 
 	}
 	// 下载字典或更新版本
-	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
+	if run.Cfg.Options.UpdatePathDictVersion || run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion || run.Cfg.Options.UpdateHTMLTemplateVersion {
 		if run.Cfg.Options.UpdatePathDictVersion {
 			err = DownloadDict()
 			if err != nil {
@@ -132,6 +132,12 @@ func NewRunner(options *Options) (*Runner, error) {
 		}
 		if run.Cfg.Options.UpdateMatchVersion {
 			ok, err := UpdateMatch()
+			if err != nil && ok == false {
+				gologger.Error().Msg(err.Error())
+			}
+		}
+		if run.Cfg.Options.UpdateHTMLTemplateVersion {
+			ok, err := UpdateHTMLTemplate()
 			if err != nil && ok == false {
 				gologger.Error().Msg(err.Error())
 			}

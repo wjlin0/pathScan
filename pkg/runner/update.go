@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
@@ -101,6 +102,7 @@ func UpdateMatch() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	gologger.Info().Msgf("Successfully updated to pathScan-match -> %s\n", defaultMatchDir)
 	return true, nil
 }
 func UpdateVersion() (bool, error) {
@@ -143,6 +145,45 @@ func UpdateVersion() (bool, error) {
 		return false, errors.Wrap(err, "could not install latest release")
 	}
 	gologger.Info().Msgf("Successfully updated to pathScan %s\n", latest.Version)
+	return true, nil
+}
+func UpdateHTMLTemplate() (bool, error) {
+	MapDownloadPath := map[string][]string{
+		"template": {
+			filepath.Join(defaultJsDir, "template.html"), "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/template.html",
+		},
+		"antdCss": {
+			filepath.Join(defaultJsDir, "antd.min.css"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.css",
+		},
+		"andJs": {
+			filepath.Join(defaultJsDir, "antd.min.js"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.js",
+		},
+		"vueJs": {
+			filepath.Join(defaultJsDir, "vue.min.js"), "https://unpkg.com/vue@2.7.14/dist/vue.min.js",
+		},
+	}
+	errChan := make(chan error)
+	var wg sync.WaitGroup
+	for _, v := range MapDownloadPath {
+		wg.Add(1)
+		go func(path, httppath string) {
+			defer wg.Done()
+			err := fileutil.DownloadFile(path, httppath)
+			if err != nil {
+				errChan <- err
+			}
+		}(v[0], v[1])
+	}
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+	for err := range errChan {
+		if err != nil {
+			return false, err
+		}
+	}
+	gologger.Info().Msgf("Successfully updated to pathScan HTML-Template -> %s\n", defaultJsDir)
 	return true, nil
 }
 func DownloadDict() error {
