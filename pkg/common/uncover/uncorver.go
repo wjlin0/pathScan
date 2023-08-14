@@ -131,9 +131,9 @@ func getTargets(uncoverOptions *ucRunner.Options, field string, proxy, auth stri
 					Limit: uncoverOptions.Limit,
 				}
 				uncoverQuery.Query, err = loadQuery(agent.Name(), q)
-				gologger.Debug().Msgf("请求参数为: %s", uncoverQuery.Query)
+				gologger.Debug().Msgf("Request parameter is: %s", uncoverQuery.Query)
 				if err != nil {
-					gologger.Warning().Msgf("解析字符串发送错误: %s", err.Error())
+					gologger.Warning().Msgf("Parsing string sending error: %s", err.Error())
 					continue
 				}
 				swg.Add()
@@ -152,7 +152,7 @@ func getTargets(uncoverOptions *ucRunner.Options, field string, proxy, auth stri
 					for result := range ch {
 						switch {
 						case result.Error != nil:
-							gologger.Warning().Msgf("请求%s发送错误: %s", result.Source, result.Error)
+							gologger.Warning().Msgf("Request %s sending error: %s", result.Source, result.Error)
 						default:
 							var host string
 							switch {

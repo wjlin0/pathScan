@@ -55,13 +55,13 @@ func GetProxyFunc(proxy, auth string) func(*defaultHttp.Request) (*url.URL, erro
 	}
 	proxyURL, err := url.Parse(proxy)
 	if err != nil {
-		gologger.Error().Msgf("解析代理 URL 失败：%s", err)
+		gologger.Error().Msgf("Failed to parse proxy URL：%s", err)
 		return nil
 	}
 	if auth != "" {
 		username, password, ok := ParseProxyAuth(auth)
 		if !ok {
-			gologger.Error().Msgf("解析代理授权信息失败：%s", auth)
+			gologger.Error().Msgf("Failed to parse proxy authorization information：%s", auth)
 			return nil
 		}
 		proxyURL.User = url.UserPassword(username, password)
@@ -87,17 +87,17 @@ func Unzip(p string, reader *bytes.Reader) error {
 		}
 		file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 		if err != nil {
-			gologger.Error().Msgf(fmt.Errorf("打开文件是出错: %w\n", err).Error())
+			gologger.Error().Msgf(fmt.Errorf("Error opening file: %w\n", err).Error())
 			continue
 		}
 		fileZip, err := f.Open()
 		if err != nil {
-			gologger.Error().Msgf(fmt.Errorf("读取压缩包出错: %w\n", err).Error())
+			gologger.Error().Msgf(fmt.Errorf("Error reading compressed package: %w\n", err).Error())
 			continue
 		}
 		_, err = io.Copy(file, fileZip)
 		if err != nil {
-			gologger.Error().Msgf(fmt.Errorf("写入时文件是出错: %w\n", err).Error())
+			gologger.Error().Msgf(fmt.Errorf("File encountered an error while writing: %w\n", err).Error())
 			continue
 		}
 	}

@@ -13,7 +13,7 @@ import (
 func main() {
 	run, err := runner.NewRunner(runner.ParserOptions())
 	if err != nil {
-		gologger.Print().Msg(fmt.Sprintf("无法创建Runner: %s", err.Error()))
+		gologger.Print().Msg(fmt.Sprintf("Unable to create Runner:%s", err.Error()))
 		os.Exit(0)
 	}
 	if run == nil {
@@ -24,19 +24,19 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
-			gologger.Info().Msg("CTRL+C 按下: Exiting")
+			gologger.Info().Msg("CTRL+C press: Exiting")
 			filename := util.RandStr(30) + ".cfg"
 			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
 			err := run.Cfg.MarshalResume(filename)
 			if err != nil {
-				gologger.Error().Msgf("无法创建 resume 文件: %s", err.Error())
+				gologger.Error().Msgf("Unable to create resume file: %s", err.Error())
 			}
 			os.Exit(1)
 		}
 	}()
 	err = run.Run()
 	if err != nil {
-		gologger.Fatal().Msgf("无法 运行: %s", err.Error())
+		gologger.Fatal().Msgf("Unable to run: %s", err.Error())
 	}
 	run.Cfg.CleanupResumeConfig()
 }

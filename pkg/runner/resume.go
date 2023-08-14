@@ -111,6 +111,6 @@ func (cfg *ResumeCfg) ClearResume() {
 		} else {
 			builder.WriteString(DefaultResumeFolderPath())
 		}
-		gologger.Info().Msg(builder.String() + " 已经大于100MB, 请使用 -clear 清理")
+		gologger.Info().Msgf("%s is already greater than 50MB, please use - clear to clean", builder.String())
 	}
 }

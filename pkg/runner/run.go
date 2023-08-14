@@ -37,6 +37,7 @@ type Runner struct {
 	headers       map[string]interface{}
 	skipCode      map[string]struct{}
 	regOptions    []*identification.Options
+	outputCached  *Cached
 	retryable     *retryablehttp.Client
 	otherLinkChan chan string
 }
@@ -229,6 +230,8 @@ func NewRunner(options *Options) (*Runner, error) {
 	gologger.Info().Msgf("pathScan-match templates loaded for current scan: %d", regNum)
 	// 创建通道
 	run.otherLinkChan = make(chan string)
+	// 创建 outputCached
+	run.outputCached = NewCached()
 	// 返回 Runner 实例和无误差
 	return run, nil
 }
@@ -310,7 +313,7 @@ func (r *Runner) Run() error {
 	case r.Cfg.Options.RecursiveRun:
 		// 递归扫描逻辑
 		// 递归初始化path数组
-		gologger.Info().Msgf("启动递归扫描，扫描深度 %d", r.Cfg.Options.RecursiveRunTimes)
+		gologger.Info().Msgf("Start recursive scanning, scanning depth %d", r.Cfg.Options.RecursiveRunTimes)
 		targetsMap := make(map[string][]string)
 		// 初始化输入的递归扫描的路径
 		for _, t := range urls {
@@ -341,7 +344,7 @@ func (r *Runner) Run() error {
 			}
 			targetsMap = *findTemp
 			for k, _ := range targetsMap {
-				gologger.Debug().Msgf("发现新的请求 ->", k)
+				gologger.Debug().Msgf("Discovering new requests ->", k)
 			}
 			i += 1
 		}
@@ -384,7 +387,7 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 
 	mapResult, err := r.GoTargetPathByRetryable(target, path)
 	if err != nil {
-		gologger.Warning().Msgf("发生错误: %s", err)
+		gologger.Warning().Msgf("An error occurred: %s", err)
 		return
 	}
 
@@ -420,7 +423,7 @@ func (r *Runner) GoHandler(target, path string, outputWriter *ucRunner.OutputWri
 		r.OutputHandler(target, path, mapResult, outputWriter)
 
 		// 处理link 加锁
-		if !r.Cfg.Options.RecursiveRun && r.Cfg.Options.FindOtherLink && mapResult["links"] != nil {
+		if !r.Cfg.Options.RecursiveRun && (r.Cfg.Options.FindOtherLink || r.Cfg.Options.FindOtherDomain) && mapResult["links"] != nil {
 			link := mapResult["links"].([]string)
 			go func() {
 				for _, l := range link {

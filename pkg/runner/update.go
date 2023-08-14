@@ -102,7 +102,7 @@ func UpdateMatch() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	gologger.Info().Msgf("Successfully updated to pathScan-match -> %s\n", defaultMatchDir)
+	gologger.Info().Msgf("Successfully updated to pathScan-match:  %s\n", defaultMatchDir)
 	return true, nil
 }
 func UpdateVersion() (bool, error) {
@@ -123,10 +123,10 @@ func UpdateVersion() (bool, error) {
 	}
 	releases, err := m.LatestReleases()
 	if err != nil {
-		return false, errors.Wrap(err, "无法获取最新版本")
+		return false, errors.Wrap(err, "Unable to obtain the latest version")
 	}
 	if len(releases) == 0 {
-		gologger.Info().Msgf("已经为最新版本%v", Version)
+		gologger.Info().Msgf("It's already the latest version%v", Version)
 		return true, nil
 	}
 	latest := releases[0]
@@ -183,7 +183,7 @@ func UpdateHTMLTemplate() (bool, error) {
 			return false, err
 		}
 	}
-	gologger.Info().Msgf("Successfully updated to pathScan HTML-Template -> %s\n", defaultJsDir)
+	gologger.Info().Msgf("Successfully updated to pathScan HTML-Template: %s\n", defaultJsDir)
 	return true, nil
 }
 func DownloadDict() error {
@@ -194,14 +194,14 @@ func DownloadDict() error {
 	}
 	path := filepath.Join(home, ".config", "pathScan", "dict")
 	if fileutil.FileExists(filepath.Join(path, ".check")) {
-		gologger.Info().Msgf("远程字典下载成功->%s", path)
+		gologger.Info().Msgf("Successfully downloaded the remote dictionary: %s", path)
 		return nil
 	}
-	gologger.Info().Msg("本地不存在字典,正在下载...")
+	gologger.Info().Msg("Dictionary does not exist locally, downloading.")
 	err = fileutil.CreateFolder(path)
 	if err != nil {
 
-		return fmt.Errorf("打开 %s 出错:%s\n", path, err.Error())
+		return fmt.Errorf("Error opening %s :%s\n", path, err.Error())
 	}
 
 	dictUrl := "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/dict.zip"
@@ -216,14 +216,14 @@ func DownloadDict() error {
 	_, err = io.Copy(&buffer, resp.Body)
 	if err != nil {
 
-		return fmt.Errorf("下载 %s 文件出错: %s\n", dictUrl, err.Error())
+		return fmt.Errorf("Error opening %s : %s\n", dictUrl, err.Error())
 	}
 	reader := bytes.NewReader(buffer.Bytes())
 	err = util.Unzip(path, reader)
 	if err != nil {
-		return fmt.Errorf("解压出错: %s\n", err.Error())
+		return fmt.Errorf("Decompression error: %s\n", err.Error())
 	}
-	gologger.Info().Msgf("远程字典下载成功->%s", path)
+	gologger.Info().Msgf("Successfully downloaded the remote dictionary: %s", path)
 	return nil
 }
 func CheckVersion() error {

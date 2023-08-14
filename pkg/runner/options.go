@@ -77,7 +77,7 @@ type Options struct {
 func ParserOptions() *Options {
 	options := &Options{}
 	set := goflags.NewFlagSet()
-	set.SetDescription("PathScan Go 扫描、信息收集工具")
+	set.SetDescription("pathScan Go 扫描、信息收集工具")
 	set.CreateGroup("Input", "输入",
 		set.StringSliceVarP(&options.Url, "url", "u", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
 		set.StringSliceVar(&options.UrlFile, "list", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
@@ -147,7 +147,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("rate", "速率",
 		set.IntVarP(&options.RateHTTP, "rate-http", "rh", 150, "允许最大http请求数"),
 		set.IntVarP(&options.Thread, "thread", "t", 60, "允许每秒钟最大http请求数"),
-		set.DurationVarP(&options.TimeoutHttp, "timeout-http", "th", 5*time.Second, "Http连接超时"),
+		set.DurationVarP(&options.TimeoutHttp, "timeout-http", "th", 5*time.Second, "连接超时"),
 	)
 	set.CreateGroup("update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),

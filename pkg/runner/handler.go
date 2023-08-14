@@ -78,9 +78,9 @@ func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("读取响应体失败：%s", err)
+			return nil, fmt.Errorf("failed to read response body：%s", err)
 		}
-		gologger.Debug().Msg("从远程加载 URL 列表完成")
+		gologger.Debug().Msg("Completing remote loading of URL list")
 
 	}
 
@@ -140,9 +140,9 @@ func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("读取响应体失败：%s", err)
+			return nil, fmt.Errorf("failed to read response body：%s", err)
 		}
-		gologger.Info().Msg("从远程加载 URL列表完成")
+		gologger.Info().Msg("Completing remote loading of URL list")
 	}
 
 	// 处理从标准输入读取的 URL
@@ -163,7 +163,7 @@ func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 		if r.Cfg.Options.UncoverEngine == nil {
 			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
 		}
-		gologger.Info().Msgf("正在运行: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
+		gologger.Info().Msgf("Running: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
 		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
 		if err != nil {
 			return nil, err
@@ -186,7 +186,7 @@ func InitPathScan() error {
 	if fileutil.FileExists(filepath.Join(defaultPathScanDir, ".check")) {
 		return nil
 	}
-	gologger.Info().Msg("正在进行初始化....")
+	gologger.Info().Msg("Initializing in progress.")
 	var err error
 	err = InitJs()
 	if err != nil {
@@ -208,7 +208,7 @@ func InitPathScan() error {
 	if err != nil {
 		return err
 	}
-	gologger.Info().Msg("初始化完成....")
+	gologger.Info().Msg("Initialization completed.")
 	return nil
 }
 

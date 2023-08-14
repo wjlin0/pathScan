@@ -112,7 +112,6 @@ func (r *Runner) GoTargetPathByRetryable(target, path string) (map[string]interf
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	var ip string
 
 	parse, err := url.Parse(target)

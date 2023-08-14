@@ -10,18 +10,34 @@ import (
 	"sync"
 )
 
-var cacheString = make(map[string]struct{})
-var lock = sync.Mutex{}
+type Cached struct {
+	cachedString map[string]struct{}
+	lock         sync.Mutex
+}
 
+func NewCached() *Cached {
+	return &Cached{
+		cachedString: make(map[string]struct{}),
+	}
+}
+
+func (c *Cached) HasInCached(path string) (ok bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	_, ok = c.cachedString[path]
+	return ok
+}
+func (c *Cached) Set(path string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.cachedString[path] = struct{}{}
+}
 func (r *Runner) handlerOutputTarget(re *result.TargetResult) {
 	path := re.ToString()
-	lock.Lock()
-	if _, ok := cacheString[path]; ok {
-		lock.Unlock()
+	if r.outputCached.HasInCached(path) {
 		return
 	}
-	cacheString[path] = struct{}{}
-	lock.Unlock()
+	r.outputCached.Set(path)
 	nocolor := r.Cfg.Options.NoColor
 	builder := &strings.Builder{}
 
