@@ -2,48 +2,55 @@ package uncover
 
 import (
 	"crypto/tls"
+	"github.com/pkg/errors"
+	"github.com/projectdiscovery/retryablehttp-go"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/pkg/errors"
-	"github.com/projectdiscovery/retryablehttp-go"
 )
 
 type Session struct {
-	Keys     *Keys
 	Client   *retryablehttp.Client
 	RetryMax int
 }
 
-func NewSession(keys *Keys, retryMax, timeout int, proxyFunc func(*http.Request) (*url.URL, error)) (*Session, error) {
+func NewSession(retryMax int, timeout time.Duration, proxyFunc func(*http.Request) (*url.URL, error)) (*Session, error) {
 	Transport := &http.Transport{
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 100,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
-		ResponseHeaderTimeout: time.Duration(timeout) * time.Second,
+		ResponseHeaderTimeout: timeout,
 		Proxy:                 proxyFunc,
 	}
 
 	httpclient := &http.Client{
 		Transport: Transport,
-		Timeout:   time.Duration(timeout) * time.Second,
+		Timeout:   timeout,
 	}
 
 	options := retryablehttp.Options{RetryMax: retryMax}
-	options.RetryWaitMax = time.Duration(timeout) * time.Second
+	options.RetryWaitMax = timeout
 	options.HttpClient = httpclient
 	client := retryablehttp.NewClient(options)
 
 	session := &Session{
 		Client:   client,
-		Keys:     keys,
 		RetryMax: retryMax,
 	}
 
 	return session, nil
+}
+func NewHTTPRequest(method, url string, body io.Reader) (*retryablehttp.Request, error) {
+	request, err := retryablehttp.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("User-Agent", "PathScan - FOSS Project (github.com/wjlin0/pathScan)")
+	request.Header.Set("Accept", "*/*")
+	return request, nil
 }
 
 func (s *Session) Do(request *retryablehttp.Request) (*http.Response, error) {

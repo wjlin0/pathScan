@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -154,27 +153,19 @@ func getTargets(uncoverOptions *ucRunner.Options, field string, proxy, auth stri
 						case result.Error != nil:
 							gologger.Warning().Msgf("Request %s sending error: %s", result.Source, result.Error)
 						default:
-							var host string
-							switch {
-							case result.IP != "" && result.Port == 0:
-								host = result.IP
-							case result.IP != "" && result.Port != 0:
-								host = result.IP + ":" + strconv.Itoa(result.Port)
-							}
+
 							replacer := strings.NewReplacer(
 								"ip", result.IP,
 								"host", result.Host,
 								"port", fmt.Sprint(result.Port),
 							)
 							outData := replacer.Replace(field)
-							if host != "" {
-								outputWriter.WriteString(host)
-							}
+
 							if outData != "" {
 								outputWriter.WriteString(outData)
 							}
-							ret <- host
 							ret <- outData
+
 						}
 
 					}

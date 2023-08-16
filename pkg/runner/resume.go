@@ -7,8 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
-	"github.com/wjlin0/pathScan/pkg/result"
-	"github.com/wjlin0/pathScan/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,11 +14,22 @@ import (
 )
 
 type ResumeCfg struct {
-	Rwm     *sync.RWMutex
-	Options *Options       `json:"options"`
-	Results *result.Result `json:"results"`
+	Rwm           *sync.RWMutex
+	Options       *Options `json:"options"`
+	ResultsCached *Cached  `json:"results-cached"`
+	OutputCached  *Cached  `json:"output-cached"`
 }
 
+func DefaultResumeFolderPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return defaultResumeFileName
+	}
+	return filepath.Join(home, ".config", "pathScan", "resume")
+}
+func DefaultResumeFilePath(filename string) string {
+	return filepath.Join(DefaultResumeFolderPath(), filename)
+}
 func ParserResumeCfg(filename string) (*ResumeCfg, error) {
 	cfg := &ResumeCfg{
 		Rwm: &sync.RWMutex{},
@@ -41,6 +50,7 @@ func ParserResumeCfg(filename string) (*ResumeCfg, error) {
 
 	return cfg, nil
 }
+
 func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	cfg.Rwm.Lock()
 	defer cfg.Rwm.Unlock()
@@ -55,27 +65,15 @@ func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	}
 	return os.WriteFile(DefaultResumeFilePath(filename), data, 0644)
 }
-
-func DefaultResumeFolderPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return defaultResumeFileName
-	}
-	return filepath.Join(home, ".config", "pathScan", "resume")
-}
-func DefaultResumeFilePath(filename string) string {
-	return filepath.Join(DefaultResumeFolderPath(), filename)
-}
 func (cfg *ResumeCfg) CleanupResumeConfig() {
 	if fileutil.FileExists(cfg.Options.ResumeCfg) {
 
 		_ = os.Remove(cfg.Options.ResumeCfg)
 	}
 }
-
 func (cfg *ResumeCfg) ClearResume() {
-	resumePath := util.DataRoot("resume")
-	dir, err := os.ReadDir(resumePath)
+	_ = os.Remove(cfg.Options.ResumeCfg)
+	dir, err := os.ReadDir(defaultResume)
 	if err != nil {
 		return
 	}
@@ -102,15 +100,14 @@ func (cfg *ResumeCfg) ClearResume() {
 	for s := range size {
 		t += s
 	}
-	// t > 50MB
-	if t >= 52428800 {
-		//_ = os.RemoveAll(DefaultResumeFolderPath())
+	// t > 5MB
+	if t >= 5242880 {
 		builder := strings.Builder{}
 		if !cfg.Options.NoColor {
-			builder.WriteString(aurora.Yellow(fmt.Sprintf("%s", DefaultResumeFolderPath())).String())
+			builder.WriteString(aurora.Yellow("WRN").String())
 		} else {
-			builder.WriteString(DefaultResumeFolderPath())
+			builder.WriteString("WRN")
 		}
-		gologger.Info().Msgf("%s is already greater than 50MB, please use - clear to clean", builder.String())
+		gologger.Info().Label(builder.String()).Msgf("%s is already greater than 5MB, please use - clear to clean", defaultResume)
 	}
 }

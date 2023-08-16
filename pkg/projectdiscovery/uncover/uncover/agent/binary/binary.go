@@ -65,7 +65,6 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 func (agent *Agent) query(session *uncover.Session, binaryRequest *BinaryRequest, results chan uncover.Result) *Response {
 	resp, err := agent.queryURL(session, URL, binaryRequest)
 	if err != nil {
-		fmt.Println(err)
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil
 	}

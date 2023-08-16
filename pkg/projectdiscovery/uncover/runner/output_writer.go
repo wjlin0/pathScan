@@ -2,12 +2,10 @@ package runner
 
 import (
 	"crypto/sha1"
-	"fmt"
 	"io"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/uncover"
 )
 
 type OutputWriter struct {
@@ -56,13 +54,4 @@ func (o *OutputWriter) WriteString(data string) {
 		return
 	}
 	o.Write([]byte(data))
-}
-
-// WriteJsonData writes the result taken as input in JSON format
-func (o *OutputWriter) WriteJsonData(data uncover.Result) {
-	if o.findDuplicate(fmt.Sprintf("%s:%d", data.IP, data.Port)) {
-		return
-	}
-	o.Write([]byte(data.JSON()))
-
 }

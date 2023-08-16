@@ -126,7 +126,7 @@ func UpdateVersion() (bool, error) {
 		return false, errors.Wrap(err, "Unable to obtain the latest version")
 	}
 	if len(releases) == 0 {
-		gologger.Info().Msgf("It's already the latest version%v", Version)
+		gologger.Info().Msgf("It's already the latest version v%v", Version)
 		return true, nil
 	}
 	latest := releases[0]

@@ -6,7 +6,7 @@
 <a href="https://github.com/wjlin0/pathScan" ><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/wjlin0/pathScan"></a>
 <a href="https://github.com/wjlin0/pathScan/releases"><img src="https://img.shields.io/github/downloads/wjlin0/pathScan/total" alt=""></a> 
 <a href="https://github.com/wjlin0/pathScan"><img src="https://img.shields.io/github/last-commit/wjlin0/PathScan" alt=""></a> 
-<a href="https://wjlin0.com/"><img src="https://img.shields.io/badge/wjlin0-blog-green" alt=""></a>
+<a href="https://blog.wjlin0.com/"><img src="https://img.shields.io/badge/wjlin0-blog-green" alt=""></a>
 </p>
 
 # 特征
@@ -22,6 +22,8 @@
 
 # 用法
 
+
+- 更多用法查看 [BLOG](https://blog.wjlin0.com/%E4%B8%AA%E4%BA%BA%E7%9F%A5%E8%AF%86%E5%BA%93/06.pathScan-doc/04.%E6%89%AB%E6%8F%8F%E6%A8%A1%E5%BC%8F.html)
 ```shell
 pathScan -h
 ```

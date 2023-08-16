@@ -97,7 +97,7 @@ func Unzip(p string, reader *bytes.Reader) error {
 		}
 		_, err = io.Copy(file, fileZip)
 		if err != nil {
-			gologger.Error().Msgf(fmt.Errorf("File encountered an error while writing: %w\n", err).Error())
+			gologger.Error().Msgf(fmt.Errorf("file encountered an error while writing: %w\n", err).Error())
 			continue
 		}
 	}
@@ -266,6 +266,31 @@ func ExtractHost(rawURL string) string {
 	return host
 }
 
+var exts = []string{
+	"com", "org", "net", "info", "biz", "us", "uk", "cn", "jp", "de", "fr", "ca", "au", "in", "ru",
+	"app", "blog", "guru", "tech", "travel", "store", "online",
+	"xyz", "club", "media", "design", "space", "global", "world", "pro",
+	"edu", "gov", "mil", "co",
+}
+
+func GetMainDomain(domain string) string {
+	top := 2
+	parts := strings.Split(domain, ".")
+	if len(parts) <= 2 {
+		return domain
+	}
+	ext := parts[len(parts)-2]
+	for _, e := range exts {
+		if ext == e {
+			top = 3
+			break
+		}
+	}
+	if len(parts) <= top {
+		return domain
+	}
+	return strings.Join(parts[len(parts)-top:], ".")
+}
 func IsSubdomainOrSameDomain(orl string, link string) bool {
 	o, _ := url.Parse(orl)
 	l, err := url.Parse(link)
@@ -403,7 +428,7 @@ func GetRequestPackage(request *http.Request) string {
 	return requestPackage
 }
 
-func GetResponsePackage(response *defaultHttp.Response, getBody bool) string {
+func GetResponsePackage(response *defaultHttp.Response, body []byte, getBody bool) string {
 	if response == nil {
 		return ""
 	}
@@ -411,9 +436,15 @@ func GetResponsePackage(response *defaultHttp.Response, getBody bool) string {
 
 	var bodyBytes []byte
 	// 备份请求体
-	if response.Body != nil {
-		bodyBytes, _ = io.ReadAll(response.Body)
-		response.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	if body != nil && getBody {
+		bodyBytes = body
+		//buffer := bytes.Buffer{}
+		//_, err := io.Copy(&buffer, response.Body)
+		//if err != nil {
+		//	return ""
+		//}
+		//bodyBytes = buffer.Bytes()
+		//response.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 
 	// 拼接响应行
@@ -429,12 +460,12 @@ func GetResponsePackage(response *defaultHttp.Response, getBody bool) string {
 
 	// 拼接空行
 	blankLine := "\r\n"
-	body := string(bodyBytes)
+	//body :=
 	responsePackage.WriteString(statusLine)
 	responsePackage.WriteString(headers.String())
 	responsePackage.WriteString(blankLine)
 	if getBody {
-		responsePackage.WriteString(body)
+		responsePackage.WriteString(string(bodyBytes))
 	}
 
 	// 将响应行、响应头和空行合并成原始响应包内容
@@ -508,39 +539,13 @@ func WriteFile(filename string, string2 string) error {
 	return nil
 }
 
-func IsBlackPath(link string) bool {
-	extensions := []string{".js", ".png", ".jpg", ".jpeg", ".gif", ".css", ".ico", ".svg", ".woff", ".ttf", ".eot", ".mp3", ".wav", ".mp4", ".avi"}
-
-	u, err := url.Parse(link)
-	if err != nil {
-		return false // 解析错误，链接无效
-	}
-
-	path := u.Path
-
-	for _, ext := range extensions {
-		if strings.HasSuffix(path, ext) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func AddStrToMap(str string, m map[string]struct{}, protocol string) {
 	switch protocol {
 	case "url":
 		str = strings.TrimRight(str, "/")
-		if !strings.HasPrefix(str, "http") {
-			for _, str = range []string{fmt.Sprintf("http://%s", str), fmt.Sprintf("https://%s", str)} {
-				m[str] = struct{}{}
-			}
-		} else {
-			m[str] = struct{}{}
-		}
-
+		m[str] = struct{}{}
 	case "path":
-		if len(str) == 0 || str[0] != '/' {
+		if len(str) >= 1 && str[0] != 47 {
 			str = fmt.Sprintf("/%s", str)
 		}
 		m[str] = struct{}{}
@@ -597,4 +602,28 @@ func NewProxyDialer(proxyUrl, proxyAuth string) (proxy.Dialer, error) {
 		}
 	}
 	return proxy.SOCKS5("tcp", proxyUrl, auther, proxy.Direct)
+}
+func FindOffset(file *os.File, target string) (int64, error) {
+	stat, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	fileSize := stat.Size()
+	bufferSize := 1024 // 可根据需要调整缓冲区大小
+	buffer := make([]byte, bufferSize)
+	offset := int64(0)
+
+	for offset < fileSize {
+		n, readErr := file.ReadAt(buffer, offset)
+		if readErr != nil {
+			return 0, readErr
+		}
+		if index := bytes.Index(buffer[:n], []byte(target)); index != -1 {
+			return offset + int64(index), nil
+		}
+
+		offset += int64(n)
+	}
+	return 0, fmt.Errorf("not find target")
 }

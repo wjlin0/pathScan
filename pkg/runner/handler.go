@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
-	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"net/http"
@@ -55,7 +54,6 @@ func (r *Runner) handlerHeader() map[string]interface{} {
 
 	return headerMap
 }
-
 func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 	at := make(map[string]struct{})
 	protocol := "path"
@@ -102,20 +100,6 @@ func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 	return at, nil
 }
 
-func (r *Runner) handlerGetFilePath(filename string) []string {
-
-	path := util.DataRoot("dict", filename)
-	out, err := fileutil.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var str []string
-	for o := range out {
-		str = append(str, o)
-	}
-	return str
-}
-
 func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 	at := make(map[string]struct{})
 	protocol := "url"
@@ -158,30 +142,12 @@ func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 		os.Stdin.Close()
 	}
 
-	// 处理 Uncover 引擎查找到的 URL
-	if r.Cfg.Options.Uncover && r.Cfg.Options.UncoverQuery != nil {
-		if r.Cfg.Options.UncoverEngine == nil {
-			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
-		}
-		gologger.Info().Msgf("Running: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
-		if err != nil {
-			return nil, err
-		}
-		for c := range ch {
-			c = strings.TrimSpace(c)
-			if c != "" {
-				util.AddStrToMap(c, at, protocol)
-			}
-		}
-	}
 	// 从结果中删除 SkipUrl 指定的 URL
 	for _, skip := range r.Cfg.Options.SkipUrl {
 		delete(at, skip)
 	}
 	return at, nil
 }
-
 func InitPathScan() error {
 	if fileutil.FileExists(filepath.Join(defaultPathScanDir, ".check")) {
 		return nil
@@ -211,7 +177,6 @@ func InitPathScan() error {
 	gologger.Info().Msg("Initialization completed.")
 	return nil
 }
-
 func InitJs() error {
 	if fileutil.FileExists(filepath.Join(defaultJsDir, ".check")) {
 		return nil
@@ -263,7 +228,6 @@ func InitJs() error {
 	}
 	return nil
 }
-
 func InitMatch() error {
 	if fileutil.FileExists(filepath.Join(defaultMatchDir, ".check")) {
 		return nil
@@ -278,7 +242,6 @@ func InitMatch() error {
 	}
 	return nil
 }
-
 func InitConfig() error {
 	// create default provider file if it doesn't exist
 	if !fileutil.FileExists(defaultProviderConfigLocation) {
@@ -288,7 +251,6 @@ func InitConfig() error {
 	}
 	return nil
 }
-
 func InitPathDict() error {
 	if fileutil.FileExists(filepath.Join(defaultPathDict, ".check")) {
 		return nil

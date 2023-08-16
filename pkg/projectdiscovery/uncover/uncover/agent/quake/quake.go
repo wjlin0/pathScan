@@ -74,7 +74,7 @@ func (agent *Agent) Query(session *uncover.Session, query *uncover.Query) (chan 
 
 func (agent *Agent) query(URL string, session *uncover.Session, quakeRequest *Request, results chan uncover.Result) *Response {
 	resp, err := agent.queryURL(session, URL, quakeRequest)
-	//fmt.Println(quakeRequest.Query)
+	//fmt.Println(quakeRequest.SubdomainQuery)
 	if err != nil {
 		results <- uncover.Result{Source: agent.Name(), Error: err}
 		return nil

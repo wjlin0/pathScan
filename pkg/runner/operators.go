@@ -1,10 +1,12 @@
 package runner
 
 import (
+	"bytes"
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
+	"github.com/wjlin0/pathScan/pkg/query/utils"
 	"github.com/wjlin0/pathScan/pkg/util"
-	"net/url"
+	"net"
 	"strings"
 )
 
@@ -35,51 +37,39 @@ func (r *Runner) ParseTechnology(data map[string]interface{}) []string {
 
 	return tag
 }
-func (r *Runner) ParseOtherUrl(oldUrl string, data map[string]interface{}) []string {
-	var all []string
+func (r *Runner) ParseOtherUrl(oldUrl string, domains []string, data ...[]byte) []string {
+	var buffer bytes.Buffer
+	for _, v := range data {
+		buffer.Write(v)
+	}
 	// 提取响应包的 body 数据
-	body, ok := data["body"].([]byte)
-	if !ok {
+	body := buffer.String()
+	if domains != nil {
+		matchDomains := make(map[string]struct{})
+		Topdomains := make(map[string]struct{})
+		if net.ParseIP(oldUrl) == nil {
+			Topdomains[util.GetMainDomain(oldUrl)] = struct{}{}
+		}
+		for _, d := range domains {
+			Topdomains[util.GetMainDomain(d)] = struct{}{}
+		}
+		for k, _ := range Topdomains {
+			for _, d1 := range utils.MatchSubdomains(k, body, false) {
+				matchDomains[d1] = struct{}{}
+			}
+		}
+		domains = []string{}
+		for k, _ := range matchDomains {
+			domains = append(domains, k)
+		}
+		return domains
+	}
+	if net.ParseIP(oldUrl) != nil {
 		return nil
 	}
-	all = util.ExtractURLs(string(body))
-	var urls []string
-	// 过滤不属于子域名或基本URL的链接
+	domain := util.GetMainDomain(oldUrl)
+	return utils.MatchSubdomains(domain, body, false)
 
-	for _, link := range all {
-		if link == "" {
-			continue
-		}
-		var links []string
-		if !strings.HasPrefix(link, "http") {
-			links = append(links, "http://"+link)
-			links = append(links, "https://"+link)
-		} else {
-			links = append(links, link)
-		}
-		for _, link := range links {
-			if _, err := url.Parse(link); err != nil {
-				continue
-			}
-			switch {
-			case r.Cfg.Options.FindOtherDomain:
-				parse, _ := url.Parse(link)
-				urls = append(urls, util.GetTrueUrl(parse))
-			case r.Cfg.Options.FindOtherLink:
-				if !util.IsSubdomainOrSameDomain(oldUrl, link) {
-					continue
-				}
-
-				if util.IsBlackPath(link) {
-					continue
-				}
-				urls = append(urls, link)
-			}
-		}
-
-	}
-
-	return urls
 }
 
 func getMatchPart(part string, data map[string]interface{}) (string, bool) {

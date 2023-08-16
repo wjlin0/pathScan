@@ -3,6 +3,7 @@ package runner
 import (
 	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"path/filepath"
 )
 
@@ -11,13 +12,23 @@ const (
                __   __    ____               
    ___  ___ _ / /_ / /   / __/____ ___ _ ___ 
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.3.2
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.4.0
 /_/
 `
-	Version               = `1.3.2`
+	Version               = `1.4.0`
 	defaultResumeFileName = `resume.cfg`
 	userName              = "wjlin0"
 	repoName              = "pathScan-match"
+)
+const (
+	// HTTP defines the plain http scheme
+	HTTP = "http"
+	// HTTPS defines the secure http scheme
+	HTTPS = "https"
+	// HTTPorHTTPS defines both http and https scheme in mutual exclusion
+	HTTPorHTTPS = "http|https"
+	// HTTPandHTTPS defines both http and https scheme
+	HTTPandHTTPS = "http&https"
 )
 
 var (
@@ -25,9 +36,10 @@ var (
 	defaultMatchDir               = filepath.Join(defaultPathScanDir, "match-config")
 	defaultJsDir                  = filepath.Join(defaultPathScanDir, "js")
 	defaultPathDict               = filepath.Join(defaultPathScanDir, "dict")
+	defaultResume                 = filepath.Join(defaultPathScanDir, "resume")
 	defaultProviderConfigLocation = filepath.Join(defaultPathScanDir, "provider-config.yaml")
 	defaultRecursiveRunFile       = filepath.Join(defaultPathDict, "dir.txt")
-	PathScanMatchVersion          = ""
+	PathScanMatchVersion, _       = util.GetMatchVersion(defaultMatchDir)
 )
 
 // showBanner is used to show the banner to the user

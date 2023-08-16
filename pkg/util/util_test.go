@@ -9,6 +9,28 @@ import (
 	"testing"
 )
 
+func TestGetMainDomain(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"www.wjlin0.com", "wjlin0.com"},
+		{"www.wjlin0.com.cn", "wjlin0.com.cn"},
+		{"google.www.wjlin0.com", "wjlin0.com"},
+		{"test.com", "test.com"},
+		{"subdomain.test.com", "test.com"},
+		{"example.co.uk", "example.co.uk"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			result := GetMainDomain(test.input)
+			if result != test.expected {
+				t.Errorf("Expected %s, but got %s", test.expected, result)
+			}
+		})
+	}
+}
 func TestIsSubdomainOrSameDomain(t *testing.T) {
 	tests := []struct {
 		orl   string
@@ -120,5 +142,5 @@ func TestGetResponsePackage(t *testing.T) {
 	if err != nil {
 		return
 	}
-	fmt.Println(GetResponsePackage(response, false))
+	fmt.Println(GetResponsePackage(response, nil, false))
 }
