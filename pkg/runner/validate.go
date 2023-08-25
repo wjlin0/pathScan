@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/stringsutil"
 	httputil "github.com/projectdiscovery/utils/http"
 	"github.com/wjlin0/pathScan/pkg/util"
@@ -36,5 +37,21 @@ func (o *Options) Validate() error {
 	if (o.Csv && o.Html) || (o.Csv && o.Silent) || (o.Html && o.Silent) {
 		return errors.New("csv、silent、html 同时只能存在一个")
 	}
+	var resolvers []string
+	for _, resolver := range o.Resolvers {
+		if fileutil.FileExists(resolver) {
+			chFile, err := fileutil.ReadFile(resolver)
+			if err != nil {
+				return errors.Wrapf(err, "Couldn't process resolver file \"%s\"", resolver)
+			}
+			for line := range chFile {
+				resolvers = append(resolvers, line)
+			}
+		} else {
+			resolvers = append(resolvers, resolver)
+		}
+	}
+
+	o.Resolvers = resolvers
 	return nil
 }

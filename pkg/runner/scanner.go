@@ -158,9 +158,9 @@ getResponse:
 		"body":        bodyBytes,
 	}
 	gologger.Debug().Msg(string(bodyBytes))
-	targetResult.Technology = r.ParseTechnology(byte_)
+	targetResult.Technology = r.parseTechnology(byte_)
 	if r.Cfg.Options.FindOtherDomain {
-		targetResult.Links = r.ParseOtherUrl(parse.Hostname(), r.Cfg.Options.FindOtherDomainList, headerBytes, bodyBytes)
+		targetResult.Links = r.parseOtherUrl(parse.Hostname(), r.Cfg.Options.FindOtherDomainList, headerBytes, bodyBytes)
 	}
 	targetResult.RequestBody = requestRaw
 	targetResult.ResponseBody = util.GetResponsePackage(resp, bodyBytes, true)

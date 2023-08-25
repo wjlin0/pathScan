@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -271,6 +272,74 @@ var exts = []string{
 	"app", "blog", "guru", "tech", "travel", "store", "online",
 	"xyz", "club", "media", "design", "space", "global", "world", "pro",
 	"edu", "gov", "mil", "co",
+}
+
+func GetPartString(part string, data map[string]interface{}) (string, bool) {
+	if part == "" {
+		part = "body"
+	}
+	if part == "header" {
+		part = "all_headers"
+	}
+	var itemStr string
+
+	if part == "all" {
+		builder := &strings.Builder{}
+		builder.WriteString(ToString(data["body"]))
+		builder.WriteString(ToString(data["all_headers"]))
+		itemStr = builder.String()
+	} else {
+		item, ok := data[part]
+		if !ok {
+			return "", false
+		}
+		itemStr = ToString(item)
+	}
+	return itemStr, true
+}
+
+// ToString converts an interface to string in a quick way
+func ToString(data interface{}) string {
+	switch s := data.(type) {
+	case nil:
+		return ""
+	case string:
+		return s
+	case bool:
+		return strconv.FormatBool(s)
+	case float64:
+		return strconv.FormatFloat(s, 'f', -1, 64)
+	case float32:
+		return strconv.FormatFloat(float64(s), 'f', -1, 32)
+	case int:
+		return strconv.Itoa(s)
+	case int64:
+		return strconv.FormatInt(s, 10)
+	case int32:
+		return strconv.Itoa(int(s))
+	case int16:
+		return strconv.FormatInt(int64(s), 10)
+	case int8:
+		return strconv.FormatInt(int64(s), 10)
+	case uint:
+		return strconv.FormatUint(uint64(s), 10)
+	case uint64:
+		return strconv.FormatUint(s, 10)
+	case uint32:
+		return strconv.FormatUint(uint64(s), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(s), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(s), 10)
+	case []byte:
+		return string(s)
+	case fmt.Stringer:
+		return s.String()
+	case error:
+		return s.Error()
+	default:
+		return fmt.Sprintf("%v", data)
+	}
 }
 
 func GetMainDomain(domain string) string {

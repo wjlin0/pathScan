@@ -162,6 +162,10 @@ func NewRunner(options *Options) (*Runner, error) {
 	fastOptons.MaxRetries = options.Retries
 	fastOptons.WithDialerHistory = true
 	fastOptons.EnableFallback = true
+	if len(options.Resolvers) > 0 {
+
+		fastOptons.BaseResolvers = options.Resolvers
+	}
 	run.dialer, err = fastdialer.NewDialer(fastOptons)
 	if err != nil {
 		return nil, err

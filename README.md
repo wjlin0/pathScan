@@ -27,7 +27,9 @@
 ```shell
 pathScan -h
 ```
-```yaml
+```text
+pathScan Go 扫描、信息收集工具
+
 Usage:
   pathScan [flags]
 
@@ -39,6 +41,81 @@ Flags:
   -tc, -target-channel        从通道中加载目标
   -resume string              使用resume.cfg恢复扫描
   -mf, -match-file string     指纹文件
+
+递归:
+  -r, -recursive            递归扫描
+  -rt, -recursive-time int  递归扫描深度 (default 3)
+
+子域名收集:
+  -s, -sub                   子域名收集
+  -sq, -sub-query string[]   需要收集的域名
+  -sl, -sub-limit int        发现要返回的结果总数 (default 200)
+  -se, -sub-engine string[]  子域名搜索引擎 (default ["fofa", "hunter", "quake", "google", "bing", "ip138", "chinaz", "qianxun", "rapiddns", "sitedossier"])
+
+引擎:
+  -uc, -uncover                  启用打开搜索引擎
+  -uq, -uncover-query string[]   搜索查询
+  -ue, -uncover-engine string[]  支持的引擎 (shodan,shodan-idb,fofa,censys,quake,hunter,zoomeye,netlas,zone,binary) (default quake,fofa)
+  -uf, -uncover-field string     引擎返回字段 (ip,port,host) (default "host")
+  -ul, -uncover-limit int        发现要返回的结果 (default 200)
+  -ucd, -uncover-delay int       打开查询请求之间的延迟（秒） (default 1)
+  -uo, -uncover-output string    搜索引擎查询结果保存
+
+跳过:
+  -su, -skip-url string[]   跳过的目标(以逗号分割)
+  -sc, -skip-code string[]  跳过状态码
+  -sh, -skip-hash string    跳过指定hash
+  -sbl, -skip-body-len int  跳过body固定长度 (default -1)
+
+扫描字典:
+  -ps, -path string[]       路径(以逗号分割)
+  -pf, -path-file string[]  从文件中,读取路径
+  -pr, -path-remote string  从远程加载字典
+
+输出:
+  -o, -output string  输出文件路径（可忽略）
+  -csv                csv格式输出
+  -html               html格式输出
+  -silent             简略输出
+  -nc, -no-color      无颜色输出
+  -vb, -verbose       详细输出模式
+  -v, -version        输出版本
+
+工具:
+  -clear                          清理历史任务
+  -gh, -get-hash                  计算hash
+  -shm, -skip-hash-method string  指定hash的方法（sha256,md5,sha1） (default "sha256")
+
+配置:
+  -rs, -retries int                 重试3次 (default 3)
+  -p, -proxy string                 代理
+  -resolvers string[]               自定义DNS列表( 文件或逗号隔开 )
+  -pa, -proxy-auth string           代理认证，以冒号分割（username:password）
+  -st, -scan-target                 只进行目标存活扫描
+  -nn, -not-new                     不允许重定向
+  -sdl, -scan-domain-list string[]  从响应中中发现其他URL
+  -sd, -scan-domain                 从响应中发现其他域名
+
+请求头参数:
+  -m, -method string[]          请求方法 (GET、POST、PUT、OPTIONS、HEAD、CONNECT) (default ["GET"])
+  -ua, -user-agent string[]     User-Agent
+  -c, -cookie string            cookie
+  -auth, -authorization string  Auth请求头
+  -header string[]              自定义请求头,以逗号隔开
+  -hf, -header-file string[]    从文件中加载自定义请求头
+  -b, -body string              自定义请求体
+
+速率:
+  -t, -thread int       线程 (default 50)
+  -rl, -rate-limit int  每秒允许的HTTP连接数 (default 150)
+  -timeout int          超时时间 (default 30)
+
+更新:
+  -update             更新版本
+  -ud, -update-dict   更新字典版本
+  -um, -update-match  更新指纹识别库
+  -uh, -update-html   更新HTML模板文件
+  -am, -auto-match    跳过自动更新
 
 ```
 # 安装pathScan

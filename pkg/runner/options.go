@@ -73,6 +73,7 @@ type Options struct {
 	SubdomainLimit            int                         `json:"subdomain-limit"`
 	SubdomainQuery            goflags.StringSlice         `json:"subdomain-query"`
 	SubdomainEngine           goflags.StringSlice         `json:"subdomain-engine"`
+	Resolvers                 goflags.StringSlice         `json:"resolvers"`
 }
 
 func ParserOptions() *Options {
@@ -135,6 +136,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("Config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
+		set.StringSliceVar(&options.Resolvers, "resolvers", nil, "自定义DNS列表( 文件或逗号隔开 )", goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
