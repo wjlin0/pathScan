@@ -4,17 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/logrusorgru/aurora"
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
-	"github.com/projectdiscovery/stringsutil"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/pkg/common/identification"
-	"github.com/wjlin0/pathScan/pkg/common/query"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
-	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"github.com/wjlin0/pathScan/pkg/writer"
@@ -34,7 +30,7 @@ type Runner struct {
 	limiter      *ratelimit.Limiter
 	client       *http.Client
 	dialer       *fastdialer.Dialer
-	targets      map[string]struct{}
+	targets_     map[string]struct{}
 	paths        map[string]struct{}
 	headers      map[string]interface{}
 	skipCode     map[string]struct{}
@@ -159,7 +155,6 @@ func NewRunner(options *Options) (*Runner, error) {
 
 	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
 	fastOptons := fastdialer.DefaultOptions
-	fastOptons.MaxRetries = options.Retries
 	fastOptons.WithDialerHistory = true
 	fastOptons.EnableFallback = true
 	if len(options.Resolvers) > 0 {
@@ -174,7 +169,7 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateLimit), time.Second)
 	run.wg = new(sizedwaitgroup.SizedWaitGroup)
 	*run.wg = sizedwaitgroup.New(run.Cfg.Options.Threads)
-	run.targets, err = run.handlerGetTargets()
+	run.targets_, err = run.handlerGetTargets()
 	run.paths, err = run.handlerGetTargetPath()
 	if err != nil {
 		return nil, err
@@ -213,7 +208,7 @@ func (r *Runner) RunEnumeration() error {
 	getWriter := func(output string) (io.Writer, error) {
 		var outputWriter io.Writer
 		//outputWriter, _ := ucRunner.NewOutputWriter()
-		outputWriter = writer.NewOutputWriter()
+
 		switch {
 		case r.Cfg.Options.Csv:
 			if output != "" {
@@ -279,12 +274,14 @@ func (r *Runner) RunEnumeration() error {
 		}
 		return outputWriter, nil
 	}
-	outputWriter, err := ucRunner.NewOutputWriter()
-	o, err := getWriter(r.Cfg.Options.Output)
+	outputWriter, err := writer.NewOutputWriter()
 	if err != nil {
 		return err
 	}
-	outputWriter.AddWriters(o)
+
+	if o, err := getWriter(r.Cfg.Options.Output); err == nil && o != nil {
+		outputWriter.AddWriters(o)
+	}
 	go r.output(outputWriter)
 	switch {
 	case r.Cfg.Options.Uncover:
@@ -300,17 +297,9 @@ func (r *Runner) RunEnumeration() error {
 			paths = []string{"/"}
 		}
 		urlsMap = make(map[string]struct{})
-		// 处理 Uncover 引擎查找到的 URL
-		if r.Cfg.Options.UncoverQuery == nil {
-			return nil
-		}
-
-		if r.Cfg.Options.UncoverEngine == nil {
-			r.Cfg.Options.UncoverEngine = []string{"quake", "fofa"}
-		}
 
 		gologger.Info().Msgf("Running: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.UncoverOutput, r.Cfg.Options.Csv, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
+		ch, err := uncover.GetTarget(r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.Csv, r.Cfg.Options.UncoverOutput, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
 		if err != nil {
 			return err
 		}
@@ -321,11 +310,18 @@ func (r *Runner) RunEnumeration() error {
 		for u, _ := range urlsMap {
 			urls = append(urls, u)
 		}
-		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*2*len(paths))
+
+		lenPath := len(paths)
+		if lenPath <= 0 {
+			lenPath = 1
+		}
+		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*lenPath)
+		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*2*lenPath)
 		for out := range result.Rand(urls, paths) {
 			target := out[0]
 			path := out[1]
 			proto := HTTPandHTTPS
+
 			if strings.HasPrefix(target, "http://") {
 				proto = HTTP
 				target = strings.Replace(target, "http://", "", 1)
@@ -339,70 +335,37 @@ func (r *Runner) RunEnumeration() error {
 		cancel()
 	case r.Cfg.Options.Subdomain:
 		urlsMap := make(map[string]struct{})
-		var paths []string
+		var (
+			err   error
+			urls  []string
+			paths []string
+		)
 		for p, _ := range r.paths {
 			paths = append(paths, p)
 		}
-		if len(paths) == 0 {
-			paths = []string{"/"}
-		}
 
-		if len(r.Cfg.Options.SubdomainQuery) <= 0 {
-			return errors.New("parameter query required")
-		}
-		var (
-			queryEngine, uncoverEngine []string
-		)
-		var (
-			uncoverEngineAll = []string{"shodan", "shodan-idb", "fofa", "censys", "quake", "hunter", "zoomeye", "netlas", "zone", "binary"}
-			queryEngineAll   = []string{"anubis", "google", "bing", "ip138", "chinaz", "qianxun", "rapiddns", "sitedossier"}
-		)
-		for _, engine := range r.Cfg.Options.SubdomainEngine {
-			if stringsutil.ContainsAny(engine, uncoverEngineAll...) {
-				uncoverEngine = append(uncoverEngine, engine)
-				continue
-			}
-			if stringsutil.ContainsAny(engine, queryEngineAll...) {
-				queryEngine = append(queryEngine, engine)
-				continue
-			}
-		}
-		if len(queryEngine)+len(uncoverEngine) == 0 {
-			return errors.New("No sub domain engine found")
-		}
-		unc, err := uncover.GetTargetsFromUncover(r.Cfg.Options.UncoverDelay, r.Cfg.Options.SubdomainLimit, "host", "", false, uncoverEngine, r.Cfg.Options.SubdomainQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
+		unc, err := uncover.GetTarget(r.Cfg.Options.SubdomainLimit, "host", r.Cfg.Options.Csv, r.Cfg.Options.SubdomainOutput, r.Cfg.Options.SubdomainEngine, r.Cfg.Options.SubdomainQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
 		if err != nil {
 			return err
 		}
 		for u := range unc {
 			urlsMap[u] = struct{}{}
 		}
-		uncoverEngineLen := len(urlsMap)
-		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(uncoverEngine, ","), uncoverEngineLen)
-
-		ret, err := query.Query(1, r.Cfg.Options.SubdomainLimit, r.Cfg.Options.Retries, r.Cfg.Options.Timeout, r.Cfg.Options.SubdomainQuery, queryEngine, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
-		if err != nil {
-			gologger.Warning().Msg(err.Error())
-			return err
-		}
-		for q := range ret {
-
-			urlsMap[q] = struct{}{}
-		}
-
-		gologger.Info().Msgf("Successfully requested search engine( %s ), collected %d domain names", strings.Join(queryEngine, ","), len(urlsMap)-uncoverEngineLen)
-
-		var urls []string
+		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(r.Cfg.Options.SubdomainEngine, ","), len(urlsMap))
 
 		for u, _ := range urlsMap {
 			urls = append(urls, u)
 		}
-		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*2)
+		lenPath := len(paths)
+		if lenPath <= 0 {
+			lenPath = 1
+		}
+		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*lenPath)
 		out := result.Rand(urls, paths)
 		for o := range out {
 			target := o[0]
 			path := o[1]
-			proto := HTTPandHTTPS
+			proto := HTTPorHTTPS
 			if strings.HasPrefix(o[0], "http://") {
 				proto = HTTP
 				target = strings.Replace(target, "http://", "", 1)
@@ -421,12 +384,12 @@ func (r *Runner) RunEnumeration() error {
 		for p, _ := range r.paths {
 			paths = append(paths, p)
 		}
-		for t, _ := range r.targets {
+		for t, _ := range r.targets_ {
 			urls = append(urls, t)
 		}
 
 		for o := range result.Rand(urls) {
-			proto := HTTPandHTTPS
+			proto := HTTPorHTTPS
 			if strings.HasPrefix(o[0], "http://") {
 				proto = HTTP
 				o[0] = strings.Replace(o[0], "http://", "", 1)
@@ -439,7 +402,7 @@ func (r *Runner) RunEnumeration() error {
 	default:
 		var urls []string
 		var paths []string
-		for p, _ := range r.targets {
+		for p, _ := range r.targets_ {
 			urls = append(urls, p)
 		}
 		for t, _ := range r.paths {
@@ -448,10 +411,10 @@ func (r *Runner) RunEnumeration() error {
 		if r.Cfg.Options.OnlyTargets {
 			paths = []string{"/"}
 		}
-		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*len(paths)*2)
+		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*len(paths))
 		out := result.Rand(urls, paths)
 		for o := range out {
-			proto := HTTPandHTTPS
+			proto := HTTPorHTTPS
 			if strings.HasPrefix(o[0], "http://") {
 				proto = HTTP
 				o[0] = strings.Replace(o[0], "http://", "", 1)
@@ -465,11 +428,11 @@ func (r *Runner) RunEnumeration() error {
 			time.Sleep(2 * time.Second)
 		}
 		r.wg.Wait()
-
 		cancel()
 	}
 	r.Close()
 	r.Cfg.ClearResume()
+
 	gologger.Info().Msgf("This task takes %v seconds", time.Since(startTime).Seconds())
 	return nil
 }
@@ -502,7 +465,7 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 						wg.Add()
 						go func(target string, protocol string, path string) {
 							defer wg.Done()
-							mapResult, err := r.Do(fmt.Sprintf("%s://%s", protocol, target), path, r.Cfg.Options.Method[0])
+							mapResult, err := r.analyze(protocol, result.Target{Host: target}, path, r.Cfg.Options.Method[0])
 							if err != nil {
 								gologger.Warning().Msgf("An error occurred: %s", err)
 								return
@@ -526,7 +489,7 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 
 								if r.Cfg.Options.FindOtherDomain && targetResult.Links != nil {
 									for _, link := range targetResult.Links {
-										proto := HTTPandHTTPS
+										proto := HTTPorHTTPS
 										if strings.HasPrefix(link, "http://") {
 											proto = HTTP
 											link = strings.Replace(link, "http://", "", 1)
@@ -566,46 +529,50 @@ func (r *Runner) process(t, path string, protocol string, methods []string, ctx 
 	if protocol == HTTPandHTTPS {
 		protocols = []string{HTTPS, HTTP}
 	}
-	for _, method := range methods {
-		for _, proto := range protocols {
-			wg.Add()
-			go func(target, path, protocol, method string) {
-				defer wg.Done()
-				mapResult, err := r.Do(fmt.Sprintf("%s://%s", protocol, target), path, method)
-				if err != nil {
-					gologger.Warning().Msgf("An error occurred: %s", err)
-					return
-				}
-				check := mapResult["check"].(bool)
-				targetResult := mapResult["result"].(*result.Result)
-				if r.Cfg.Options.ResultBack != nil {
-					go r.Cfg.Options.ResultBack(targetResult)
-				}
-				if targetResult != nil {
-					// 跳过条件满足
-					if check {
+	for target := range r.targets(t) {
+		for _, method := range methods {
+			for _, proto := range protocols {
+				wg.Add()
+				go func(target result.Target, path, protocol, method string) {
+
+					defer wg.Done()
+
+					mapResult, err := r.analyze(protocol, target, path, method)
+					if err != nil {
+						gologger.Warning().Msgf("An error occurred: %s", err)
+						return
+					}
+
+					check := mapResult["check"].(bool)
+					targetResult := mapResult["result"].(*result.Result)
+					if r.Cfg.Options.ResultBack != nil {
+						go r.Cfg.Options.ResultBack(targetResult)
+					}
+					if targetResult == nil || check {
 						return
 					}
 					r.outputResult <- targetResult
-					if r.Cfg.Options.FindOtherDomain && targetResult.Links != nil {
-						for _, link := range targetResult.Links {
-							proto := HTTPandHTTPS
-							if strings.HasPrefix(link, "http://") {
-								proto = HTTP
-								link = strings.Replace(link, "http://", "", 1)
-							} else if strings.HasPrefix(link, "https://") {
-								proto = HTTPS
-								link = strings.Replace(link, "https://", "", 1)
-							}
-							go func(target string, proto string) {
-								r.process(target, "", proto, []string{"GET"}, ctx, wg)
-							}(link, proto)
-						}
+					if !r.Cfg.Options.FindOtherDomain || targetResult.Links == nil {
+						return
 					}
-				}
-				return
-			}(t, path, proto, method)
+					for _, link := range targetResult.Links {
+						proto := HTTPorHTTPS
+						if strings.HasPrefix(link, "http://") {
+							proto = HTTP
+							link = strings.Replace(link, "http://", "", 1)
+						} else if strings.HasPrefix(link, "https://") {
+							proto = HTTPS
+							link = strings.Replace(link, "https://", "", 1)
+						}
+						go func(target string, proto string) {
+							r.process(target, "", proto, []string{"GET"}, ctx, wg)
+						}(link, proto)
+					}
+
+				}(target, path, proto, method)
+			}
 		}
 	}
+
 	return
 }

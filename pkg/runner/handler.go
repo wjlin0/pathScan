@@ -3,9 +3,10 @@ package runner
 import (
 	"bufio"
 	"fmt"
+	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
-	ucRunner "github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"net/http"
 	"os"
@@ -19,14 +20,6 @@ const (
 	HeaderKeyCookie        = "Cookie"
 	HeaderKeyAuthorization = "Authorization"
 )
-
-var defaultUserAgents = []string{
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_3 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5",
-	"Mozilla/5.0 (Linux;u;Android 4.2.2;zh-cn;) AppleWebKit/534.46 (KHTML,like Gecko)Version/5.1 Mobile Safari/10600.6.3 (compatible; Baiduspider/2.0;+http://www.baidu.com/search/spider.html)",
-	"Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)",
-	"Mozilla/5.0 (compatible; Baiduspider-render/2.0; +http://www.baidu.com/search/spider.html)",
-}
 
 func (r *Runner) handlerHeader() map[string]interface{} {
 	headerMap := make(map[string]interface{})
@@ -49,9 +42,9 @@ func (r *Runner) handlerHeader() map[string]interface{} {
 	}
 
 	if userAgent, ok := headerMap[HeaderKeyUserAgent]; !ok || len(userAgent.([]string)) == 0 {
-		headerMap[HeaderKeyUserAgent] = defaultUserAgents
+		headerMap[HeaderKeyUserAgent] = uarand.UserAgents
 	}
-
+	headerMap["Accept-Charset"] = "utf-8"
 	return headerMap
 }
 func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
@@ -83,7 +76,7 @@ func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 	}
 
 	// 如果未指定路径，则处理默认文件名
-	if len(at) == 0 && len(r.targets) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
+	if len(at) == 0 && len(r.targets_) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
 		out, err := fileutil.ReadFile(filepath.Join(defaultPathDict, "main.txt"))
 		if err != nil {
 			return nil, err
@@ -245,7 +238,7 @@ func InitMatch() error {
 func InitConfig() error {
 	// create default provider file if it doesn't exist
 	if !fileutil.FileExists(defaultProviderConfigLocation) {
-		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), ucRunner.Provider{}); err != nil {
+		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), sources.Provider{}); err != nil {
 			return err
 		}
 	}

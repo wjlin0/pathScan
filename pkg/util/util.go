@@ -52,7 +52,7 @@ func GetCheckRedirectFunc(errUseLastResponse bool) func(req *defaultHttp.Request
 // GetProxyFunc 辅助函数：获取代理设置函数
 func GetProxyFunc(proxy, auth string) func(*defaultHttp.Request) (*url.URL, error) {
 	if proxy == "" {
-		return nil
+		return defaultHttp.ProxyFromEnvironment
 	}
 	proxyURL, err := url.Parse(proxy)
 	if err != nil {

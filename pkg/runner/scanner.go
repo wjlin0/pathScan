@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/mapcidr"
+	"github.com/projectdiscovery/mapcidr/asn"
 	http "github.com/projectdiscovery/retryablehttp-go"
+	"github.com/projectdiscovery/utils/generic"
 	httputil "github.com/projectdiscovery/utils/http"
+	iputil "github.com/projectdiscovery/utils/ip"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	urlutil "github.com/projectdiscovery/utils/url"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"golang.org/x/net/context"
+	"io"
 	"math/rand"
 	"net"
 	defaultHttp "net/http"
@@ -40,8 +46,12 @@ func (r *Runner) CheckSkip(status int, contentLength int, body []byte) bool {
 	return false
 
 }
-func (r *Runner) NewRequest(method string, url string, body interface{}) (*http.Request, error) {
-	request, err := http.NewRequest(method, url, body)
+func (r *Runner) NewRequest(ctx context.Context, method string, url string, body interface{}) (*http.Request, error) {
+	urlx, err := urlutil.ParseURL(url, true)
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestFromURLWithContext(ctx, method, urlx, body)
 	if err != nil {
 		return nil, err
 	}
@@ -50,41 +60,188 @@ func (r *Runner) NewRequest(method string, url string, body interface{}) (*http.
 		case string:
 			request.Header.Set(k, v.(string))
 		case []string:
+
 			rand.Seed(time.Now().Unix())
+			//request.Header.Set(k, uarand.GetRandom())
 			request.Header.Set(k, v.([]string)[rand.Intn(len(v.([]string)))])
+
 		}
+
 	}
 	return request, nil
 
 }
-func (r *Runner) Do(target, path string, method string) (map[string]interface{}, error) {
-	var gzipRetry bool
+
+type Response struct {
+	Response      *defaultHttp.Response
+	Raw           string
+	RawData       []byte
+	RawHeaders    string
+	Headers       map[string][]string
+	StatusCode    int
+	ContentLength int
+	Data          []byte
+}
+
+func (r *Runner) do(req *http.Request) (*Response, error) {
+	var (
+		gzipRetry bool
+	)
+getResponse:
+	httpresp, err := r.retryable.Do(req)
+	if httpresp == nil && err != nil {
+		return nil, err
+	}
+	var (
+		shouldIgnoreErrors     bool
+		shouldIgnoreBodyErrors bool
+	)
+	var resp Response
+	resp.Headers = httpresp.Header.Clone()
+	headers, rawResp, err := httputil.DumpResponseHeadersAndRaw(httpresp)
+	if err != nil {
+		if stringsutil.ContainsAny(err.Error(), "tls: user canceled") {
+			shouldIgnoreErrors = true
+			shouldIgnoreBodyErrors = true
+		}
+
+		// Edge case - some servers respond with gzip encoding header but uncompressed body, in this case the standard library configures the reader as gzip, triggering an error when read.
+		// The bytes slice is not accessible because of abstraction, therefore we need to perform the request again tampering the Accept-Encoding header
+		if !gzipRetry && strings.Contains(err.Error(), "gzip: invalid header") {
+			gzipRetry = true
+			req.Header.Set("Accept-Encoding", "identity")
+			goto getResponse
+		}
+		if !shouldIgnoreErrors {
+			return nil, err
+		}
+	}
+
+	resp.Raw = string(rawResp)
+	resp.RawHeaders = string(headers)
+	var respbody []byte
+	if !generic.EqualsAny(httpresp.StatusCode, defaultHttp.StatusSwitchingProtocols, defaultHttp.StatusNotModified) {
+		var err error
+		respbody, err = io.ReadAll(httpresp.Body)
+		if err != nil && !shouldIgnoreBodyErrors {
+			return nil, err
+		}
+	}
+	closeErr := httpresp.Body.Close()
+	if closeErr != nil && !shouldIgnoreBodyErrors {
+		return nil, closeErr
+	}
+	resp.RawData = make([]byte, len(respbody))
+	copy(resp.RawData, respbody)
+	respbody, err = DecodeData(respbody, httpresp.Header)
+	if err != nil && !shouldIgnoreBodyErrors {
+		return nil, closeErr
+	}
+	// if content length is not defined
+	if resp.ContentLength <= 0 {
+		// check if it's in the header and convert to int
+		if contentLength, ok := resp.Headers["Content-Length"]; ok && len(contentLength) > 0 {
+			contentLengthInt, _ := strconv.Atoi(contentLength[0])
+			resp.ContentLength = contentLengthInt
+		}
+
+		// if we have a body, then use the number of bytes in the body if the length is still zero
+		if resp.ContentLength <= 0 && len(respbody) > 0 {
+			resp.ContentLength = len(respbody)
+		}
+	}
+	resp.Data = respbody
+	// fill metrics
+	resp.StatusCode = httpresp.StatusCode
+	resp.Response = httpresp
+	return &resp, nil
+}
+
+// returns all the targets_ within a cidr range or the single target
+func (r *Runner) targets(target string) chan result.Target {
+	results := make(chan result.Target)
+	go func() {
+		defer close(results)
+
+		target = strings.TrimSpace(target)
+
+		switch {
+		case stringsutil.HasPrefixAny(target, "*", "."):
+			// A valid target does not contain:
+			// trim * and/or . (prefix) from the target to return the domain instead of wilcard
+			target = stringsutil.TrimPrefixAny(target, "*", ".")
+			results <- result.Target{Host: target}
+		case asn.IsASN(target):
+			cidrIps, err := asn.GetIPAddressesAsStream(target)
+			if err != nil {
+				return
+			}
+			for ip := range cidrIps {
+				results <- result.Target{Host: ip}
+			}
+		case iputil.IsCIDR(target):
+			cidrIps, err := mapcidr.IPAddressesAsStream(target)
+			if err != nil {
+				return
+			}
+			for ip := range cidrIps {
+				results <- result.Target{Host: ip}
+			}
+		case !stringsutil.HasPrefixAny(target, "http://", "https://") && stringsutil.ContainsAny(target, ","):
+			idxComma := strings.Index(target, ",")
+			results <- result.Target{Host: target[idxComma+1:], CustomHost: target[:idxComma]}
+		default:
+			results <- result.Target{Host: target}
+		}
+	}()
+	return results
+}
+func (r *Runner) analyze(protocol string, t result.Target, path, method string) (map[string]interface{}, error) {
+	originProtocol := protocol
+	if protocol == HTTPorHTTPS || protocol == HTTPandHTTPS {
+		protocol = HTTPS
+	}
+	retried := false
+	target := t.Host
+retry:
+
+	proTarget := fmt.Sprintf("%s://%s", protocol, target)
 	// 创建 request
-	_url, err := url.JoinPath(target, path)
+	_url, err := url.JoinPath(proTarget, path)
 	if err != nil {
 		return nil, err
 	}
 
-	request, err := r.NewRequest(method, _url, []byte(r.Cfg.Options.Body))
+	request, err := r.NewRequest(context.Background(), method, _url, []byte(r.Cfg.Options.Body))
 	if err != nil {
 		return nil, err
 	}
 	requestRaw := util.GetRequestPackage(request)
-	gologger.Debug().Msg(requestRaw)
-	if r.Cfg.ResultsCached.HasInCached(fmt.Sprintf("%s%s%s", target, path, method)) {
-		return nil, errors.New(fmt.Sprintf("in cached %s %s%s", method, target, path))
+	if r.Cfg.Options.Verbose && requestRaw != "" {
+		gologger.Print().Msg(requestRaw)
 	}
-	r.Cfg.ResultsCached.Set(fmt.Sprintf("%s%s%s", target, path, method))
-getResponse:
+	if r.Cfg.ResultsCached.HasInCached(fmt.Sprintf("%s://%s%s%s", protocol, target, path, method)) {
+		return nil, errors.New(fmt.Sprintf("in cached %s %s://%s%s", method, protocol, target, path))
+	}
+	r.Cfg.ResultsCached.Set(fmt.Sprintf("%s://%s%s%s", protocol, target, path, method))
 	r.limiter.Take()
-	resp, err := r.retryable.Do(request)
+	resp, err := r.do(request)
 	if err != nil {
+		if !retried && originProtocol == HTTPorHTTPS {
+			if protocol == HTTPS {
+				protocol = HTTP
+			} else {
+				protocol = HTTPS
+			}
+			retried = true
+			goto retry
+		}
 		return nil, err
 	}
 
 	var ip string
 
-	parse, err := url.Parse(target)
+	parse, err := url.Parse(proTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -99,39 +256,20 @@ getResponse:
 	if len(ips) > 1 && ip == "" {
 		ip = ips[0]
 	}
-	host := util.JoinPath(target, path)
+	host := util.JoinPath(proTarget, path)
 	parse, err = url.Parse(host)
 	if err != nil {
 		return nil, err
 	}
 	m := make(map[string]interface{})
-	var shouldIgnoreErrors, shouldIgnoreBodyErrors bool
-	headerBytes, bodyBytes, err := httputil.DumpResponseHeadersAndRaw(resp)
-	if err != nil {
-		if stringsutil.ContainsAny(err.Error(), "tls: user canceled") {
-			shouldIgnoreErrors = true
-			shouldIgnoreBodyErrors = true
-		}
-		if !gzipRetry && strings.Contains(err.Error(), "gzip: invalid header") {
-			gzipRetry = true
-			request.Header.Set("Accept-Encoding", "identity")
-			goto getResponse
-		}
-		if !shouldIgnoreErrors {
-			return nil, err
-		}
-	}
-	closeErr := resp.Body.Close()
-	if closeErr != nil && !shouldIgnoreBodyErrors {
-		return nil, closeErr
-	}
+
 	// Title
 	var title string
-	if t := regByRetry.FindStringSubmatch(string(bodyBytes)); len(t) >= 2 {
-		title = t[1]
+	if t := regByRetry.FindStringSubmatch(string(resp.RawData)); len(t) >= 2 {
+		title = strings.Join(t[1:], " ")
 	}
 
-	server := resp.Header.Get("Server")
+	server := strings.Join(resp.Headers["Server"], " ")
 	target = util.GetTrueUrl(parse)
 	targetResult := &result.Result{
 		TimeStamp:     time.Now(),
@@ -143,27 +281,30 @@ getResponse:
 		Status:        resp.StatusCode,
 		CNAME:         cname,
 		A:             ips,
-		ContentLength: int64(len(bodyBytes)),
+		ContentLength: resp.ContentLength,
 		Server:        server,
 	}
 	m["result"] = targetResult
 	// 跳过
-	m["check"] = r.CheckSkip(resp.StatusCode, len(bodyBytes), bodyBytes)
+	m["check"] = r.CheckSkip(resp.StatusCode, resp.ContentLength, resp.Data)
 	if m["check"].(bool) {
 		return m, nil
 	}
 	byte_ := map[string]interface {
 	}{
-		"all_headers": headerBytes,
-		"body":        bodyBytes,
+		"all_headers": resp.RawHeaders,
+		"body":        resp.RawData,
 	}
-	gologger.Debug().Msg(string(bodyBytes))
+
 	targetResult.Technology = r.parseTechnology(byte_)
 	if r.Cfg.Options.FindOtherDomain {
-		targetResult.Links = r.parseOtherUrl(parse.Hostname(), r.Cfg.Options.FindOtherDomainList, headerBytes, bodyBytes)
+		targetResult.Links = r.parseOtherUrl(parse.Hostname(), r.Cfg.Options.FindOtherDomainList, []byte(resp.RawHeaders), resp.Data)
 	}
 	targetResult.RequestBody = requestRaw
-	targetResult.ResponseBody = util.GetResponsePackage(resp, bodyBytes, true)
+	targetResult.ResponseBody = util.GetResponsePackage(resp.Response, resp.Data, true)
+	if r.Cfg.Options.Verbose && targetResult.ResponseBody != "" {
+		gologger.Print().Msg(targetResult.ResponseBody)
+	}
 	return m, err
 }
 func (r *Runner) GetDNSData(hostname string) (ips, cnames []string, err error) {
@@ -178,6 +319,9 @@ func (r *Runner) GetDNSData(hostname string) (ips, cnames []string, err error) {
 	return
 }
 func (r *Runner) NewRetryableClient() *http.Client {
+	var retryablehttpOptions = http.DefaultOptionsSpraying
+	retryablehttpOptions.Timeout = time.Second * time.Duration(r.Cfg.Options.Timeout)
+	retryablehttpOptions.RetryMax = r.Cfg.Options.Retries
 	return http.NewClient(http.Options{
 		Timeout:      time.Second * time.Duration(r.Cfg.Options.Timeout),
 		RetryMax:     r.Cfg.Options.Retries,
@@ -186,6 +330,14 @@ func (r *Runner) NewRetryableClient() *http.Client {
 	})
 }
 func (r *Runner) NewClient() *defaultHttp.Client {
+	errUseLastResponse := r.Cfg.Options.ErrUseLastResponse
+	checkRedirect := func(req *defaultHttp.Request, via []*defaultHttp.Request) error {
+		if errUseLastResponse {
+			return defaultHttp.ErrUseLastResponse
+		} else {
+			return nil
+		}
+	}
 	transport := &defaultHttp.Transport{
 		DialContext: r.dialer.Dial,
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -198,7 +350,7 @@ func (r *Runner) NewClient() *defaultHttp.Client {
 
 	client := &defaultHttp.Client{
 		Timeout:       time.Second * time.Duration(r.Cfg.Options.Timeout),
-		CheckRedirect: util.GetCheckRedirectFunc(r.Cfg.Options.ErrUseLastResponse),
+		CheckRedirect: checkRedirect,
 		Transport:     transport,
 	}
 	return client

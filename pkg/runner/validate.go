@@ -10,8 +10,8 @@ import (
 )
 
 func (o *Options) Validate() error {
-	if o.RateLimit <= 0 && o.Retries <= 0 && o.Threads <= 0 {
-		return errors.New("没有正确的线程次数或正确的重复次数")
+	if o.RateLimit <= 0 && o.Threads <= 0 {
+		return errors.New("没有正确的线程次数")
 	}
 	if o.Verbose && o.Silent {
 		return errors.New("同时指定了详细模式和通道模式")
@@ -36,6 +36,18 @@ func (o *Options) Validate() error {
 	}
 	if (o.Csv && o.Html) || (o.Csv && o.Silent) || (o.Html && o.Silent) {
 		return errors.New("csv、silent、html 同时只能存在一个")
+	}
+	if o.Subdomain && len(o.SubdomainQuery) < 1 {
+		return errors.New("parameter query required")
+	}
+	if o.Subdomain && o.Path == nil {
+		o.Path = []string{"/"}
+	}
+	if o.Uncover && o.UncoverEngine == nil {
+		o.UncoverEngine = []string{"quake", "fofa"}
+	}
+	if o.Method == nil {
+		o.Method = []string{"GET"}
 	}
 	var resolvers []string
 	for _, resolver := range o.Resolvers {

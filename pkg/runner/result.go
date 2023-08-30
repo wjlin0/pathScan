@@ -2,7 +2,6 @@ package runner
 
 import (
 	"fmt"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/runner"
 	"github.com/wjlin0/pathScan/pkg/writer"
 	"sync"
 )
@@ -29,13 +28,9 @@ func (c *Cached) Set(path string) {
 	c.CachedString[path] = struct{}{}
 }
 
-func (r *Runner) output(outputWriter *runner.OutputWriter) {
+func (r *Runner) output(outputWriter *writer.OutputWriter) {
 	for out := range r.outputResult {
 		path := out.ToString()
-		if r.Cfg.OutputCached.HasInCached(fmt.Sprintf("%s%s", path, out.Method)) {
-			continue
-		}
-		r.Cfg.OutputCached.Set(fmt.Sprintf("%s%s", path, out.Method))
 		var outputStr []byte
 		var err error
 		switch {

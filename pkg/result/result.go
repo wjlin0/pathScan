@@ -15,7 +15,7 @@ type Result struct {
 	A             []string  `json:"A" csv:"a"`
 	CNAME         []string  `json:"CNAME" csv:"cname"`
 	Status        int       `json:"status" csv:"status"`
-	ContentLength int64     `json:"content-length" csv:"content-length"`
+	ContentLength int       `json:"content-length" csv:"content-length"`
 	Server        string    `json:"server" csv:"server"`
 	Technology    []string  `json:"technology" csv:"technology"`
 	ResponseBody  string    `json:"response" csv:"-"`
@@ -29,4 +29,10 @@ func (tr *Result) ToString() string {
 		return tr.URL
 	}
 	return path
+}
+
+type Target struct {
+	Host       string
+	CustomIP   string
+	CustomHost string
 }

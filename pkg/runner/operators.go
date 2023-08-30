@@ -3,7 +3,7 @@ package runner
 import (
 	"bytes"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
-	"github.com/wjlin0/pathScan/pkg/query/utils"
+	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"net"
 )
@@ -52,7 +52,7 @@ func (r *Runner) parseOtherUrl(oldUrl string, domains []string, data ...[]byte) 
 			Topdomains[util.GetMainDomain(d)] = struct{}{}
 		}
 		for k, _ := range Topdomains {
-			for _, d1 := range utils.MatchSubdomains(k, body, false) {
+			for _, d1 := range sources.MatchSubdomains(k, body, false) {
 				matchDomains[d1] = struct{}{}
 			}
 		}
@@ -66,6 +66,6 @@ func (r *Runner) parseOtherUrl(oldUrl string, domains []string, data ...[]byte) 
 		return nil
 	}
 	domain := util.GetMainDomain(oldUrl)
-	return utils.MatchSubdomains(domain, body, false)
+	return sources.MatchSubdomains(domain, body, false)
 
 }

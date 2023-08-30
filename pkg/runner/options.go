@@ -5,8 +5,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
+	httputil "github.com/projectdiscovery/utils/http"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"os"
@@ -31,7 +31,7 @@ type Options struct {
 	NoColor                   bool                        `json:"no-color"`
 	Verbose                   bool                        `json:"verbose"`
 	Silent                    bool                        `json:"silent"`
-	OnlyTargets               bool                        `json:"only-targets"`
+	OnlyTargets               bool                        `json:"only-targets_"`
 	SkipUrl                   goflags.StringSlice         `json:"skip-url"`
 	SkipCode                  goflags.StringSlice         `json:"skip-code"`
 	SkipHash                  string                      `json:"skip-hash"`
@@ -73,6 +73,7 @@ type Options struct {
 	SubdomainLimit            int                         `json:"subdomain-limit"`
 	SubdomainQuery            goflags.StringSlice         `json:"subdomain-query"`
 	SubdomainEngine           goflags.StringSlice         `json:"subdomain-engine"`
+	SubdomainOutput           string                      `json:"subdomain-output"`
 	Resolvers                 goflags.StringSlice         `json:"resolvers"`
 }
 
@@ -95,18 +96,18 @@ func ParserOptions() *Options {
 	set.CreateGroup("Subdomain", "子域名收集",
 		set.BoolVarP(&options.Subdomain, "sub", "s", false, "子域名收集"),
 		set.StringSliceVarP(&options.SubdomainQuery, "sub-query", "sq", nil, "需要收集的域名", goflags.NormalizedStringSliceOptions),
-		set.IntVarP(&options.SubdomainLimit, "sub-limit", "sl", 200, "发现要返回的结果总数"),
-		set.StringSliceVarP(&options.SubdomainEngine, "sub-engine", "se", goflags.StringSlice{"fofa", "hunter", "quake", "google", "bing", "ip138", "chinaz", "qianxun", "rapiddns", "sitedossier"}, "子域名搜索引擎", goflags.NormalizedStringSliceOptions),
+		set.IntVarP(&options.SubdomainLimit, "sub-limit", "sl", 1000, "每个搜索引擎返回的至少不超过数"),
+		set.StringVarP(&options.SubdomainOutput, "sub-output", "so", "", "子域名搜索结果保存 支持csv格式输出"),
+		set.StringSliceVarP(&options.SubdomainEngine, "sub-engine", "se", uncover.AllAgents(), "子域名搜索引擎", goflags.NormalizedStringSliceOptions),
 	)
 
 	set.CreateGroup("Uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
 		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.CommaSeparatedStringSliceOptions),
-		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 (%s) (default quake,fofa)", uncover.GetUncoverSupportedAgents()), goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 %s (default quake,fofa)", uncover.UncoverAgents()), goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 200, "发现要返回的结果"),
-		set.IntVarP(&options.UncoverDelay, "uncover-delay", "ucd", 1, "打开查询请求之间的延迟（秒）"),
-		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存"),
+		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存 支持csv格式输出"),
 	)
 	set.CreateGroup("Skip", "跳过",
 		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
@@ -134,7 +135,7 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.SkipHashMethod, "skip-hash-method", "shm", "sha256", "指定hash的方法（sha256,md5,sha1）"),
 	)
 	set.CreateGroup("Config", "配置",
-		set.IntVarP(&options.Retries, "retries", "rs", 3, "重试3次"),
+		set.IntVarP(&options.Retries, "retries", "rs", 0, "重试"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
 		set.StringSliceVar(&options.Resolvers, "resolvers", nil, "自定义DNS列表( 文件或逗号隔开 )", goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
@@ -144,7 +145,7 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
 	)
 	set.CreateGroup("Header", "请求头参数",
-		set.StringSliceVarP(&options.Method, "method", "m", goflags.StringSlice{"GET"}, "请求方法 (GET、POST、PUT、OPTIONS、HEAD、CONNECT)", goflags.CommaSeparatedStringSliceOptions),
+		set.StringSliceVarP(&options.Method, "method", "m", goflags.StringSlice{"GET"}, fmt.Sprintf("请求方法 %s", httputil.AllHTTPMethods()), goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.UserAgent, "user-agent", "ua", nil, "User-Agent", goflags.CommaSeparatedStringSliceOptions),
 		set.StringVarP(&options.Cookie, "cookie", "c", "", "cookie"),
 		set.StringVarP(&options.Authorization, "authorization", "auth", "", "Auth请求头"),
@@ -155,7 +156,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("Rate", "速率",
 		set.IntVarP(&options.Threads, "thread", "t", 50, "线程"),
 		set.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "每秒允许的HTTP连接数"),
-		set.IntVar(&options.Timeout, "timeout", 30, "超时时间"),
+		set.IntVar(&options.Timeout, "timeout", 10, "超时时间"),
 	)
 	set.CreateGroup("Update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
@@ -180,15 +181,12 @@ func ParserOptions() *Options {
 }
 
 func (o *Options) configureOutput() {
-	// If the user desires verbose output, show verbose output
-	if o.NoColor {
-		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(true))
-		color.NoColor = true
-	}
-	if o.Verbose {
+	switch {
+	case o.Verbose:
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
-	}
-	if o.Silent {
+	case o.Silent:
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
+	case o.NoColor:
+		color.NoColor = true
 	}
 }

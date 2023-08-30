@@ -8,17 +8,6 @@ import (
 	"strings"
 )
 
-type OutputWriter struct {
-}
-
-func NewOutputWriter() *OutputWriter {
-	return &OutputWriter{}
-}
-
-func (o *OutputWriter) Write(b []byte) (int, error) {
-	return 0, nil
-}
-
 func OutputToString(out *result.Result, nocolor bool) string {
 	path := out.ToString()
 	builder := &strings.Builder{}

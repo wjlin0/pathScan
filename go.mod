@@ -3,10 +3,10 @@ module github.com/wjlin0/pathScan
 go 1.19
 
 require (
+	github.com/corpix/uarand v0.2.0
 	github.com/fatih/color v1.15.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/json-iterator/go v1.1.12
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/pkg/errors v0.9.1
@@ -25,6 +25,7 @@ require (
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
 	golang.org/x/net v0.14.0
 	golang.org/x/oauth2 v0.11.0
+	golang.org/x/text v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -44,7 +45,6 @@ require (
 	github.com/c4milo/unpackit v0.1.0 // indirect
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
-	github.com/corpix/uarand v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
@@ -64,6 +64,7 @@ require (
 	github.com/hbakhtiyor/strsim v0.0.0-20190107154042-4d2bbb273edf // indirect
 	github.com/hdm/jarm-go v0.0.7 // indirect
 	github.com/iancoleman/orderedmap v0.0.0-20190318233801-ac98e3ecb4b0 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kataras/jwt v0.1.8 // indirect
 	github.com/klauspost/compress v1.16.6 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
@@ -78,6 +79,7 @@ require (
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/projectdiscovery/asnmap v1.0.4 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
 	github.com/projectdiscovery/dsl v0.0.19 // indirect
@@ -118,7 +120,6 @@ require (
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
