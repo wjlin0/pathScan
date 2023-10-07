@@ -252,9 +252,17 @@ retry:
 			ip = r.dialer.GetDialedIP(onlyHost)
 		}
 	}
-	ips, cname, _ := r.GetDNSData(parse.Host)
-	if len(ips) > 1 && ip == "" {
-		ip = ips[0]
+	var ips, cname []string
+	// 解决请求目标为ip时过慢
+	if parse.Hostname() != ip {
+		ips, cname, _ = r.GetDNSData(parse.Host)
+		if len(ips) > 1 && ip == "" {
+			ip = ips[0]
+		}
+	} else {
+		if ip != "" {
+			ips = append(ips, ip)
+		}
 	}
 	host := util.JoinPath(proTarget, path)
 	parse, err = url.Parse(host)

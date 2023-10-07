@@ -75,6 +75,7 @@ type Options struct {
 	SubdomainEngine           goflags.StringSlice         `json:"subdomain-engine"`
 	SubdomainOutput           string                      `json:"subdomain-output"`
 	Resolvers                 goflags.StringSlice         `json:"resolvers"`
+	WaitTimeout               int                         `json:"wait-timeout"`
 }
 
 func ParserOptions() *Options {
@@ -157,6 +158,7 @@ func ParserOptions() *Options {
 		set.IntVarP(&options.Threads, "thread", "t", 50, "线程"),
 		set.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "每秒允许的HTTP连接数"),
 		set.IntVar(&options.Timeout, "timeout", 10, "超时时间"),
+		set.IntVarP(&options.WaitTimeout, "wait-timeout", "wt", 3, "自定义任务结束前的等待,一般用于结束结束时间果断,导致无法发现更多目标"),
 	)
 	set.CreateGroup("Update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),

@@ -179,30 +179,13 @@ pathScan -s -sq baidu.com -sd -o output/baidu/baidu.csv -csv
 采用配置文件的方式，可自定义加载指纹识别库 -> [pathScan-match](https://github.com/wjlin0/pathScan-match) 
 如果您掌握某些系统的指纹识别方法 欢迎至指纹识别库中提交 pull
 ```yaml
-version: "v1.0.0"
 rules:
-  - name: "Thinkphp"
+  - name: "ctfd"
     matchers:
       - type: regex
-        part: header
+        part: body
         regex:
-          - "ThinkPHP"
-  - name: "Apache"
-    matchers:
-      - type: regex
-        part: header
-        name: Apache
-        regex: 
-          - "Server: .*?([aA]{1}pache[/]?[\\d\\.]*) ?"
-        group: 1
-  - name: "Nginx"
-    matchers:
-      - type: regex
-        name: nginx
-        part: header
-        regex: 
-          - "Server: .*?([nN]{1}ginx[/]?[\\d\\.]*) ?"
-        group: 1 # 指定后匹配的名字为正则匹配后的第1个元素
+          - <small class=(?:['"]{1}.*)> ?Powered by CTFd ?</small>
 ```
 
 # 集成到自己的工具中

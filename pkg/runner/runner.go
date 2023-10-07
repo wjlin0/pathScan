@@ -424,9 +424,7 @@ func (r *Runner) RunEnumeration() error {
 			}
 			r.process(o[0], o[1], proto, r.Cfg.Options.Method, ctx, r.wg)
 		}
-		if len(urls)*len(paths) < 6 {
-			time.Sleep(2 * time.Second)
-		}
+		time.Sleep(time.Duration(r.Cfg.Options.WaitTimeout) * time.Second)
 		r.wg.Wait()
 		cancel()
 	}
