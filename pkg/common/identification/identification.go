@@ -2,8 +2,8 @@ package identification
 
 import (
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
+	fileutil "github.com/projectdiscovery/utils/file"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"github.com/wjlin0/pathScan/pkg/util"

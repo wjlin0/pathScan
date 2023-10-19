@@ -2,16 +2,15 @@ package runner
 
 import (
 	"bytes"
-	"io"
-	"net/http"
-	"regexp"
-	"strings"
-
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"golang.org/x/text/encoding/korean"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/encoding/traditionalchinese"
 	"golang.org/x/text/transform"
+	"io"
+	"net/http"
+	"regexp"
+	"strings"
 )
 
 // Credits: https://gist.github.com/zhangbaohe/c691e1da5bbdc7f41ca5

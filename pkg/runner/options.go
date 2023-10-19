@@ -13,69 +13,75 @@ import (
 )
 
 type Options struct {
-	Url                       goflags.StringSlice         `json:"url"`
-	UrlFile                   goflags.StringSlice         `json:"url-file"`
-	UrlRemote                 string                      `json:"url-remote"`
-	UrlChannel                bool                        `json:"url-channel"`
-	Path                      goflags.StringSlice         `json:"path"`
-	PathFile                  goflags.StringSlice         `json:"path-file"`
-	PathRemote                string                      `json:"path-remote"`
-	Subdomain                 bool                        `json:"subdomain"`
-	ResumeCfg                 string                      `json:"resume-cfg"`
-	Output                    string                      `json:"output"`
-	RateLimit                 int                         `json:"rate-http"`
-	Threads                   int                         `json:"thread"`
-	Retries                   int                         `json:"retries"`
-	Proxy                     string                      `json:"proxy"`
-	ProxyAuth                 string                      `json:"proxy-auth"`
-	NoColor                   bool                        `json:"no-color"`
-	Verbose                   bool                        `json:"verbose"`
-	Silent                    bool                        `json:"silent"`
-	OnlyTargets               bool                        `json:"only-targets_"`
-	SkipUrl                   goflags.StringSlice         `json:"skip-url"`
-	SkipCode                  goflags.StringSlice         `json:"skip-code"`
-	SkipHash                  string                      `json:"skip-hash"`
-	SkipBodyLen               int                         `json:"skip-body-len"`
-	SkipHashMethod            string                      `json:"skip-hash-method"`
-	ErrUseLastResponse        bool                        `json:"err-use-last-response"`
-	Csv                       bool                        `json:"csv,omitempty"`
-	ClearResume               bool                        `json:"clear-resume"`
-	Html                      bool                        `json:"html,omitempty"`
-	Version                   bool                        `json:"version"`
-	Uncover                   bool                        `json:"uncover"`
-	UncoverQuery              goflags.StringSlice         `json:"uncover-query"`
-	UncoverEngine             goflags.StringSlice         `json:"uncover-engine"`
-	UncoverDelay              int                         `json:"uncover-delay"`
-	UncoverLimit              int                         `json:"uncover-limit"`
-	UncoverField              string                      `json:"uncover-field"`
-	UncoverOutput             string                      `json:"uncover-output"`
-	UpdatePathScanVersion     bool                        `json:"update"`
-	UpdatePathDictVersion     bool                        `json:"update-path-dict-version"`
-	UserAgent                 goflags.StringSlice         `json:"user-agent"`
-	Cookie                    string                      `json:"cookie"`
-	Authorization             string                      `json:"authorization"`
-	Header                    goflags.StringSlice         `json:"header"`
-	HeaderFile                goflags.StringSlice         `json:"header-file"`
-	Timeout                   int                         `json:"timeout"`
-	UpdateMatchVersion        bool                        `json:"update-match-version"`
-	UpdateHTMLTemplateVersion bool                        `json:"update-html-template-version"`
-	Method                    goflags.StringSlice         `json:"method"`
-	MatchPath                 string                      `json:"match-path"`
-	RecursiveRun              bool                        `json:"recursive-run"`
-	RecursiveRunTimes         int                         `json:"recursive-run-times"`
-	GetHash                   bool                        `json:"get-hash"`
-	FindOtherDomainList       goflags.StringSlice         `json:"find-other-domain-list"`
-	ResultBack                func(result *result.Result) `json:"-"`
-	NotInit                   bool                        `json:"not-init"`
-	Body                      string                      `json:"body"`
-	FindOtherDomain           bool                        `json:"find-other-domain"`
-	SkipAutoUpdateMatch       bool                        `json:"skip-auto-update-match"`
-	SubdomainLimit            int                         `json:"subdomain-limit"`
-	SubdomainQuery            goflags.StringSlice         `json:"subdomain-query"`
-	SubdomainEngine           goflags.StringSlice         `json:"subdomain-engine"`
-	SubdomainOutput           string                      `json:"subdomain-output"`
-	Resolvers                 goflags.StringSlice         `json:"resolvers"`
-	WaitTimeout               int                         `json:"wait-timeout"`
+	Url                         goflags.StringSlice         `json:"url"`
+	UrlFile                     goflags.StringSlice         `json:"url-file"`
+	UrlRemote                   string                      `json:"url-remote"`
+	UrlChannel                  bool                        `json:"url-channel"`
+	Path                        goflags.StringSlice         `json:"path"`
+	PathFile                    goflags.StringSlice         `json:"path-file"`
+	PathRemote                  string                      `json:"path-remote"`
+	Subdomain                   bool                        `json:"subdomain"`
+	ResumeCfg                   string                      `json:"resume-cfg"`
+	Output                      string                      `json:"output"`
+	RateLimit                   int                         `json:"rate-http"`
+	Threads                     int                         `json:"thread"`
+	Retries                     int                         `json:"retries"`
+	Proxy                       string                      `json:"proxy"`
+	ProxyAuth                   string                      `json:"proxy-auth"`
+	NoColor                     bool                        `json:"no-color"`
+	Verbose                     bool                        `json:"verbose"`
+	Silent                      bool                        `json:"silent"`
+	OnlyTargets                 bool                        `json:"only-targets_"`
+	SkipUrl                     goflags.StringSlice         `json:"skip-url"`
+	SkipCode                    goflags.StringSlice         `json:"skip-code"`
+	SkipHash                    string                      `json:"skip-hash"`
+	SkipBodyLen                 int                         `json:"skip-body-len"`
+	SkipHashMethod              string                      `json:"skip-hash-method"`
+	ErrUseLastResponse          bool                        `json:"err-use-last-response"`
+	Csv                         bool                        `json:"csv,omitempty"`
+	ClearResume                 bool                        `json:"clear-resume"`
+	Html                        bool                        `json:"html,omitempty"`
+	Version                     bool                        `json:"version"`
+	Uncover                     bool                        `json:"uncover"`
+	UncoverQuery                goflags.StringSlice         `json:"uncover-query"`
+	UncoverEngine               goflags.StringSlice         `json:"uncover-engine"`
+	UncoverDelay                int                         `json:"uncover-delay"`
+	UncoverLimit                int                         `json:"uncover-limit"`
+	UncoverField                string                      `json:"uncover-field"`
+	UncoverOutput               string                      `json:"uncover-output"`
+	UpdatePathScanVersion       bool                        `json:"update"`
+	UserAgent                   goflags.StringSlice         `json:"user-agent"`
+	Cookie                      string                      `json:"cookie"`
+	Authorization               string                      `json:"authorization"`
+	Header                      goflags.StringSlice         `json:"header"`
+	HeaderFile                  goflags.StringSlice         `json:"header-file"`
+	Timeout                     int                         `json:"timeout"`
+	UpdateMatchVersion          bool                        `json:"update-match-version"`
+	Method                      goflags.StringSlice         `json:"method"`
+	MatchPath                   string                      `json:"match-path"`
+	RecursiveRun                bool                        `json:"recursive-run"`
+	RecursiveRunTimes           int                         `json:"recursive-run-times"`
+	GetHash                     bool                        `json:"get-hash"`
+	FindOtherDomainList         goflags.StringSlice         `json:"find-other-domain-list"`
+	ResultBack                  func(result *result.Result) `json:"-"`
+	NotInit                     bool                        `json:"not-init"`
+	Body                        string                      `json:"body"`
+	FindOtherDomain             bool                        `json:"find-other-domain"`
+	SkipAutoUpdateMatch         bool                        `json:"skip-auto-update-match"`
+	SubdomainLimit              int                         `json:"subdomain-limit"`
+	SubdomainQuery              goflags.StringSlice         `json:"subdomain-query"`
+	SubdomainEngine             goflags.StringSlice         `json:"subdomain-engine"`
+	SubdomainOutput             string                      `json:"subdomain-output"`
+	Resolvers                   goflags.StringSlice         `json:"resolvers"`
+	WaitTimeout                 int                         `json:"wait-timeout"`
+	ProxyWebAddr                string                      `json:"proxy-web-addr"`
+	ProxyServerAllowHosts       goflags.StringSlice         `json:"proxy-server-allow-hosts"`
+	ProxyServerCaPath           string                      `json:"proxy-server-ca-path"`
+	ProxyServerSSLInsecure      bool                        `json:"proxy-server-ssl-insecure"`
+	ProxyServerStremLargeBodies int64                       `json:"proxy-server-strem-large-bodies"`
+	ProxyServerAddr             string                      `json:"proxy-server-addr"`
+	API                         bool                        `json:"api"`
+	Favicon                     bool                        `json:"favicon"`
 }
 
 func ParserOptions() *Options {
@@ -101,7 +107,13 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.SubdomainOutput, "sub-output", "so", "", "子域名搜索结果保存 支持csv格式输出"),
 		set.StringSliceVarP(&options.SubdomainEngine, "sub-engine", "se", uncover.AllAgents(), "子域名搜索引擎", goflags.NormalizedStringSliceOptions),
 	)
-
+	set.CreateGroup("api", "被动发现（测试阶段）",
+		set.BoolVarP(&options.API, "api", "a", false, "被动发现"),
+		set.StringVarP(&options.ProxyServerAddr, "api-server", "as", ":8081", "中间人劫持代理端口"),
+		set.StringVarP(&options.ProxyServerCaPath, "api-ca-path", "ac", "", "中间人劫持证书路径"),
+		set.StringVarP(&options.ProxyWebAddr, "api-web-server", "aw", ":8082", "输出路径端口"),
+		set.StringSliceVarP(&options.ProxyServerAllowHosts, "api-allow-hosts", "ah", []string{"*"}, "允许的hosts", goflags.NormalizedStringSliceOptions),
+	)
 	set.CreateGroup("Uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
 		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.CommaSeparatedStringSliceOptions),
@@ -138,10 +150,11 @@ func ParserOptions() *Options {
 	set.CreateGroup("Config", "配置",
 		set.IntVarP(&options.Retries, "retries", "rs", 0, "重试"),
 		set.StringVarP(&options.Proxy, "proxy", "p", "", "代理"),
+		set.BoolVarP(&options.Favicon, "favicon", "f", false, "自动识别favicon"),
 		set.StringSliceVar(&options.Resolvers, "resolvers", nil, "自定义DNS列表( 文件或逗号隔开 )", goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
-		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "不允许重定向"),
+		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "允许重定向"),
 		set.StringSliceVarP(&options.FindOtherDomainList, "scan-domain-list", "sdl", nil, "从响应中中发现其他URL", goflags.NormalizedStringSliceOptions),
 		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
 	)
@@ -162,9 +175,7 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("Update", "更新",
 		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
-		set.BoolVarP(&options.UpdatePathDictVersion, "update-dict", "ud", false, "更新字典版本"),
 		set.BoolVarP(&options.UpdateMatchVersion, "update-match", "um", false, "更新指纹识别库"),
-		set.BoolVarP(&options.UpdateHTMLTemplateVersion, "update-html", "uh", false, "更新HTML模板文件"),
 		set.BoolVarP(&options.SkipAutoUpdateMatch, "auto-match", "am", false, "跳过自动更新"),
 	)
 	_ = set.Parse()

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Group", "Alias"}
+var commonExpectedFields = []string{"Type", "Condition", "Name", "MatchAll", "Group", "Alias", "Hash", "HashMethod"}
 
 // Validate perform initial validation on the matcher structure
 func (matcher *Matcher) Validate() error {
@@ -29,6 +29,8 @@ func (matcher *Matcher) Validate() error {
 		expectedFields = append(commonExpectedFields, "Words", "Part")
 	case RegexMatcher:
 		expectedFields = append(commonExpectedFields, "Regex", "Part")
+	case HashMatcher:
+		expectedFields = append(commonExpectedFields, "Hash", "Part")
 	}
 	return checkFields(matcher, matcherMap, expectedFields...)
 }

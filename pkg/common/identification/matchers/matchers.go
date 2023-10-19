@@ -76,9 +76,12 @@ type Matcher struct {
 	//   - name: DSL Matcher for missing strict transport security header
 	//     value: >
 	//       []string{"!contains(tolower(all_headers), ''strict-transport-security'')"}
-	MatchAll bool `yaml:"match-all,omitempty" jsonschema:"title=match all values,description=match all matcher values ignoring condition"`
-	Group    int  `yaml:"group,omitempty"`
-	Alias    bool `yaml:"alias,omitempty"`
+	Hash []string `yaml:"hash,omitempty" jsonschema:"title=hash to match in response"`
+
+	MatchAll   bool   `yaml:"match-all,omitempty" jsonschema:"title=match all values,description=match all matcher values ignoring condition"`
+	HashMethod string `yaml:"hash-method"`
+	Group      int    `yaml:"group,omitempty"`
+	Alias      bool   `yaml:"alias,omitempty"`
 	// cached data for the compiled matcher
 	condition     ConditionType
 	matcherType   MatcherType

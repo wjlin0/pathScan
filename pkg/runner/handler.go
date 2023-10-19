@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	_ "embed"
 	"fmt"
 	"github.com/corpix/uarand"
 	"github.com/projectdiscovery/gologger"
@@ -12,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 const (
@@ -47,12 +47,16 @@ func (r *Runner) handlerHeader() map[string]interface{} {
 	headerMap["Accept-Charset"] = "utf-8"
 	return headerMap
 }
-func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
-	at := make(map[string]struct{})
-	protocol := "path"
+
+//go:embed dict/main.txt
+var mainTxt string
+
+func (r *Runner) handlerGetTargetPath() ([]string, error) {
+	var paths []string
+
 	// 处理 Path 和 PathFile
 	for _, path := range append(r.Cfg.Options.Path, r.Cfg.Options.PathFile...) {
-		util.AddStrToMap(path, at, protocol)
+		paths = append(paths, path)
 	}
 	// 处理 PathRemote
 	if r.Cfg.Options.PathRemote != "" {
@@ -65,7 +69,7 @@ func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 		for scanner.Scan() {
 			path := strings.TrimSpace(scanner.Text())
 			if path != "" {
-				util.AddStrToMap(path, at, protocol)
+				paths = append(paths, path)
 			}
 		}
 		if err := scanner.Err(); err != nil {
@@ -76,29 +80,23 @@ func (r *Runner) handlerGetTargetPath() (map[string]struct{}, error) {
 	}
 
 	// 如果未指定路径，则处理默认文件名
-	if len(at) == 0 && len(r.targets_) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
-		out, err := fileutil.ReadFile(filepath.Join(defaultPathDict, "main.txt"))
-		if err != nil {
-			return nil, err
-		}
-		for path := range out {
-			util.AddStrToMap(path, at, protocol)
+	if len(paths) == 0 && len(r.targets_) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
+		for _, path := range strings.Split(mainTxt, "\n") {
+			paths = append(paths, path)
 		}
 	}
 	// 如果没有添加任何路径，则将根目录添加到结果中
-	if len(at) == 0 {
-		at["/"] = struct{}{}
+	if len(paths) == 0 {
+		paths = append(paths, "/")
 	}
-
-	return at, nil
+	return paths, nil
 }
 
-func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
-	at := make(map[string]struct{})
-	protocol := "url"
+func (r *Runner) handlerGetTargets() ([]string, error) {
+	var targets []string
 	// 处理 Url 和 UrlFile
 	for _, url := range append(r.Cfg.Options.Url, r.Cfg.Options.UrlFile...) {
-		util.AddStrToMap(url, at, protocol)
+		targets = append(targets, url)
 	}
 
 	// 处理 UrlRemote
@@ -113,7 +111,8 @@ func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 		for scanner.Scan() {
 			url := strings.TrimSpace(scanner.Text())
 			if url != "" {
-				util.AddStrToMap(url, at, protocol)
+				targets = append(targets, url)
+
 			}
 		}
 		if err := scanner.Err(); err != nil {
@@ -128,18 +127,20 @@ func (r *Runner) handlerGetTargets() (map[string]struct{}, error) {
 		for s.Scan() {
 			u := strings.TrimSpace(s.Text())
 			if u != "" {
-				util.AddStrToMap(u, at, protocol)
+				targets = append(targets, u)
 			}
 
 		}
 		os.Stdin.Close()
 	}
+	targets = util.RemoveDuplicateStrings(targets)
+	for i, _ := range targets {
+		if !strings.HasSuffix(targets[i], "/") {
+			targets[i] = fmt.Sprintf("%s/", targets[i])
+		}
 
-	// 从结果中删除 SkipUrl 指定的 URL
-	for _, skip := range r.Cfg.Options.SkipUrl {
-		delete(at, skip)
 	}
-	return at, nil
+	return targets, nil
 }
 func InitPathScan() error {
 	if fileutil.FileExists(filepath.Join(defaultPathScanDir, ".check")) {
@@ -147,19 +148,11 @@ func InitPathScan() error {
 	}
 	gologger.Info().Msg("Initializing in progress.")
 	var err error
-	err = InitJs()
-	if err != nil {
-		return err
-	}
 	err = InitConfig()
 	if err != nil {
 		return err
 	}
 	err = InitMatch()
-	if err != nil {
-		return err
-	}
-	err = InitPathDict()
 	if err != nil {
 		return err
 	}
@@ -170,57 +163,7 @@ func InitPathScan() error {
 	gologger.Info().Msg("Initialization completed.")
 	return nil
 }
-func InitJs() error {
-	if fileutil.FileExists(filepath.Join(defaultJsDir, ".check")) {
-		return nil
-	}
-	if !fileutil.FolderExists(defaultJsDir) {
-		err := fileutil.CreateFolders(defaultJsDir)
-		if err != nil {
-			return err
-		}
-	}
-	MapDownloadPath := map[string][]string{
-		"template": {
-			filepath.Join(defaultJsDir, "template.html"), "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/template.html",
-		},
-		"antdCss": {
-			filepath.Join(defaultJsDir, "antd.min.css"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.css",
-		},
-		"andJs": {
-			filepath.Join(defaultJsDir, "antd.min.js"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.js",
-		},
-		"vueJs": {
-			filepath.Join(defaultJsDir, "vue.min.js"), "https://unpkg.com/vue@2.7.14/dist/vue.min.js",
-		},
-	}
-	errChan := make(chan error)
-	var wg sync.WaitGroup
-	for _, v := range MapDownloadPath {
-		wg.Add(1)
-		go func(path, httppath string) {
-			defer wg.Done()
-			err := fileutil.DownloadFile(path, httppath)
-			if err != nil {
-				errChan <- err
-			}
-		}(v[0], v[1])
-	}
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-	for err := range errChan {
-		if err != nil {
-			return err
-		}
-	}
-	_, err := os.Create(filepath.Join(defaultJsDir, ".check"))
-	if err != nil {
-		return err
-	}
-	return nil
-}
+
 func InitMatch() error {
 	if fileutil.FileExists(filepath.Join(defaultMatchDir, ".check")) {
 		return nil
@@ -241,20 +184,6 @@ func InitConfig() error {
 		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), sources.Provider{}); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-func InitPathDict() error {
-	if fileutil.FileExists(filepath.Join(defaultPathDict, ".check")) {
-		return nil
-	}
-	err := DownloadDict()
-	if err != nil {
-		return err
-	}
-	_, err = os.Create(filepath.Join(defaultPathDict, ".check"))
-	if err != nil {
-		return err
 	}
 	return nil
 }

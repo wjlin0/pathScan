@@ -3,9 +3,9 @@ package runner
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fileutil"
-	"github.com/projectdiscovery/stringsutil"
+	fileutil "github.com/projectdiscovery/utils/file"
 	httputil "github.com/projectdiscovery/utils/http"
+	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/wjlin0/pathScan/pkg/util"
 )
 

@@ -7,9 +7,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/fileutil"
 	"github.com/projectdiscovery/gologger"
-	retryableHttp "github.com/projectdiscovery/retryablehttp-go"
 	"github.com/tj/go-update"
 	"github.com/tj/go-update/progress"
 	githubUpdateStore "github.com/tj/go-update/stores/github"
@@ -19,11 +17,9 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // downloadReleaseAndUnzip downloads and unzips the release in a directory
@@ -147,85 +143,7 @@ func UpdateVersion() (bool, error) {
 	gologger.Info().Msgf("Successfully updated to pathScan %s\n", latest.Version)
 	return true, nil
 }
-func UpdateHTMLTemplate() (bool, error) {
-	MapDownloadPath := map[string][]string{
-		"template": {
-			filepath.Join(defaultJsDir, "template.html"), "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/template.html",
-		},
-		"antdCss": {
-			filepath.Join(defaultJsDir, "antd.min.css"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.css",
-		},
-		"andJs": {
-			filepath.Join(defaultJsDir, "antd.min.js"), "https://unpkg.com/ant-design-vue@1.7.8/dist/antd.min.js",
-		},
-		"vueJs": {
-			filepath.Join(defaultJsDir, "vue.min.js"), "https://unpkg.com/vue@2.7.14/dist/vue.min.js",
-		},
-	}
-	errChan := make(chan error)
-	var wg sync.WaitGroup
-	for _, v := range MapDownloadPath {
-		wg.Add(1)
-		go func(path, httppath string) {
-			defer wg.Done()
-			err := fileutil.DownloadFile(path, httppath)
-			if err != nil {
-				errChan <- err
-			}
-		}(v[0], v[1])
-	}
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-	for err := range errChan {
-		if err != nil {
-			return false, err
-		}
-	}
-	gologger.Info().Msgf("Successfully updated to pathScan HTML-Template: %s\n", defaultJsDir)
-	return true, nil
-}
-func DownloadDict() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
 
-		return fmt.Errorf("打开主目录时出错：%s\n", err.Error())
-	}
-	path := filepath.Join(home, ".config", "pathScan", "dict")
-	if fileutil.FileExists(filepath.Join(path, ".check")) {
-		gologger.Info().Msgf("Successfully downloaded the remote dictionary: %s", path)
-		return nil
-	}
-	gologger.Info().Msg("Dictionary does not exist locally, downloading.")
-	err = fileutil.CreateFolder(path)
-	if err != nil {
-
-		return fmt.Errorf("Error opening %s :%s\n", path, err.Error())
-	}
-
-	dictUrl := "https://raw.githubusercontent.com/wjlin0/pathScan/main/config/dict.zip"
-
-	client := retryableHttp.DefaultClient()
-	resp, err := client.Get(dictUrl)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	var buffer bytes.Buffer
-	_, err = io.Copy(&buffer, resp.Body)
-	if err != nil {
-
-		return fmt.Errorf("Error opening %s : %s\n", dictUrl, err.Error())
-	}
-	reader := bytes.NewReader(buffer.Bytes())
-	err = util.Unzip(path, reader)
-	if err != nil {
-		return fmt.Errorf("Decompression error: %s\n", err.Error())
-	}
-	gologger.Info().Msgf("Successfully downloaded the remote dictionary: %s", path)
-	return nil
-}
 func CheckVersion() error {
 	var command string
 	switch runtime.GOOS {

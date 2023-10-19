@@ -81,7 +81,6 @@ func (agent *Agent) query(session *sources.Session, binaryRequest *BinaryRequest
 	}
 	err = json.Unmarshal(body, binaryResponse)
 	if err != nil {
-		fmt.Println(err)
 		results <- sources.Result{Source: agent.Name(), Error: err}
 		return nil
 	}

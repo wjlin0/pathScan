@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"strings"
 )
 
@@ -92,4 +93,22 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 		return true, matchedRegexes
 	}
 	return false, []string{}
+}
+
+// MatchHash returns true if the corpus matches the favicon
+func (matcher *Matcher) MatchHash(corpus string) (bool, []string) {
+	hashMethod := "sha256"
+	if matcher.HashMethod != "" {
+		hashMethod = matcher.HashMethod
+	}
+	hash, err := util.GetHash([]byte(corpus), hashMethod)
+	if err != nil {
+		return false, nil
+	}
+	for _, fav := range matcher.Hash {
+		if string(hash) == (fav) {
+			return true, []string{matcher.Name}
+		}
+	}
+	return false, nil
 }

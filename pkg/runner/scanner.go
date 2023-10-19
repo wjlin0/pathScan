@@ -2,8 +2,8 @@ package runner
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/mapcidr/asn"
@@ -291,6 +291,7 @@ retry:
 		A:             ips,
 		ContentLength: resp.ContentLength,
 		Server:        server,
+		Header:        resp.Headers,
 	}
 	m["result"] = targetResult
 	// 跳过
@@ -340,7 +341,7 @@ func (r *Runner) NewRetryableClient() *http.Client {
 func (r *Runner) NewClient() *defaultHttp.Client {
 	errUseLastResponse := r.Cfg.Options.ErrUseLastResponse
 	checkRedirect := func(req *defaultHttp.Request, via []*defaultHttp.Request) error {
-		if errUseLastResponse {
+		if !errUseLastResponse {
 			return defaultHttp.ErrUseLastResponse
 		} else {
 			return nil

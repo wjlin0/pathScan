@@ -12,10 +12,10 @@ const (
                __   __    ____               
    ___  ___ _ / /_ / /   / __/____ ___ _ ___ 
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.4.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.4.4
 /_/
 `
-	Version               = `1.4.3`
+	Version               = `1.4.4`
 	defaultResumeFileName = `resume.cfg`
 	userName              = "wjlin0"
 	repoName              = "pathScan-match"
@@ -34,11 +34,9 @@ const (
 var (
 	defaultPathScanDir            = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan")
 	defaultMatchDir               = filepath.Join(defaultPathScanDir, "match-config")
-	defaultJsDir                  = filepath.Join(defaultPathScanDir, "js")
 	defaultPathDict               = filepath.Join(defaultPathScanDir, "dict")
 	defaultResume                 = filepath.Join(defaultPathScanDir, "resume")
 	defaultProviderConfigLocation = filepath.Join(defaultPathScanDir, "provider-config.yaml")
-	defaultRecursiveRunFile       = filepath.Join(defaultPathDict, "dir.txt")
 	PathScanMatchVersion, _       = util.GetMatchVersion(defaultMatchDir)
 )
 

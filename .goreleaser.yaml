@@ -29,9 +29,6 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-    files:
-      - config/dict.zip
-      - README.md
 checksum:
   algorithm: sha256
 snapshot:

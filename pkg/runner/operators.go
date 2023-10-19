@@ -18,6 +18,8 @@ func Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []stri
 		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
 	case matchers.RegexMatcher:
 		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
+	case matchers.HashMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchHash(item))
 	}
 	return false, []string{}
 }

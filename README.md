@@ -128,8 +128,8 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.1.4/pathScan_v1.1.4_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.1.4/pathScan_v1.1.4_linux_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.4/pathScan_v1.4.4_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.4/pathScan_v1.4.4_linux_amd64.zip
 ```
 
 

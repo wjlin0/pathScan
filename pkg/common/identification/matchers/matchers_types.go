@@ -15,12 +15,14 @@ const (
 	WordsMatcher MatcherType = iota + 1
 	// name:regex
 	RegexMatcher
+	HashMatcher
 )
 
 // MatcherTypes is a table for conversion of matcher type from string.
 var MatcherTypes = map[MatcherType]string{
 	WordsMatcher: "word",
 	RegexMatcher: "regex",
+	HashMatcher:  "hash",
 }
 
 // GetType returns the type of the matcher

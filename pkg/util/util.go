@@ -69,6 +69,24 @@ func GetProxyFunc(proxy, auth string) func(*defaultHttp.Request) (*url.URL, erro
 	}
 	return defaultHttp.ProxyURL(proxyURL)
 }
+func GetProxyURL(proxy, auth string) (*url.URL, error) {
+	if proxy == "" {
+		return nil, nil
+	}
+	proxyURL, err := url.Parse(proxy)
+	if err != nil {
+		return nil, err
+	}
+	if auth != "" {
+		username, password, ok := ParseProxyAuth(auth)
+		if !ok {
+			gologger.Error().Msgf("Failed to parse proxy authorization information：%s", auth)
+			return nil, err
+		}
+		proxyURL.User = url.UserPassword(username, password)
+	}
+	return proxyURL, nil
+}
 
 // Unzip 覆盖解压
 func Unzip(p string, reader *bytes.Reader) error {
@@ -151,7 +169,7 @@ func writeUnZippedTemplateFile(templateAbsolutePath string, zipTemplateFile *zip
 
 	md5Hash := md5.New()
 
-	// Save file and also read into hash.Hash for md5
+	// Save file and also read into hash.HashMethod for md5
 	if _, err := io.Copy(templateFile, io.TeeReader(zipTemplateFileReader, md5Hash)); err != nil {
 		_ = templateFile.Close()
 		return "", fmt.Errorf("could not write template file: %w", err)
@@ -282,18 +300,19 @@ func GetPartString(part string, data map[string]interface{}) (string, bool) {
 		part = "all_headers"
 	}
 	var itemStr string
-
-	if part == "all" {
+	switch part {
+	case "all":
 		builder := &strings.Builder{}
 		builder.WriteString(ToString(data["body"]))
 		builder.WriteString(ToString(data["all_headers"]))
 		itemStr = builder.String()
-	} else {
+	default:
 		item, ok := data[part]
 		if !ok {
 			return "", false
 		}
 		itemStr = ToString(item)
+
 	}
 	return itemStr, true
 }
@@ -611,11 +630,15 @@ func WriteFile(filename string, string2 string) error {
 func AddStrToMap(str string, m map[string]struct{}, protocol string) {
 	switch protocol {
 	case "url":
-		str = strings.TrimRight(str, "/")
+		//判断str最后结尾为/
+		if len(str) >= 1 && !strings.HasSuffix(str, "/") {
+			str = fmt.Sprintf("%s/", str)
+		}
 		m[str] = struct{}{}
 	case "path":
-		if len(str) >= 1 && str[0] != 47 {
-			str = fmt.Sprintf("/%s", str)
+		// 判断str是否以'/'开头,若是则删除
+		if len(str) >= 1 && str[0] == 47 {
+			str = str[1:]
 		}
 		m[str] = struct{}{}
 	default:
@@ -695,4 +718,17 @@ func FindOffset(file *os.File, target string) (int64, error) {
 		offset += int64(n)
 	}
 	return 0, fmt.Errorf("not find target")
+}
+
+// RemoveDuplicateStrings 字符串数组去重
+func RemoveDuplicateStrings(arr []string) []string {
+	var result []string
+	temp := map[string]byte{}
+	for _, e := range arr {
+		if temp[e] == 0 {
+			temp[e] = 1
+			result = append(result, e)
+		}
+	}
+	return result
 }
