@@ -19,24 +19,13 @@ import (
 	"golang.org/x/net/context"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
-	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
-
-//go:embed js/template.html
-var template string
-
-//go:embed js/antd.min.css
-var antdMinCss string
-
-//go:embed js/antd.min.js
-var antdMinJs string
-
-//go:embed js/vue.min.js
-var vueMinJs string
 
 type Runner struct {
 	wg           *sizedwaitgroup.SizedWaitGroup
@@ -133,8 +122,8 @@ func NewRunner(options *Options) (*Runner, error) {
 
 	// 清除恢复文件夹
 	if run.Cfg.Options.ClearResume {
-		_ = os.Remove(DefaultResumeFolderPath())
-		gologger.Info().Msgf("successfully cleaned up folder：%s", DefaultResumeFolderPath())
+		_ = os.RemoveAll(defaultResume)
+		gologger.Info().Msgf("successfully cleaned up folder：%s", defaultResume)
 		os.Exit(0)
 	}
 
@@ -165,8 +154,8 @@ func NewRunner(options *Options) (*Runner, error) {
 		}
 		defer resp.Body.Close()
 		hash, _ := util.GetHash(buffer.Bytes(), run.Cfg.Options.SkipHashMethod)
-		fmt.Printf("[%s] %s", aurora.Green("HASH").String(), string(hash))
-		os.Exit(0)
+		fmt.Printf("[%s] %s\n", aurora.Green(fmt.Sprintf("%s", run.Cfg.Options.SkipHashMethod)).String(), string(hash))
+		return nil, nil
 	}
 
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateLimit), time.Second)
@@ -197,6 +186,15 @@ func NewRunner(options *Options) (*Runner, error) {
 	for _, rOptions := range run.regOptions {
 		regNum += len(rOptions.SubMatch)
 	}
+	if run.Cfg.Options.SkipBodyRegex != nil {
+		for _, r := range run.Cfg.Options.SkipBodyRegex {
+			compile, err := regexp.Compile(r)
+			if err != nil {
+				return nil, err
+			}
+			run.Cfg.Options.skipBodyRegex = append(run.Cfg.Options.skipBodyRegex, compile)
+		}
+	}
 	gologger.Info().Msgf("pathScan-match templates loaded for current scan: %d", regNum)
 	run.outputResult = make(chan *result.Result)
 	return run, nil
@@ -208,76 +206,35 @@ func (r *Runner) RunEnumeration() error {
 	var err error
 
 	startTime := time.Now()
-	getWriter := func(output string) (io.Writer, error) {
-		var outputWriter io.Writer
-		//outputWriter, _ := ucRunner.NewOutputWriter()
-
-		switch {
-		case r.Cfg.Options.Csv:
-			if output != "" {
-				outputFolder := filepath.Dir(output)
-				if err = os.MkdirAll(outputFolder, 0700); err != nil {
-					return nil, err
-				}
-				outputWriter, err = writer.NewCSVWriter(output, result.Result{})
-				if err != nil {
-					return nil, err
-				}
-			}
-		case r.Cfg.Options.Html:
-			if output != "" {
-				if !util.FindStringInFile(output, `<title>HTML格式报告</title>`) {
-
-					template2 := strings.Replace(template, "<!-- antd.min.css -->", fmt.Sprintf("<style>%s</style>", antdMinCss), -1)
-					template2 = strings.Replace(template2, "<!-- vue.min.js -->", fmt.Sprintf("<script>%s</script>", vueMinJs), -1)
-					template2 = strings.Replace(template2, "<!-- antd.min.js -->", fmt.Sprintf("<script>%s</script>", antdMinJs), -1)
-
-					err = util.WriteFile(output, template2)
-					if err != nil {
-						return nil, err
-					}
-				}
-				outputWriter, err = writer.NewHTMLWriter(output)
-				if err != nil {
-					return nil, err
-				}
-			}
-		default:
-			if output != "" {
-				outputFolder := filepath.Dir(output)
-				if err = os.MkdirAll(outputFolder, 0700); err != nil {
-					return nil, err
-				}
-				create, err := util.AppendCreate(output)
-				if err != nil {
-					return nil, err
-				}
-				outputWriter = create
-			}
-		}
-		return outputWriter, nil
-	}
 	outputWriter, err := writer.NewOutputWriter()
 	if err != nil {
 		return err
 	}
-
-	o, err := getWriter(r.Cfg.Options.Output)
-	if err == nil && o != nil {
-		outputWriter.AddWriters(o)
+	outputType := 0
+	switch {
+	case r.Cfg.Options.Csv:
+		outputType = 1
+	case r.Cfg.Options.Html:
+		outputType = 2
+	case r.Cfg.Options.Silent:
+		outputType = 3
 	}
-	go r.output(outputWriter)
+	writers, err := writer.NewOutputWriters(r.Cfg.Options.Output, outputType)
+	if err == nil && writers != nil {
+		outputWriter.AddWriters(writers)
+	}
+	go outputWriter.Output(r.outputResult, outputType, r.Cfg.Options.NoColor)
 	switch {
 	case r.Cfg.Options.API:
 		mapOpt := make(map[string]interface{})
 		mapOpt["proxy-api-server"] = r.Cfg.Options.ProxyServerAddr
-		mapOpt["proxy-api-web-server"] = r.Cfg.Options.ProxyWebAddr
 		mapOpt["proxy-api-cert-path"] = r.Cfg.Options.ProxyServerCaPath
 		mapOpt["proxy-api-large-body"] = r.Cfg.Options.ProxyServerStremLargeBodies
 		mapOpt["proxy-api-allow-hosts"] = []string(r.Cfg.Options.ProxyServerAllowHosts)
-		mapOpt["proxy-api-ssl-insecure"] = r.Cfg.Options.ProxyServerSSLInsecure
 		mapOpt["proxy"] = r.Cfg.Options.Proxy
 		mapOpt["proxy-auth"] = r.Cfg.Options.ProxyAuth
+		mapOpt["output"] = r.outputResult
+		mapOpt["regexOpts"] = r.regOptions
 		opt, err := api.New(mapOpt)
 		if err != nil {
 			return err
@@ -465,9 +422,7 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 	if protocol == HTTPandHTTPS {
 		protocols = []string{HTTPS, HTTP}
 	}
-	i := 0
 	targets := []string{t}
-
 	wg2 := sizedwaitgroup.New(3)
 	for _, protocol := range protocols {
 		for _, t := range targets {
@@ -477,6 +432,14 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 				// 初始化目录结构层次目标
 				targetsMap := make(map[int][]string)
 				targetsMap[0] = append(targetsMap[0], target)
+				backslashesNum := 0
+				i := 0
+				parse, err := url.Parse(fmt.Sprintf("%s://%s", protocol, t))
+				if err == nil {
+					if strings.Trim(parse.Path, "/") != "" {
+						backslashesNum = strings.Count(strings.Trim(parse.Path, "/"), "/") + 1
+					}
+				}
 			retries:
 				for _, t := range targetsMap[i] {
 					for _, path := range util.RemoveDuplicateStrings(paths) {
@@ -488,9 +451,12 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 								gologger.Warning().Msgf("An error occurred: %s", err)
 								return
 							}
+							if mapResult == nil || mapResult["result"] == nil || mapResult["check"] == nil {
+								return
+							}
 							check := mapResult["check"].(bool)
 							targetResult := mapResult["result"].(*result.Result)
-							if targetResult == nil || check {
+							if check {
 								return
 							}
 							if r.Cfg.Options.ResultBack != nil {
@@ -513,32 +479,41 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 									}(link, proto)
 								}
 							}
-							// 判断 status 状态码是否是跳转
-							ok1 := (targetResult.Status == 301 || targetResult.Status == 302) && !strings.HasSuffix(path, "/") && targetResult.Header["Location"][0] == fmt.Sprintf("%s/", targetResult.Path)
+							// 判断 是否目录
+							ok1 := (targetResult.Status == 301) && !strings.HasSuffix(path, "/") && strings.Contains(targetResult.Header["Location"][0], fmt.Sprintf("%s/", targetResult.Path))
 							ok2 := targetResult.Status == 200 && strings.HasSuffix(path, "/")
-							if !(ok1 || ok2) && (strings.Contains(path, "%5C") || strings.Contains(path, "..")) {
+							if !(ok1 || ok2) || (strings.Contains(path, "%5C") || strings.Contains(path, "..")) {
 								return
 							}
-							tmp := path
+
+							target = targetResult.HTTPurl.Host
+							path = targetResult.Path
 							if !strings.HasSuffix(path, "/") {
-								tmp = fmt.Sprintf("%s/", path)
+								path = fmt.Sprintf("%s/", path)
 							}
-							l := strings.Count(strings.Trim(tmp, "/"), "/")
-							if l <= r.Cfg.Options.RecursiveRunTimes {
+							//fmt.Println("[+]", target, path)
+							l := strings.Count(strings.Trim(path, "/"), "/")
+							if l+1-backslashesNum > r.Cfg.Options.RecursiveRunTimes {
 								return
+							}
+							joinPath, err := url.JoinPath(target, path)
+							if err != nil {
+								target = strings.TrimRight(target, "/")
+								if !strings.HasPrefix(path, "/") {
+									path = fmt.Sprintf("/%s", path)
+								}
+								joinPath = fmt.Sprintf("%s%s", target, path)
 							}
 							r.Cfg.Rwm.Lock()
-							targetsMap[l+1] = append(targetsMap[l+1], fmt.Sprintf("%s%s", target, tmp))
+							targetsMap[l+1-backslashesNum] = append(targetsMap[l+1-backslashesNum], joinPath)
 							r.Cfg.Rwm.Unlock()
 						}(t, protocol, path)
 					}
 				}
 				wg.Wait()
 				i++
-				targetsMap[i] = util.RemoveDuplicateStrings(targetsMap[i])
-				if i < r.Cfg.Options.RecursiveRunTimes && len(targetsMap[i]) > 0 {
-
-					time.Sleep(5 * time.Second)
+				targetsMap[i+1] = util.RemoveDuplicateStrings(targetsMap[i+1])
+				if i+1 <= r.Cfg.Options.RecursiveRunTimes && len(targetsMap[i+1]) > 0 {
 					goto retries
 				}
 				count := 0
@@ -546,15 +521,15 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 					if c == 0 {
 						continue
 					}
-					count += len(v)
+					count += len(util.RemoveDuplicateStrings(v))
 				}
-				gologger.Info().Msgf("%s has completed %d rounds of scanning and found a total of %d directories", target, i, count)
+				gologger.Info().Msgf("%s has completed %d rounds of scanning and found a total of %d directories", target, i+1, count)
 				for c, v := range targetsMap {
 					if c == 0 {
 						continue
 					}
-					for vi, _ := range v {
-						gologger.Info().Msgf("%s://%s", protocol, v[vi])
+					for _, vv := range util.RemoveDuplicateStrings(v) {
+						gologger.Info().Msgf("%s://%s", protocol, vv)
 					}
 				}
 				return
@@ -584,10 +559,12 @@ func (r *Runner) process(t, path string, protocol string, methods []string, ctx 
 						return
 					}
 
+					if mapResult == nil || mapResult["result"] == nil || mapResult["check"] == nil {
+						return
+					}
 					check := mapResult["check"].(bool)
 					targetResult := mapResult["result"].(*result.Result)
-
-					if targetResult == nil || check {
+					if check {
 						return
 					}
 					if r.Cfg.Options.ResultBack != nil {

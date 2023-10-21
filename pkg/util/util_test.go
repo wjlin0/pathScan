@@ -144,3 +144,13 @@ func TestGetResponsePackage(t *testing.T) {
 	}
 	fmt.Println(GetResponsePackage(response, nil, false))
 }
+
+// 实现一个 RemoveDuplicateStrings的测试函数
+func TestRemoveDuplicateStrings(t *testing.T) {
+	var test1 = []string{
+		"127.0.0.1:8000/pkg/api/", "127.0.0.1:8000/pkg/api/",
+		"127.0.0.1:8000/pkg/common/", "127.0.0.1:8000/pkg/api/proxy/",
+	}
+	strings := RemoveDuplicateStrings(test1)
+	fmt.Println(strings)
+}

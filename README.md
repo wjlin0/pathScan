@@ -48,25 +48,32 @@ Flags:
 
 子域名收集:
    -s, -sub                   子域名收集
-   -sq, -sub-query string[]   需要收集的域名
+   -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
    -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
    -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
    -se, -sub-engine string[]  子域名搜索引擎 (default ["shodan", "censys", "fofa", "quake", "hunter", "zoomeye", "netlas", "criminalip", "publicwww", "hunterhow", "binary", "shodan-idb", "anubis", "bing", "chinaz", "google", "ip
 138", "qianxun", "rapiddns", "sitedossier"])
 
+被动发现（测试阶段）:
+   -a, -api                        被动发现
+   -as, -api-server string         中间人劫持代理端口 (default ":8081")
+   -ac, -api-ca-path string        中间人劫持证书路径
+   -ah, -api-allow-hosts string[]  允许的hosts (支持从文件中录入 -ah /tmp/allow-hosts.txt 支持 *.wjlin0.com 写法) (default ["*"])
+
 引擎:
    -uc, -uncover                  启用打开搜索引擎
    -uq, -uncover-query string[]   搜索查询
-   -ue, -uncover-engine string[]  支持的引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary shodan-idb anubis bing chinaz google ip138 qianxun rapiddns sitedossier] (default quake,fofa)    
+   -ue, -uncover-engine string[]  支持的引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary] (default quake,fofa)
    -uf, -uncover-field string     引擎返回字段 (ip,port,host) (default "host")
    -ul, -uncover-limit int        发现要返回的结果 (default 200)
    -uo, -uncover-output string    搜索引擎查询结果保存 支持csv格式输出
 
 跳过:
-   -su, -skip-url string[]   跳过的目标(以逗号分割)
-   -sc, -skip-code string[]  跳过状态码
-   -sh, -skip-hash string    跳过指定hash
-   -sbl, -skip-body-len int  跳过body固定长度 (default -1)
+   -su, -skip-url string[]          跳过的目标(以逗号分割,支持从文件读取 -su /tmp/skip-url.txt)
+   -sc, -skip-code string[]         跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt)
+   -sh, -skip-hash string           跳过指定hash
+   -sbl, -skip-body-len string[]    跳过body固定长度(支持 100-200,即长度为100~200之间的均跳过,支持 从文件中读取 -sbl /tmp/skip-body-len.txt)
+   -sbr, -skip-body-regex string[]  跳过body正则匹配(以逗号分割,支持从文件读取 -sbr /tmp/skip-regex.txt)
 
 扫描字典:
    -ps, -path string[]       路径(以逗号分割)
@@ -90,16 +97,17 @@ Flags:
 配置:
    -rs, -retries int                 重试
    -p, -proxy string                 代理
+   -f, -favicon                      自动识别favicon
    -resolvers string[]               自定义DNS列表( 文件或逗号隔开 )
    -pa, -proxy-auth string           代理认证，以冒号分割（username:password）
    -st, -scan-target                 只进行目标存活扫描
-   -nn, -not-new                     不允许重定向
-   -sdl, -scan-domain-list string[]  从响应中中发现其他URL
+   -nn, -not-new                     允许重定向
+   -sdl, -scan-domain-list string[]  从响应中中发现其他域名（逗号隔开，支持文件读取）
    -sd, -scan-domain                 从响应中发现其他域名
 
 请求头参数:
    -m, -method string[]          请求方法 [GET HEAD POST PUT PATCH DELETE CONNECT OPTIONS TRACE] (default ["GET"])
-   -ua, -user-agent string[]     User-Agent
+   -ua, -user-agent string[]     User-Agent (支持从文件中录入 -ua /tmp/user-agent.txt)
    -c, -cookie string            cookie
    -auth, -authorization string  Auth请求头
    -header string[]              自定义请求头,以逗号隔开
@@ -107,16 +115,16 @@ Flags:
    -b, -body string              自定义请求体
 
 速率:
-   -t, -thread int       线程 (default 50)
-   -rl, -rate-limit int  每秒允许的HTTP连接数 (default 150)
-   -timeout int          超时时间 (default 30)
+   -t, -thread int         线程 (default 50)
+   -rl, -rate-limit int    每秒允许的HTTP连接数 (default 150)
+   -timeout int            超时时间 (default 10)
+   -wt, -wait-timeout int  自定义任务结束前的等待,一般用于结束结束时间果断,导致无法发现更多目标 (default 3)
 
 更新:
    -update             更新版本
-   -ud, -update-dict   更新字典版本
    -um, -update-match  更新指纹识别库
-   -uh, -update-html   更新HTML模板文件
    -am, -auto-match    跳过自动更新
+
 ```
 # 安装pathScan
 
@@ -128,11 +136,9 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.4/pathScan_v1.4.4_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.4/pathScan_v1.4.4_linux_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.5/pathScan_v1.4.5_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.5/pathScan_v1.4.5_linux_amd64.zip
 ```
-
-
 
 
 Docker
@@ -193,60 +199,33 @@ rules:
 package main
 
 import (
-    "fmt"
-    "github.com/projectdiscovery/gologger"
-    "github.com/wjlin0/pathScan/pkg/result"
-    "github.com/wjlin0/pathScan/pkg/runner"
-    "github.com/wjlin0/pathScan/pkg/util"
-    "os"
-    "os/signal"
-    "path/filepath"
-    "time"
+	"fmt"
+	"github.com/projectdiscovery/gologger"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/runner"
+	"os"
 )
 
 func main() {
 	options := &runner.Options{Url: []string{
-		"https://localhost:8000",
+		"https://wjlin0.com/",
 	},
-		RateHttp:    2,
-		TimeoutTCP:  2 * time.Second,
-		TimeoutHttp: 2 * time.Second,
-		ResultBack: func(result *result.TargetResult) {
+		Timeout: 2,
+		ResultBack: func(result *result.Result) {
 			fmt.Println(result)
 		},
-		Method: "GET",
-		Path: []string{
-			"/",
-		},
+		Method: []string{"GET"},
+		Path:   []string{"/"},
 	}
 	run, err := runner.NewRunner(options)
-	if err != nil {
-		gologger.Print().Msg(fmt.Sprintf("无法创建Runner: %s", err.Error()))
-		os.Exit(0)
-	}
-	if run == nil {
-		os.Exit(0)
-	}
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			gologger.Info().Msg("CTRL+C 按下: Exiting")
-			filename := util.RandStr(30) + ".cfg"
-			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
-			err := run.Cfg.MarshalResume(filename)
-			if err != nil {
-				gologger.Error().Msgf("无法创建 resume 文件: %s", err.Error())
-			}
-			os.Exit(1)
+	if err != nil || run == nil {
+		if err != nil {
+			gologger.Print().Msg(fmt.Sprintf("Unable to create Runner:%s", err.Error()))
+			os.Exit(-1)
 		}
-	}()
-	err = run.Run()
-	if err != nil {
-		gologger.Fatal().Msgf("无法 运行: %s", err.Error())
+		return
 	}
-	run.Cfg.CleanupResumeConfig()
+	panic(run.RunEnumeration())
 }
 ```
 

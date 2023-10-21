@@ -49,6 +49,7 @@ func DefaultQuery(query string, engine string) string {
 	}
 }
 func MatchSubdomains(domain string, html string, fuzzy bool) []string {
+	domain = regexp.QuoteMeta(domain)
 	if !fuzzy {
 		reg := regexp.MustCompile(fmt.Sprintf(`(?i)(?:\>|\"|\'|\=|\,)(?:http\:\/\/|https\:\/\/)+(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.){0,}%s`, domain))
 		submatch := reg.FindAllString(html, -1)

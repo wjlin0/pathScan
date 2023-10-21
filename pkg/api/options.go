@@ -3,12 +3,13 @@ package api
 import (
 	"github.com/lqqyt2423/go-mitmproxy/proxy"
 	folderutil "github.com/projectdiscovery/utils/folder"
-	"github.com/wjlin0/pathScan/pkg/api/web"
+	apiProxy "github.com/wjlin0/pathScan/pkg/api/web"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
+	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"net/http"
-	"strings"
-
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -19,12 +20,12 @@ var (
 
 type Options struct {
 	Addr              string   `json:"addr,omitempty"`
-	WebAddr           string   `json:"web-addr"`
 	StreamLargeBodies int64    `json:"stream-large-bodies,omitempty"`
-	SslInsecure       bool     `json:"ssl-insecure,omitempty"`
 	CaRootPath        string   `json:"ca-root-path,omitempty"`
 	Upstream          string   `json:"upstream,omitempty"`
 	AllowHosts        []string `json:"allow-hosts"`
+	regexOpts         []*identification.Options
+	output            chan *result.Result
 }
 
 func New(scanOpt map[string]interface{}) (*Options, error) {
@@ -43,10 +44,10 @@ func New(scanOpt map[string]interface{}) (*Options, error) {
 	return &Options{
 		Addr:              scanOpt["proxy-api-server"].(string),
 		StreamLargeBodies: scanOpt["proxy-api-large-body"].(int64),
-		SslInsecure:       scanOpt["proxy-api-ssl-insecure"].(bool),
 		CaRootPath:        caPath,
 		AllowHosts:        scanOpt["proxy-api-allow-hosts"].([]string),
-		WebAddr:           scanOpt["proxy-api-web-server"].(string),
+		output:            scanOpt["output"].(chan *result.Result),
+		regexOpts:         scanOpt["regexOpts"].([]*identification.Options),
 		Upstream:          upstream,
 	}, nil
 }
@@ -54,7 +55,7 @@ func (opt *Options) Start() error {
 	p, err := proxy.NewProxy(&proxy.Options{
 		Addr:              opt.Addr,
 		StreamLargeBodies: opt.StreamLargeBodies,
-		SslInsecure:       opt.SslInsecure,
+		SslInsecure:       true,
 		CaRootPath:        opt.CaRootPath,
 		Upstream:          opt.Upstream,
 	})
@@ -64,7 +65,9 @@ func (opt *Options) Start() error {
 	p.SetShouldInterceptRule(func(req *http.Request) bool {
 		return matchHost(req.Host, opt.AllowHosts)
 	})
-	p.AddAddon(web.NewWebAddon(opt.WebAddr))
+	p.AddAddon(apiProxy.NewWebAddon(opt.Addr, opt.AllowHosts, opt.regexOpts, opt.output))
+
+	//p.AddAddon(web.NewWebAddon(":8083"))
 	return p.Start()
 }
 func splitHostPort(address string) (string, string) {

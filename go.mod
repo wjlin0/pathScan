@@ -6,7 +6,6 @@ require (
 	github.com/corpix/uarand v0.2.0
 	github.com/fatih/color v1.15.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -21,7 +20,6 @@ require (
 	github.com/projectdiscovery/retryablehttp-go v1.0.31
 	github.com/projectdiscovery/utils v0.0.57
 	github.com/remeh/sizedwaitgroup v1.0.0
-	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
@@ -100,6 +98,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/sashabaranov/go-openai v1.14.2 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/tidwall/btree v1.6.0 // indirect

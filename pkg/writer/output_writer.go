@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
+	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
 	"os"
 	"sync"
@@ -25,54 +26,97 @@ func NewOutputWriter() (*OutputWriter, error) {
 	return &OutputWriter{cache: lastPrintedCache}, nil
 }
 
-func (o *OutputWriter) AddWriters(writers ...io.Writer) {
-	o.writers = append(o.writers, writers...)
+func (w *OutputWriter) AddWriters(writers ...io.Writer) {
+	w.writers = append(w.writers, writers...)
 }
 
 // Write writes the data taken as input using only
 // the writer(s) with that name.
-func (o *OutputWriter) Write(data []byte) {
-	o.Lock()
-	defer o.Unlock()
+func (w *OutputWriter) Write(data []byte) {
+	w.Lock()
+	defer w.Unlock()
 
-	for _, w := range o.writers {
+	for _, w := range w.writers {
 		_, _ = w.Write(data)
 		_, _ = w.Write([]byte("\n"))
 	}
 }
 
-func (o *OutputWriter) findDuplicate(data string) bool {
+func (w *OutputWriter) findDuplicate(data string) bool {
 	// check if we've already printed this data
 	itemHash := sha1.Sum([]byte(data))
-	if o.cache.Contains(itemHash) {
+	if w.cache.Contains(itemHash) {
 		return true
 	}
-	o.cache.Add(itemHash, struct{}{})
+	w.cache.Add(itemHash, struct{}{})
 	return false
 }
 
 // WriteString writes the string taken as input using only
-func (o *OutputWriter) WriteString(data string) {
-	if o.findDuplicate(data) {
+func (w *OutputWriter) WriteString(data string) {
+	if w.findDuplicate(data) {
 		return
 	}
-	o.Write([]byte(data))
+	w.Write([]byte(data))
 }
 
 // WriteJsonData writes the result taken as input in JSON format
-func (o *OutputWriter) WriteJsonData(data sources.Result) {
-	if o.findDuplicate(fmt.Sprintf("%s:%d", data.IP, data.Port)) {
+func (w *OutputWriter) WriteJsonData(data sources.Result) {
+	if w.findDuplicate(fmt.Sprintf("%s:%d", data.IP, data.Port)) {
 		return
 	}
-	o.Write([]byte(data.JSON()))
+	w.Write([]byte(data.JSON()))
 }
 
 // Close closes the output writers
-func (o *OutputWriter) Close() {
+func (w *OutputWriter) Close() {
 	// Iterate over the writers and close the file writers
-	for _, writer := range o.writers {
+	for _, writer := range w.writers {
 		if fileWriter, ok := writer.(*os.File); ok {
 			fileWriter.Close()
 		}
+	}
+}
+
+func (w *OutputWriter) Output(outputResult chan *result.Result, outType int, noColor bool) {
+	for out := range outputResult {
+		path := out.ToString()
+		var outputStr []byte
+		var err error
+		switch outType {
+		case 1:
+			outputStr, err = CSVToString(*out)
+			if err != nil {
+				continue
+			}
+			w.Write(outputStr)
+			fmt.Println(string(outputStr))
+		case 2:
+			outputStr, err = HTMLToString(out)
+			if err != nil {
+				continue
+			}
+
+			w.Write(outputStr)
+
+			fmt.Println(OutputToString(out, noColor))
+		case 3:
+			outputStr = []byte(out.ToString())
+			w.Write(outputStr)
+			fmt.Println(string(outputStr))
+		default:
+			switch {
+			case !noColor:
+				outputStr = []byte(OutputToString(out, noColor))
+			case noColor:
+				outputStr = []byte(out.ToString())
+			}
+
+			fmt.Println(string(outputStr))
+
+			w.WriteString(path)
+		}
+
+		//r.handlerOutputTarget(out)
 	}
 }

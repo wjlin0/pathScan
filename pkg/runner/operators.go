@@ -64,10 +64,11 @@ func (r *Runner) parseOtherUrl(oldUrl string, domains []string, data ...[]byte) 
 		}
 		return domains
 	}
-	if net.ParseIP(oldUrl) != nil {
-		return nil
+	domain := oldUrl
+	if net.ParseIP(oldUrl) == nil {
+		domain = util.GetMainDomain(oldUrl)
 	}
-	domain := util.GetMainDomain(oldUrl)
+
 	return sources.MatchSubdomains(domain, body, false)
 
 }

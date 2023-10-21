@@ -1,9 +1,15 @@
 package writer
 
 import (
+	_ "embed"
+	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -82,4 +88,68 @@ func OutputToString(out *result.Result, nocolor bool) string {
 		builder.WriteRune(']')
 	}
 	return builder.String()
+}
+
+//go:embed js/template.html
+var template string
+
+//go:embed js/antd.min.css
+var antdMinCss string
+
+//go:embed js/antd.min.js
+var antdMinJs string
+
+//go:embed js/vue.min.js
+var vueMinJs string
+
+func NewOutputWriters(output string, outType int) (io.Writer, error) {
+	var (
+		outputWriter io.Writer
+		err          error
+	)
+
+	switch outType {
+	case 1:
+		if output != "" {
+			outputFolder := filepath.Dir(output)
+			if err = os.MkdirAll(outputFolder, 0700); err != nil {
+				return nil, err
+			}
+			outputWriter, err = NewCSVWriter(output, result.Result{})
+			if err != nil {
+				return nil, err
+			}
+		}
+	case 2:
+		if output != "" {
+			if !util.FindStringInFile(output, `<title>HTML格式报告</title>`) {
+
+				template2 := strings.Replace(template, "<!-- antd.min.css -->", fmt.Sprintf("<style>%s</style>", antdMinCss), -1)
+				template2 = strings.Replace(template2, "<!-- vue.min.js -->", fmt.Sprintf("<script>%s</script>", vueMinJs), -1)
+				template2 = strings.Replace(template2, "<!-- antd.min.js -->", fmt.Sprintf("<script>%s</script>", antdMinJs), -1)
+
+				err = util.WriteFile(output, template2)
+				if err != nil {
+					return nil, err
+				}
+			}
+			outputWriter, err = NewHTMLWriter(output)
+			if err != nil {
+				return nil, err
+			}
+		}
+	default:
+		if output != "" {
+			outputFolder := filepath.Dir(output)
+			if err = os.MkdirAll(outputFolder, 0700); err != nil {
+				return nil, err
+			}
+			create, err := util.AppendCreate(output)
+			if err != nil {
+				return nil, err
+			}
+			outputWriter = create
+		}
+	}
+	return outputWriter, nil
 }

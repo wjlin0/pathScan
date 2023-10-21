@@ -2,8 +2,8 @@ package runner
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
+	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/mapcidr/asn"
@@ -39,10 +39,44 @@ func (r *Runner) CheckSkip(status int, contentLength int, body []byte) bool {
 			return true
 		}
 	}
-	if r.Cfg.Options.SkipBodyLen == contentLength {
-		return true
-	}
+	// 跳过长度逻辑处理
+	for _, l := range r.Cfg.Options.SkipBodyLen {
+		switch strings.Count(l, "-") {
+		case 1:
+			split := strings.Split(l, "-")
+			if len(split) != 2 {
+				continue
+			}
+			min, err := strconv.Atoi(split[0])
+			if err != nil {
+				continue
+			}
+			max, err := strconv.Atoi(split[1])
+			if err != nil {
+				continue
+			}
+			if contentLength >= min && contentLength <= max {
+				return true
+			}
+		case 0:
+			atoi, err := strconv.Atoi(l)
+			if err != nil {
+				continue
+			}
+			if atoi == contentLength {
+				return true
+			}
+		default:
+			continue
+		}
 
+	}
+	for _, l := range r.Cfg.Options.skipBodyRegex {
+		// 匹配body
+		if l.Match(body) {
+			return true
+		}
+	}
 	return false
 
 }
@@ -196,7 +230,19 @@ func (r *Runner) targets(target string) chan result.Target {
 	}()
 	return results
 }
-func (r *Runner) analyze(protocol string, t result.Target, path, method string) (map[string]interface{}, error) {
+func GetDNSData(dialer *fastdialer.Dialer, hostname string) (ips, cnames []string, err error) {
+	dnsData, err := dialer.GetDNSData(hostname)
+	if err != nil {
+		return nil, nil, err
+	}
+	ips = make([]string, 0, len(dnsData.A)+len(dnsData.AAAA))
+	ips = append(ips, dnsData.A...)
+	ips = append(ips, dnsData.AAAA...)
+	cnames = dnsData.CNAME
+	return
+}
+func (r *Runner) analyze(protocol string, t result.Target, path, method string) (m map[string]interface{}, err error) {
+	m = make(map[string]interface{})
 	originProtocol := protocol
 	if protocol == HTTPorHTTPS || protocol == HTTPandHTTPS {
 		protocol = HTTPS
@@ -211,7 +257,27 @@ retry:
 	if err != nil {
 		return nil, err
 	}
+	if r.Cfg.Options.SkipUrl != nil {
+		for _, h := range r.Cfg.Options.SkipUrl {
+			parse, err := url.Parse(_url)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case strings.HasPrefix(h, "*."):
+				if parse.Hostname() == h[2:] || strings.HasSuffix(parse.Hostname(), h[1:]) {
+					gologger.Warning().Msgf("skip %s ", _url)
+					return nil, nil
+				}
+			default:
+				if parse.Hostname() == h {
+					gologger.Warning().Msgf("skip %s ", _url)
+					return nil, nil
+				}
+			}
 
+		}
+	}
 	request, err := r.NewRequest(context.Background(), method, _url, []byte(r.Cfg.Options.Body))
 	if err != nil {
 		return nil, err
@@ -221,7 +287,8 @@ retry:
 		gologger.Print().Msg(requestRaw)
 	}
 	if r.Cfg.ResultsCached.HasInCached(fmt.Sprintf("%s://%s%s%s", protocol, target, path, method)) {
-		return nil, errors.New(fmt.Sprintf("in cached %s %s://%s%s", method, protocol, target, path))
+		gologger.Warning().Msgf("in cached %s %s://%s%s", method, protocol, target, path)
+		return nil, nil
 	}
 	r.Cfg.ResultsCached.Set(fmt.Sprintf("%s://%s%s%s", protocol, target, path, method))
 	r.limiter.Take()
@@ -255,8 +322,8 @@ retry:
 	var ips, cname []string
 	// 解决请求目标为ip时过慢
 	if parse.Hostname() != ip {
-		ips, cname, _ = r.GetDNSData(parse.Host)
-		if len(ips) > 1 && ip == "" {
+		ips, cname, _ = GetDNSData(r.dialer, parse.Host)
+		if len(ips) > 0 && ip == "" {
 			ip = ips[0]
 		}
 	} else {
@@ -269,7 +336,6 @@ retry:
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[string]interface{})
 
 	// Title
 	var title string
@@ -292,6 +358,7 @@ retry:
 		ContentLength: resp.ContentLength,
 		Server:        server,
 		Header:        resp.Headers,
+		HTTPurl:       parse,
 	}
 	m["result"] = targetResult
 	// 跳过
@@ -304,7 +371,6 @@ retry:
 		"all_headers": resp.RawHeaders,
 		"body":        resp.RawData,
 	}
-
 	targetResult.Technology = r.parseTechnology(byte_)
 	if r.Cfg.Options.FindOtherDomain {
 		targetResult.Links = r.parseOtherUrl(parse.Hostname(), r.Cfg.Options.FindOtherDomainList, []byte(resp.RawHeaders), resp.Data)
@@ -347,14 +413,17 @@ func (r *Runner) NewClient() *defaultHttp.Client {
 			return nil
 		}
 	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS10,
+	}
 	transport := &defaultHttp.Transport{
-		DialContext: r.dialer.Dial,
-		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return r.dialer.DialTLS(ctx, network, addr)
-		},
+		DialContext:         r.dialer.Dial,
+		DialTLSContext:      r.dialer.DialTLS,
 		MaxIdleConnsPerHost: -1,
 		Proxy:               util.GetProxyFunc(r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth),
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10},
+		TLSClientConfig:     tlsConfig,
 	}
 
 	client := &defaultHttp.Client{

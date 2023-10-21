@@ -10,6 +10,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"os"
+	"regexp"
 )
 
 type Options struct {
@@ -35,7 +36,7 @@ type Options struct {
 	SkipUrl                     goflags.StringSlice         `json:"skip-url"`
 	SkipCode                    goflags.StringSlice         `json:"skip-code"`
 	SkipHash                    string                      `json:"skip-hash"`
-	SkipBodyLen                 int                         `json:"skip-body-len"`
+	SkipBodyLen                 goflags.StringSlice         `json:"skip-body-len"`
 	SkipHashMethod              string                      `json:"skip-hash-method"`
 	ErrUseLastResponse          bool                        `json:"err-use-last-response"`
 	Csv                         bool                        `json:"csv,omitempty"`
@@ -74,14 +75,14 @@ type Options struct {
 	SubdomainOutput             string                      `json:"subdomain-output"`
 	Resolvers                   goflags.StringSlice         `json:"resolvers"`
 	WaitTimeout                 int                         `json:"wait-timeout"`
-	ProxyWebAddr                string                      `json:"proxy-web-addr"`
 	ProxyServerAllowHosts       goflags.StringSlice         `json:"proxy-server-allow-hosts"`
 	ProxyServerCaPath           string                      `json:"proxy-server-ca-path"`
-	ProxyServerSSLInsecure      bool                        `json:"proxy-server-ssl-insecure"`
 	ProxyServerStremLargeBodies int64                       `json:"proxy-server-strem-large-bodies"`
 	ProxyServerAddr             string                      `json:"proxy-server-addr"`
 	API                         bool                        `json:"api"`
 	Favicon                     bool                        `json:"favicon"`
+	SkipBodyRegex               goflags.StringSlice         `json:"skip-body-regex"`
+	skipBodyRegex               []*regexp.Regexp
 }
 
 func ParserOptions() *Options {
@@ -89,8 +90,8 @@ func ParserOptions() *Options {
 	set := goflags.NewFlagSet()
 	set.SetDescription("pathScan Go 扫描、信息收集工具")
 	set.CreateGroup("Input", "输入",
-		set.StringSliceVarP(&options.Url, "url", "u", nil, "目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
-		set.StringSliceVar(&options.UrlFile, "list", nil, "从文件中,读取目标", goflags.FileNormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.Url, "url", "u", nil, "目标(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
+		set.StringSliceVar(&options.UrlFile, "list", nil, "从文件中,读取目标", goflags.FileCommaSeparatedStringSliceOptions),
 		set.StringVarP(&options.UrlRemote, "target-remote", "tr", "", "从远程加载目标"),
 		set.BoolVarP(&options.UrlChannel, "target-channel", "tc", false, "从通道中加载目标"),
 		set.StringVar(&options.ResumeCfg, "resume", "", "使用resume.cfg恢复扫描"),
@@ -102,7 +103,7 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("Subdomain", "子域名收集",
 		set.BoolVarP(&options.Subdomain, "sub", "s", false, "子域名收集"),
-		set.StringSliceVarP(&options.SubdomainQuery, "sub-query", "sq", nil, "需要收集的域名", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.SubdomainQuery, "sub-query", "sq", nil, "需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)", goflags.FileNormalizedStringSliceOptions),
 		set.IntVarP(&options.SubdomainLimit, "sub-limit", "sl", 1000, "每个搜索引擎返回的至少不超过数"),
 		set.StringVarP(&options.SubdomainOutput, "sub-output", "so", "", "子域名搜索结果保存 支持csv格式输出"),
 		set.StringSliceVarP(&options.SubdomainEngine, "sub-engine", "se", uncover.AllAgents(), "子域名搜索引擎", goflags.NormalizedStringSliceOptions),
@@ -111,8 +112,7 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.API, "api", "a", false, "被动发现"),
 		set.StringVarP(&options.ProxyServerAddr, "api-server", "as", ":8081", "中间人劫持代理端口"),
 		set.StringVarP(&options.ProxyServerCaPath, "api-ca-path", "ac", "", "中间人劫持证书路径"),
-		set.StringVarP(&options.ProxyWebAddr, "api-web-server", "aw", ":8082", "输出路径端口"),
-		set.StringSliceVarP(&options.ProxyServerAllowHosts, "api-allow-hosts", "ah", []string{"*"}, "允许的hosts", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.ProxyServerAllowHosts, "api-allow-hosts", "ah", []string{"*"}, "允许的hosts (支持从文件中录入 -ah /tmp/allow-hosts.txt 支持 *.wjlin0.com 写法)", goflags.FileNormalizedStringSliceOptions),
 	)
 	set.CreateGroup("Uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
@@ -123,10 +123,11 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存 支持csv格式输出"),
 	)
 	set.CreateGroup("Skip", "跳过",
-		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割)", goflags.NormalizedStringSliceOptions),
-		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割,支持从文件读取 -su /tmp/skip-url.txt)", goflags.FileNormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt)", goflags.FileNormalizedStringSliceOptions),
 		set.StringVarP(&options.SkipHash, "skip-hash", "sh", "", "跳过指定hash"),
-		set.IntVarP(&options.SkipBodyLen, "skip-body-len", "sbl", -1, "跳过body固定长度"),
+		set.StringSliceVarP(&options.SkipBodyLen, "skip-body-len", "sbl", nil, "跳过body固定长度(支持 100-200,即长度为100~200之间的均跳过,支持 从文件中读取 -sbl /tmp/skip-body-len.txt)", goflags.FileNormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.SkipBodyRegex, "skip-body-regex", "sbr", nil, "跳过body正则匹配(以逗号分割,支持从文件读取 -sbr /tmp/skip-regex.txt)", goflags.FileCommaSeparatedStringSliceOptions),
 	)
 	set.CreateGroup("Dict", "扫描字典",
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
@@ -155,15 +156,15 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.ProxyAuth, "proxy-auth", "pa", "", "代理认证，以冒号分割（username:password）"),
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "允许重定向"),
-		set.StringSliceVarP(&options.FindOtherDomainList, "scan-domain-list", "sdl", nil, "从响应中中发现其他URL", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.FindOtherDomainList, "scan-domain-list", "sdl", nil, "从响应中中发现其他域名（逗号隔开，支持文件读取）", goflags.FileNormalizedOriginalStringSliceOptions),
 		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
 	)
 	set.CreateGroup("Header", "请求头参数",
 		set.StringSliceVarP(&options.Method, "method", "m", goflags.StringSlice{"GET"}, fmt.Sprintf("请求方法 %s", httputil.AllHTTPMethods()), goflags.CommaSeparatedStringSliceOptions),
-		set.StringSliceVarP(&options.UserAgent, "user-agent", "ua", nil, "User-Agent", goflags.CommaSeparatedStringSliceOptions),
+		set.StringSliceVarP(&options.UserAgent, "user-agent", "ua", nil, "User-Agent (支持从文件中录入 -ua /tmp/user-agent.txt)", goflags.FileCommaSeparatedStringSliceOptions),
 		set.StringVarP(&options.Cookie, "cookie", "c", "", "cookie"),
 		set.StringVarP(&options.Authorization, "authorization", "auth", "", "Auth请求头"),
-		set.StringSliceVar(&options.Header, "header", nil, "自定义请求头,以逗号隔开", goflags.CommaSeparatedStringSliceOptions),
+		set.StringSliceVar(&options.Header, "header", nil, "自定义请求头,以逗号隔开", goflags.FileCommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.HeaderFile, "header-file", "hf", nil, "从文件中加载自定义请求头", goflags.FileStringSliceOptions),
 		set.StringVarP(&options.Body, "body", "b", "", "自定义请求体"),
 	)

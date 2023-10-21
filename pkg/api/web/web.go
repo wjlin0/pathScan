@@ -1,178 +1,178 @@
 package web
 
 import (
-	"embed"
-	folderutil "github.com/projectdiscovery/utils/folder"
-	"io/fs"
-	"net/http"
-	"path/filepath"
-	"sync"
-
-	"github.com/gorilla/websocket"
+	"bytes"
+	"crypto/tls"
+	"fmt"
 	"github.com/lqqyt2423/go-mitmproxy/proxy"
+	"github.com/projectdiscovery/retryablehttp-go"
 	log "github.com/sirupsen/logrus"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
+	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
+	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
 )
 
-//go:embed client/build
-var assets embed.FS
+var wg sync.WaitGroup
 
 type WebAddon struct {
 	proxy.BaseAddon
-	upgrader *websocket.Upgrader
-
-	conns   []*concurrentConn
-	connsMu sync.RWMutex
+	client    *retryablehttp.Client
+	cached    map[string]struct{}
+	connsMu   sync.RWMutex
+	regexOpts []*identification.Options
+	output    chan *result.Result
 }
 
-var (
-	defaultPathScanDir       = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan")
-	defaultPathScanApiDir    = filepath.Join(defaultPathScanDir, "api")
-	defaultPathScanCertDir   = filepath.Join(defaultPathScanApiDir, "cert")
-	defaultPathScanWebClient = filepath.Join(defaultPathScanApiDir, "web")
-	defaultPathScanWebBuild  = filepath.Join(defaultPathScanWebClient, "client", "build")
-)
+var regexTitile = regexp.MustCompile(`<title.*>(.*?)</title>`)
+var allows []string
 
-func NewWebAddon(addr string) *WebAddon {
+func NewWebAddon(proxyAddr string, hosts []string, regexpOpts []*identification.Options, output chan *result.Result) *WebAddon {
 	web := new(WebAddon)
-	web.upgrader = &websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
+	switch {
+	case strings.HasPrefix(proxyAddr, ":"):
+		proxyAddr = fmt.Sprintf("http://127.0.0.1%v", proxyAddr)
+	case !strings.HasPrefix(proxyAddr, "http") && !strings.HasPrefix(proxyAddr, ":"):
+		proxyAddr = fmt.Sprintf("http://%s", proxyAddr)
 
-	serverMux := new(http.ServeMux)
-	serverMux.HandleFunc("/echo", web.echo)
-	fsys, err := fs.Sub(assets, "client/build")
+	}
+	allows = hosts
+	log.SetLevel(0)
+	parse, err := url.Parse(proxyAddr)
 	if err != nil {
 		panic(err)
 	}
 
-	root := http.FS(fsys)
-	serverMux.Handle("/", http.FileServer(root))
-
-	server := &http.Server{Addr: addr, Handler: serverMux}
-	web.conns = make([]*concurrentConn, 0)
-
-	go func() {
-		log.Infof("web interface start listen at %v\n", addr)
-		err := server.ListenAndServe()
-		log.Error(err)
-	}()
-
+	// 配置 retryableclient
+	var retryablehttpOptions = retryablehttp.Options{}
+	retryablehttpOptions.RetryMax = 1
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: -1,
+		Proxy:               http.ProxyURL(parse),
+		ForceAttemptHTTP2:   false,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS10,
+		},
+	}
+	retryablehttpOptions.HttpClient = &http.Client{}
+	retryablehttpOptions.HttpClient.Transport = transport
+	retryablehttpOptions.HttpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		// 禁止自动重定向
+		return http.ErrUseLastResponse
+	}
+	web.client = retryablehttp.NewClient(retryablehttpOptions)
+	web.cached = make(map[string]struct{})
+	web.output = output
+	web.regexOpts = regexpOpts
 	return web
 }
 
-func (web *WebAddon) echo(w http.ResponseWriter, r *http.Request) {
-	c, err := web.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
+func (web *WebAddon) Response(f *proxy.Flow) {
+	if f.Request.Method == http.MethodConnect {
 		return
 	}
-
-	conn := newConn(c)
-	web.addConn(conn)
-	defer func() {
-		web.removeConn(conn)
-		c.Close()
-	}()
-
-	conn.readloop()
+	// Title
+	var title string
+	if t := regexTitile.FindStringSubmatch(string(f.Response.Body)); len(t) >= 2 {
+		title = strings.Join(t[1:], " ")
+	}
+	// request body header
+	requestBodyBuffer := bytes.Buffer{}
+	requestHeaderBuffer := bytes.Buffer{}
+	for k, values := range f.Request.Header {
+		requestHeaderBuffer.WriteString(fmt.Sprintf("%s: %s\r\n", k, strings.Join(values, ";")))
+	}
+	requestBodyBuffer.Write(f.Request.Body)
+	// response body header
+	responseBodyBuffer := bytes.Buffer{}
+	responseHeaderBuffer := bytes.Buffer{}
+	for k, values := range f.Response.Header {
+		responseHeaderBuffer.WriteString(fmt.Sprintf("%s: %s\r\n", k, strings.Join(values, ";")))
+	}
+	body, err := f.Response.DecodedBody()
+	if err != nil {
+		body = f.Response.Body
+	}
+	responseBodyBuffer.Write(body)
+	// server
+	server := strings.Join(f.Response.Header["Server"], " ")
+	re := &result.Result{
+		TimeStamp:     time.Now(),
+		URL:           util.GetTrueUrl(f.Request.URL),
+		Path:          f.Request.URL.Path,
+		Method:        f.Request.Method,
+		Title:         title,
+		Host:          "",
+		A:             nil,
+		CNAME:         nil,
+		Status:        f.Response.StatusCode,
+		ContentLength: len(f.Response.Body),
+		Server:        server,
+		Technology: parseTechnology(web.regexOpts, match, map[string]interface{}{
+			"all_headers": responseHeaderBuffer.Bytes(),
+			"body":        responseBodyBuffer.Bytes(),
+		}),
+		ResponseBody: fmt.Sprintf("%s\r\n%s", responseHeaderBuffer.String(), responseBodyBuffer.String()),
+		RequestBody:  fmt.Sprintf("%s\r\n%s", requestBodyBuffer.String(), requestHeaderBuffer.String()),
+		Links:        nil,
+		Header:       nil,
+	}
+	web.output <- re
+	hosts := append(allows, f.Request.URL.Hostname())
+	go web.requestHosts(parseHosts(util.RemoveDuplicateStrings(hosts), responseHeaderBuffer.Bytes(), responseBodyBuffer.Bytes()))
 }
 
-func (web *WebAddon) addConn(c *concurrentConn) {
-	web.connsMu.Lock()
-	web.conns = append(web.conns, c)
-	web.connsMu.Unlock()
+func (web *WebAddon) requestHosts(hosts []string) {
+	for _, host := range hosts {
+		web.connsMu.Lock()
+		if _, ok := web.cached[host]; ok {
+			web.connsMu.Unlock()
+			continue
+		}
+		web.cached[host] = struct{}{}
+		web.connsMu.Unlock()
+		wg.Add(1)
+		go func(host string) {
+			defer wg.Done()
+			_, _ = web.client.Get(host)
+
+		}(host)
+	}
+	wg.Wait()
 }
-
-func (web *WebAddon) removeConn(conn *concurrentConn) {
-	web.connsMu.Lock()
-	defer web.connsMu.Unlock()
-
-	index := -1
-	for i, c := range web.conns {
-		if conn == c {
-			index = i
-			break
+func parseTechnology(regexOpts []*identification.Options, match identification.MatchFunc, data map[string]interface{}) []string {
+	var tag []string
+	for _, options := range regexOpts {
+		for _, sub := range options.SubMatch {
+			execute, b := sub.Execute(data, match)
+			if b && !(len(execute) == 1 && execute[0] == "") {
+				tag = append(tag, execute...)
+			}
 		}
 	}
 
-	if index == -1 {
-		return
-	}
-	web.conns = append(web.conns[:index], web.conns[index+1:]...)
+	return tag
 }
-
-func (web *WebAddon) forEachConn(do func(c *concurrentConn)) bool {
-	web.connsMu.RLock()
-	conns := web.conns
-	web.connsMu.RUnlock()
-	if len(conns) == 0 {
-		return false
-	}
-	for _, c := range conns {
-		do(c)
-	}
-	return true
-}
-
-func (web *WebAddon) sendFlow(f *proxy.Flow, msgFn func() *messageFlow) bool {
-	web.connsMu.RLock()
-	conns := web.conns
-	web.connsMu.RUnlock()
-
-	if len(conns) == 0 {
-		return false
-	}
-	if f.Request.Method == http.MethodConnect {
-		return false
-	}
-	msg := msgFn()
-	for _, c := range conns {
-		c.writeMessage(msg, f)
+func match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
+	item, ok := util.GetPartString(matcher.Part, data)
+	if !ok {
+		return false, []string{}
 	}
 
-	return true
-}
-
-func (web *WebAddon) Requestheaders(f *proxy.Flow) {
-	if f.ConnContext.ClientConn.Tls {
-		web.forEachConn(func(c *concurrentConn) {
-			c.trySendConnMessage(f)
-		})
+	switch matcher.GetType() {
+	case matchers.WordsMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
+	case matchers.RegexMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
+	case matchers.HashMatcher:
+		return matcher.ResultWithMatchedSnippet(matcher.MatchHash(item))
 	}
-
-	web.sendFlow(f, func() *messageFlow {
-		return newMessageFlow(messageTypeRequest, f)
-	})
-}
-
-func (web *WebAddon) Request(f *proxy.Flow) {
-	web.sendFlow(f, func() *messageFlow {
-		return newMessageFlow(messageTypeRequestBody, f)
-	})
-}
-
-func (web *WebAddon) Responseheaders(f *proxy.Flow) {
-	if !f.ConnContext.ClientConn.Tls {
-		web.forEachConn(func(c *concurrentConn) {
-			c.trySendConnMessage(f)
-		})
-	}
-
-	web.sendFlow(f, func() *messageFlow {
-		return newMessageFlow(messageTypeResponse, f)
-	})
-}
-
-func (web *WebAddon) Response(f *proxy.Flow) {
-	web.sendFlow(f, func() *messageFlow {
-		return newMessageFlow(messageTypeResponseBody, f)
-	})
-}
-
-func (web *WebAddon) ServerDisconnected(connCtx *proxy.ConnContext) {
-	web.forEachConn(func(c *concurrentConn) {
-		c.whenConnClose(connCtx)
-	})
+	return false, []string{}
 }

@@ -22,6 +22,7 @@ type Result struct {
 	RequestBody   string              `json:"request" csv:"-"`
 	Links         []string            `json:"-" csv:"-"`
 	Header        map[string][]string `json:"-" csv:"-"`
+	HTTPurl       *url.URL            `json:"-" csv:"-"`
 }
 
 func (tr *Result) ToString() string {
