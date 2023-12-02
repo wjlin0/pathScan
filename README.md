@@ -20,6 +20,41 @@
 - 通过hash,len指定跳过
 - 结果可回调处理
 
+
+# 安装pathScan
+
+pathScan需要**go1.20**才能安装成功。执行一下命令
+
+```sh
+go install -v github.com/wjlin0/pathScan@latest
+```
+下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
+
+```sh
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.6/pathScan_v1.4.6_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.6/pathScan_v1.4.6_linux_amd64.zip
+```
+
+
+Docker
+
+```sh
+# 已提供docker文件自行编译
+docker build -t pathScan .
+docker run --rm --name pathScan -it pathScan  -u https://wjlin0.com -vb
+```
+
+
+自行编译
+
+```sh
+git clone https://github.com/wjlin0/pathScan.git && cd pathScan
+go install github.com/goreleaser/goreleaser@latest
+goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
+```
+
+
+
 # 用法
 
 
@@ -28,7 +63,7 @@
 pathScan -h
 ```
 ```text
-pathScan Go 扫描、信息收集工具
+pathScan 1.4.6 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]
@@ -51,10 +86,9 @@ Flags:
    -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
    -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
    -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
-   -se, -sub-engine string[]  子域名搜索引擎 (default ["shodan", "censys", "fofa", "quake", "hunter", "zoomeye", "netlas", "criminalip", "publicwww", "hunterhow", "binary", "shodan-idb", "anubis", "bing", "chinaz", "google", "ip
-138", "qianxun", "rapiddns", "sitedossier"])
+   -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary shodan-idb anubis bing chinaz google ip138 qianxun rapiddns sitedossier] (default all)
 
-被动发现（测试阶段）:
+被动发现:
    -a, -api                        被动发现
    -as, -api-server string         中间人劫持代理端口 (default ":8081")
    -ac, -api-ca-path string        中间人劫持证书路径
@@ -63,7 +97,7 @@ Flags:
 引擎:
    -uc, -uncover                  启用打开搜索引擎
    -uq, -uncover-query string[]   搜索查询
-   -ue, -uncover-engine string[]  支持的引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary] (default quake,fofa)
+   -ue, -uncover-engine string[]  支持的引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary] (default fofa)
    -uf, -uncover-field string     引擎返回字段 (ip,port,host) (default "host")
    -ul, -uncover-limit int        发现要返回的结果 (default 200)
    -uo, -uncover-output string    搜索引擎查询结果保存 支持csv格式输出
@@ -79,6 +113,8 @@ Flags:
    -ps, -path string[]       路径(以逗号分割)
    -pf, -path-file string[]  从文件中,读取路径
    -pr, -path-remote string  从远程加载字典
+   -ldd, -load-default-dict  目标超过一个时，是否加载默认字典
+   -lad, -load-api-dict      是否加载api字典
 
 输出:
    -o, -output string  输出文件路径（可忽略）
@@ -125,39 +161,25 @@ Flags:
    -um, -update-match  更新指纹识别库
    -am, -auto-match    跳过自动更新
 
+
+EXAMPLES:
+
+运行 pathScan 扫描路径, 指定单个目标 跳过404输出:
+    $ pathScan -u https://example.com/ -sc 404
+
+运行 pathScan 递归扫描 指定单个目标:
+    $ pathScan -r -u https://example.com/ -sc 404
+
+运行 pathScan 搜索引擎 并指定多个路径:
+    $ pathScan -uc -ue fofa -uq 'app="tomcat"' -pf "/,/api/v1/user"
+
+运行 pathScan 收集子域名 指定输出:
+    $ pathScan -s -sq 'example.com' -csv -o out.csv
+
+
+其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
+
 ```
-# 安装pathScan
-
-pathScan需要**go1.19**才能安装成功。执行一下命令
-
-```sh
-go install -v github.com/wjlin0/pathScan@latest
-```
-下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
-
-```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.5/pathScan_v1.4.5_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.5/pathScan_v1.4.5_linux_amd64.zip
-```
-
-
-Docker
-
-```sh
-# 已提供docker文件自行编译
-docker build -t pathScan .
-docker run --rm --name pathScan -it pathScan  -u https://wjlin0.com -vb
-```
-
-
-自行编译
-
-```sh
-git clone https://github.com/wjlin0/pathScan.git && cd pathScan
-go install github.com/goreleaser/goreleaser@latest
-goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
-```
-
 
 
 

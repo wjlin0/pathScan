@@ -1,6 +1,6 @@
 module github.com/wjlin0/pathScan
 
-go 1.19
+go 1.20
 
 require (
 	github.com/corpix/uarand v0.2.0

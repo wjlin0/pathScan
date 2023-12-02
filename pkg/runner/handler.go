@@ -51,16 +51,20 @@ func (r *Runner) handlerHeader() map[string]interface{} {
 //go:embed dict/main.txt
 var mainTxt string
 
+//go:embed dict/api.txt
+var apiTxt string
+
 func (r *Runner) handlerGetTargetPath() ([]string, error) {
+	opt := r.Cfg.Options
 	var paths []string
 
 	// 处理 Path 和 PathFile
-	for _, path := range append(r.Cfg.Options.Path, r.Cfg.Options.PathFile...) {
+	for _, path := range append(opt.Path, opt.PathFile...) {
 		paths = append(paths, path)
 	}
 	// 处理 PathRemote
-	if r.Cfg.Options.PathRemote != "" {
-		resp, err := r.client.Get(r.Cfg.Options.PathRemote)
+	if opt.PathRemote != "" {
+		resp, err := r.client.Get(opt.PathRemote)
 		if err != nil {
 			return nil, fmt.Errorf("从远程加载字典失败: %s", err)
 		}
@@ -78,18 +82,30 @@ func (r *Runner) handlerGetTargetPath() ([]string, error) {
 		gologger.Debug().Msg("Completing remote loading of URL list")
 
 	}
+	if opt.LoadAPIDict {
+		for _, path := range strings.Split(apiTxt, "\n") {
+			paths = append(paths, path)
+		}
+	}
 
-	// 如果未指定路径，则处理默认文件名
-	if len(paths) == 0 && len(r.targets_) == 1 && r.Cfg.Options.Path == nil && r.Cfg.Options.PathFile == nil {
+	if opt.LoadDefaultDict {
 		for _, path := range strings.Split(mainTxt, "\n") {
 			paths = append(paths, path)
 		}
 	}
+
+	// 如果未指定路径，则处理默认文件名
+	if len(paths) == 0 && len(r.targets_) == 1 && opt.Path == nil && opt.PathFile == nil {
+		for _, path := range strings.Split(mainTxt, "\n") {
+			paths = append(paths, path)
+		}
+	}
+
 	// 如果没有添加任何路径，则将根目录添加到结果中
 	if len(paths) == 0 {
 		paths = append(paths, "/")
 	}
-	return paths, nil
+	return util.RemoveDuplicateAndEmptyStrings(paths), nil
 }
 
 func (r *Runner) handlerGetTargets() ([]string, error) {

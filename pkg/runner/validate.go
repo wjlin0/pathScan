@@ -6,6 +6,7 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	httputil "github.com/projectdiscovery/utils/http"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/util"
 )
 
@@ -43,8 +44,12 @@ func (o *Options) Validate() error {
 	if o.Subdomain && o.Path == nil {
 		o.Path = []string{"/"}
 	}
+	if o.Subdomain && o.SubdomainEngine == nil {
+		o.SubdomainEngine = uncover.AllAgents()
+	}
+
 	if o.Uncover && o.UncoverEngine == nil {
-		o.UncoverEngine = []string{"quake", "fofa"}
+		o.UncoverEngine = []string{"fofa"}
 	}
 	if o.Method == nil {
 		o.Method = []string{"GET"}

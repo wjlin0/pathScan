@@ -83,12 +83,14 @@ type Options struct {
 	Favicon                     bool                        `json:"favicon"`
 	SkipBodyRegex               goflags.StringSlice         `json:"skip-body-regex"`
 	skipBodyRegex               []*regexp.Regexp
+	LoadDefaultDict             bool `json:"load-default-dict"`
+	LoadAPIDict                 bool `json:"load-api-dict"`
 }
 
 func ParserOptions() *Options {
 	options := &Options{}
 	set := goflags.NewFlagSet()
-	set.SetDescription("pathScan Go 扫描、信息收集工具")
+	set.SetDescription(fmt.Sprintf("pathScan %s Go 扫描、信息收集工具 ", Version))
 	set.CreateGroup("Input", "输入",
 		set.StringSliceVarP(&options.Url, "url", "u", nil, "目标(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVar(&options.UrlFile, "list", nil, "从文件中,读取目标", goflags.FileCommaSeparatedStringSliceOptions),
@@ -106,9 +108,9 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.SubdomainQuery, "sub-query", "sq", nil, "需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)", goflags.FileNormalizedStringSliceOptions),
 		set.IntVarP(&options.SubdomainLimit, "sub-limit", "sl", 1000, "每个搜索引擎返回的至少不超过数"),
 		set.StringVarP(&options.SubdomainOutput, "sub-output", "so", "", "子域名搜索结果保存 支持csv格式输出"),
-		set.StringSliceVarP(&options.SubdomainEngine, "sub-engine", "se", uncover.AllAgents(), "子域名搜索引擎", goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.SubdomainEngine, "sub-engine", "se", nil, fmt.Sprintf("子域名搜索引擎 %s (default all)", uncover.AllAgents()), goflags.NormalizedStringSliceOptions),
 	)
-	set.CreateGroup("api", "被动发现（测试阶段）",
+	set.CreateGroup("api", "被动发现",
 		set.BoolVarP(&options.API, "api", "a", false, "被动发现"),
 		set.StringVarP(&options.ProxyServerAddr, "api-server", "as", ":8081", "中间人劫持代理端口"),
 		set.StringVarP(&options.ProxyServerCaPath, "api-ca-path", "ac", "", "中间人劫持证书路径"),
@@ -117,7 +119,7 @@ func ParserOptions() *Options {
 	set.CreateGroup("Uncover", "引擎",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
 		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.CommaSeparatedStringSliceOptions),
-		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 %s (default quake,fofa)", uncover.UncoverAgents()), goflags.NormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 %s (default fofa)", uncover.UncoverAgents()), goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", 200, "发现要返回的结果"),
 		set.StringVarP(&options.UncoverOutput, "uncover-output", "uo", "", "搜索引擎查询结果保存 支持csv格式输出"),
@@ -133,6 +135,8 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.PathFile, "path-file", "pf", nil, "从文件中,读取路径", goflags.FileStringSliceOptions),
 		set.StringVarP(&options.PathRemote, "path-remote", "pr", "", "从远程加载字典"),
+		set.BoolVarP(&options.LoadDefaultDict, "load-default-dict", "ldd", false, "目标超过一个时，是否加载默认字典"),
+		set.BoolVarP(&options.LoadAPIDict, "load-api-dict", "lad", false, "是否加载api字典"),
 	)
 	set.CreateGroup("Output", "输出",
 		set.StringVarP(&options.Output, "output", "o", "", "输出文件路径（可忽略）"),
@@ -179,6 +183,22 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.UpdateMatchVersion, "update-match", "um", false, "更新指纹识别库"),
 		set.BoolVarP(&options.SkipAutoUpdateMatch, "auto-match", "am", false, "跳过自动更新"),
 	)
+	set.SetCustomHelpText(`EXAMPLES:
+
+运行 pathScan 扫描路径, 指定单个目标 跳过404输出:
+    $ pathScan -u https://example.com/ -sc 404
+
+运行 pathScan 递归扫描 指定单个目标:
+    $ pathScan -r -u https://example.com/ -sc 404 
+
+运行 pathScan 搜索引擎 并指定多个路径:
+    $ pathScan -uc -ue fofa -uq 'app="tomcat"' -pf "/,/api/v1/user"
+
+运行 pathScan 收集子域名 指定输出:
+    $ pathScan -s -sq 'example.com' -csv -o out.csv
+
+其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
+`)
 	_ = set.Parse()
 	if !options.Silent {
 		showBanner()

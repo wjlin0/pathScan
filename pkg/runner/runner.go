@@ -82,8 +82,25 @@ func NewRunner(options *Options) (*Runner, error) {
 		return nil, err
 	}
 
+	// 下载字典或更新版本
+	if run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
+		if run.Cfg.Options.UpdatePathScanVersion {
+			ok, err := UpdateVersion()
+			if err != nil && ok == false {
+				gologger.Error().Msg(err.Error())
+			}
+		}
+		if run.Cfg.Options.UpdateMatchVersion {
+			ok, err := UpdateMatch()
+			if err != nil && ok == false {
+				gologger.Error().Msg(err.Error())
+			}
+		}
+		return nil, nil
+	}
+
 	// 检查版本更新
-	if (!run.Cfg.Options.UpdatePathScanVersion && !run.Cfg.Options.UpdateMatchVersion) && !run.Cfg.Options.Silent && !run.Cfg.Options.SkipAutoUpdateMatch {
+	if !run.Cfg.Options.Silent && !run.Cfg.Options.SkipAutoUpdateMatch {
 		err := CheckVersion()
 		if err != nil {
 			gologger.Error().Msg(err.Error())
@@ -102,22 +119,6 @@ func NewRunner(options *Options) (*Runner, error) {
 			}
 		}
 
-	}
-	// 下载字典或更新版本
-	if run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
-		if run.Cfg.Options.UpdatePathScanVersion {
-			ok, err := UpdateVersion()
-			if err != nil && ok == false {
-				gologger.Error().Msg(err.Error())
-			}
-		}
-		if run.Cfg.Options.UpdateMatchVersion {
-			ok, err := UpdateMatch()
-			if err != nil && ok == false {
-				gologger.Error().Msg(err.Error())
-			}
-		}
-		return nil, nil
 	}
 
 	// 清除恢复文件夹

@@ -627,25 +627,6 @@ func WriteFile(filename string, string2 string) error {
 	return nil
 }
 
-func AddStrToMap(str string, m map[string]struct{}, protocol string) {
-	switch protocol {
-	case "url":
-		//判断str最后结尾为/
-		if len(str) >= 1 && !strings.HasSuffix(str, "/") {
-			str = fmt.Sprintf("%s/", str)
-		}
-		m[str] = struct{}{}
-	case "path":
-		// 判断str是否以'/'开头,若是则删除
-		if len(str) >= 1 && str[0] == 47 {
-			str = str[1:]
-		}
-		m[str] = struct{}{}
-	default:
-		m[str] = struct{}{}
-	}
-
-}
 func FindStringInFile(filepath string, target string) bool {
 	// 打开文件
 	file, err := os.Open(filepath)
@@ -726,6 +707,19 @@ func RemoveDuplicateStrings(arr []string) []string {
 	temp := map[string]byte{}
 	for _, e := range arr {
 		if temp[e] == 0 {
+			temp[e] = 1
+			result = append(result, e)
+		}
+	}
+	return result
+}
+
+// 移除字符串重复的、为空的的字符串
+func RemoveDuplicateAndEmptyStrings(arr []string) []string {
+	var result []string
+	temp := map[string]byte{}
+	for _, e := range arr {
+		if temp[e] == 0 && e != "" {
 			temp[e] = 1
 			result = append(result, e)
 		}
