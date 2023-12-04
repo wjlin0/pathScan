@@ -150,12 +150,12 @@ func (r *Runner) handlerGetTargets() ([]string, error) {
 		os.Stdin.Close()
 	}
 	targets = util.RemoveDuplicateStrings(targets)
-	for i, _ := range targets {
-		if !strings.HasSuffix(targets[i], "/") {
-			targets[i] = fmt.Sprintf("%s/", targets[i])
-		}
-
-	}
+	//for i, _ := range targets {
+	//	if !strings.HasSuffix(targets[i], "/") {
+	//		targets[i] = fmt.Sprintf("%s/", targets[i])
+	//	}
+	//
+	//}
 	return targets, nil
 }
 func InitPathScan() error {

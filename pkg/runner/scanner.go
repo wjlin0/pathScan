@@ -244,8 +244,8 @@ func GetDNSData(dialer *fastdialer.Dialer, hostname string) (ips, cnames []strin
 func (r *Runner) analyze(protocol string, t result.Target, path, method string) (m map[string]interface{}, err error) {
 	m = make(map[string]interface{})
 	originProtocol := protocol
-	if protocol == HTTPorHTTPS || protocol == HTTPandHTTPS {
-		protocol = HTTPS
+	if protocol == HTTPorHTTPS {
+		protocol = HTTP
 	}
 	retried := false
 	target := t.Host
@@ -286,11 +286,11 @@ retry:
 	if r.Cfg.Options.Verbose && requestRaw != "" {
 		gologger.Print().Msg(requestRaw)
 	}
-	if r.Cfg.ResultsCached.HasInCached(fmt.Sprintf("%s://%s%s%s", protocol, target, path, method)) {
-		gologger.Warning().Msgf("in cached %s %s://%s%s", method, protocol, target, path)
+	if r.Cfg.ResultsCached.HasInCached(fmt.Sprintf("%s-%s", _url, method)) {
+		gologger.Warning().Msgf("in cached %s %s", method, _url)
 		return nil, nil
 	}
-	r.Cfg.ResultsCached.Set(fmt.Sprintf("%s://%s%s%s", protocol, target, path, method))
+	r.Cfg.ResultsCached.Set(fmt.Sprintf("%s-%s", _url, method))
 	r.limiter.Take()
 	resp, err := r.do(request)
 	if err != nil {

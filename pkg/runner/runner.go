@@ -269,29 +269,19 @@ func (r *Runner) RunEnumeration() error {
 		// 识别Favicon
 		if r.Cfg.Options.Favicon {
 			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
-				proto := HTTPorHTTPS
-				if strings.HasPrefix(o[0], "http://") {
-					proto = HTTP
-					o[0] = strings.Replace(o[0], "http://", "", 1)
-				} else if strings.HasPrefix(o[0], "https://") {
-					proto = HTTPS
-					o[0] = strings.Replace(o[0], "https://", "", 1)
+				proto, t := util.GetProtocolAndHost(o[0])
+				_url, err := url.Parse(fmt.Sprintf("%s://%s", proto, t))
+				if err != nil {
+					continue
 				}
-				r.process(o[0], o[1], proto, []string{"GET"}, ctx, r.wg)
+				t = _url.Host
+				r.process(t, o[1], proto, []string{"GET"}, ctx, r.wg)
 			}
 		}
 		for out := range result.Rand(urls, paths) {
-			target := out[0]
 			path := out[1]
-			proto := HTTPandHTTPS
-			if strings.HasPrefix(target, "http://") {
-				proto = HTTP
-				target = strings.Replace(target, "http://", "", 1)
-			} else if strings.HasPrefix(target, "https://") {
-				proto = HTTPS
-				target = strings.Replace(target, "https://", "", 1)
-			}
-			r.process(target, path, proto, r.Cfg.Options.Method, ctx, r.wg)
+			proto, t := util.GetProtocolAndHost(out[0])
+			r.process(t, path, proto, r.Cfg.Options.Method, ctx, r.wg)
 		}
 		r.wg.Wait()
 		cancel()
@@ -322,31 +312,20 @@ func (r *Runner) RunEnumeration() error {
 		// 识别Favicon
 		if r.Cfg.Options.Favicon {
 			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
-				proto := HTTPorHTTPS
-				if strings.HasPrefix(o[0], "http://") {
-					proto = HTTP
-					o[0] = strings.Replace(o[0], "http://", "", 1)
-				} else if strings.HasPrefix(o[0], "https://") {
-					proto = HTTPS
-					o[0] = strings.Replace(o[0], "https://", "", 1)
+				proto, t := util.GetProtocolAndHost(o[0])
+				_url, err := url.Parse(fmt.Sprintf("%s://%s", proto, t))
+				if err != nil {
+					continue
 				}
-				r.process(o[0], o[1], proto, []string{"GET"}, ctx, r.wg)
+				t = _url.Host
+				r.process(t, o[1], proto, []string{"GET"}, ctx, r.wg)
 			}
 		}
 
 		out := result.Rand(urls, paths)
 		for o := range out {
-			target := o[0]
-			path := o[1]
-			proto := HTTPorHTTPS
-			if strings.HasPrefix(o[0], "http://") {
-				proto = HTTP
-				target = strings.Replace(target, "http://", "", 1)
-			} else if strings.HasPrefix(target, "https://") {
-				proto = HTTPS
-				target = strings.Replace(target, "https://", "", 1)
-			}
-			r.process(target, path, proto, r.Cfg.Options.Method, ctx, r.wg)
+			proto, t := util.GetProtocolAndHost(o[0])
+			r.process(t, o[1], proto, r.Cfg.Options.Method, ctx, r.wg)
 		}
 		r.wg.Wait()
 		cancel()
@@ -356,15 +335,8 @@ func (r *Runner) RunEnumeration() error {
 		var urls = r.targets_
 
 		for o := range result.Rand(urls) {
-			proto := HTTPorHTTPS
-			if strings.HasPrefix(o[0], "http://") {
-				proto = HTTP
-				o[0] = strings.Replace(o[0], "http://", "", 1)
-			} else if strings.HasPrefix(o[0], "https://") {
-				proto = HTTPS
-				o[0] = strings.Replace(o[0], "https://", "", 1)
-			}
-			r.processRetry(o[0], paths, proto, ctx, r.wg)
+			proto, t := util.GetProtocolAndHost(o[0])
+			r.processRetry(t, paths, proto, ctx, r.wg)
 		}
 	default:
 		var urls = r.targets_
@@ -375,31 +347,21 @@ func (r *Runner) RunEnumeration() error {
 		// 识别Favicon
 		if r.Cfg.Options.Favicon {
 			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
-				proto := HTTPorHTTPS
-				if strings.HasPrefix(o[0], "http://") {
-					proto = HTTP
-					o[0] = strings.Replace(o[0], "http://", "", 1)
-				} else if strings.HasPrefix(o[0], "https://") {
-					proto = HTTPS
-					o[0] = strings.Replace(o[0], "https://", "", 1)
+				proto, t := util.GetProtocolAndHost(o[0])
+				_url, err := url.Parse(fmt.Sprintf("%s://%s", proto, t))
+				if err != nil {
+					continue
 				}
-				r.process(o[0], o[1], proto, []string{"GET"}, ctx, r.wg)
+				t = _url.Host
+				r.process(t, o[1], proto, []string{"GET"}, ctx, r.wg)
 			}
 		}
 
 		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*len(paths))
 		out := result.Rand(urls, paths)
 		for o := range out {
-			proto := HTTPorHTTPS
-			if strings.HasPrefix(o[0], "http://") {
-				proto = HTTP
-				o[0] = strings.Replace(o[0], "http://", "", 1)
-			} else if strings.HasPrefix(o[0], "https://") {
-				proto = HTTPS
-				o[0] = strings.Replace(o[0], "https://", "", 1)
-			}
-
-			r.process(o[0], o[1], proto, r.Cfg.Options.Method, ctx, r.wg)
+			proto, t := util.GetProtocolAndHost(o[0])
+			r.process(t, o[1], proto, r.Cfg.Options.Method, ctx, r.wg)
 		}
 		time.Sleep(time.Duration(r.Cfg.Options.WaitTimeout) * time.Second)
 		r.wg.Wait()
@@ -435,7 +397,7 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 				targetsMap[0] = append(targetsMap[0], target)
 				backslashesNum := 0
 				i := 0
-				parse, err := url.Parse(fmt.Sprintf("%s://%s", protocol, t))
+				parse, err := url.Parse(fmt.Sprintf("%s://%s", protocol, target))
 				if err == nil {
 					if strings.Trim(parse.Path, "/") != "" {
 						backslashesNum = strings.Count(strings.Trim(parse.Path, "/"), "/") + 1
@@ -467,17 +429,9 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 							r.outputResult <- targetResult
 							if r.Cfg.Options.FindOtherDomain && targetResult.Links != nil {
 								for _, link := range targetResult.Links {
-									proto := HTTPorHTTPS
-									if strings.HasPrefix(link, "http://") {
-										proto = HTTP
-										link = strings.Replace(link, "http://", "", 1)
-									} else if strings.HasPrefix(link, "https://") {
-										proto = HTTPS
-										link = strings.Replace(link, "https://", "", 1)
-									}
-									go func(target string, proto string) {
+									go func(proto string, target string) {
 										r.process(target, "", proto, []string{"GET"}, ctx, wg)
-									}(link, proto)
+									}(util.GetProtocolAndHost(link))
 								}
 							}
 							// 判断 是否目录
@@ -512,9 +466,10 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 					}
 				}
 				wg.Wait()
-				i++
+
 				targetsMap[i+1] = util.RemoveDuplicateStrings(targetsMap[i+1])
 				if i+1 <= r.Cfg.Options.RecursiveRunTimes && len(targetsMap[i+1]) > 0 {
+					i++
 					goto retries
 				}
 				count := 0
@@ -524,7 +479,7 @@ func (r *Runner) processRetry(t string, paths []string, protocol string, ctx con
 					}
 					count += len(util.RemoveDuplicateStrings(v))
 				}
-				gologger.Info().Msgf("%s has completed %d rounds of scanning and found a total of %d directories", target, i+1, count)
+				gologger.Info().Msgf("%s has completed %d rounds of scanning and found a total of %d directories", target, r.Cfg.Options.RecursiveRunTimes, count)
 				for c, v := range targetsMap {
 					if c == 0 {
 						continue
@@ -576,17 +531,9 @@ func (r *Runner) process(t, path string, protocol string, methods []string, ctx 
 						return
 					}
 					for _, link := range targetResult.Links {
-						proto := HTTPorHTTPS
-						if strings.HasPrefix(link, "http://") {
-							proto = HTTP
-							link = strings.Replace(link, "http://", "", 1)
-						} else if strings.HasPrefix(link, "https://") {
-							proto = HTTPS
-							link = strings.Replace(link, "https://", "", 1)
-						}
-						go func(target string, proto string) {
+						go func(proto string, target string) {
 							r.process(target, "", proto, []string{"GET"}, ctx, wg)
-						}(link, proto)
+						}(util.GetProtocolAndHost(link))
 					}
 
 				}(target, path, proto, method)

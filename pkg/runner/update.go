@@ -169,20 +169,47 @@ func CheckVersion() error {
 		gologger.Info().Msgf(currentMsg)
 		return nil
 	}
-	newVersion, err := strconv.Atoi(strings.Replace(strings.Replace(releases[0].Version, ".", "", -1), "v", "", 1))
-	if err != nil {
-		gologger.Info().Msgf(currentMsg)
+	if newVersionArray := strings.Split(strings.Replace(releases[0].Version, "v", "", 1), "."); len(newVersionArray) < 3 {
 		return nil
 	}
-	oldVersion, err := strconv.Atoi(strings.Replace(Version, ".", "", -1))
-	if err != nil {
-		gologger.Info().Msgf(currentMsg)
+	if oldVersionArray := strings.Split(Version, "."); len(oldVersionArray) < 3 {
 		return nil
 	}
-	if newVersion > oldVersion {
+	var (
+		oldVersionArray []int
+		newVersionArray []int
+	)
+	for _, v := range strings.Split(strings.Replace(releases[0].Version, "v", "", 1), ".") {
+		i, _ := strconv.Atoi(v)
+		newVersionArray = append(newVersionArray, i)
+	}
+	for _, v := range strings.Split(Version, ".") {
+		i, _ := strconv.Atoi(v)
+		oldVersionArray = append(oldVersionArray, i)
+	}
+	if oldVersionArray[0] < newVersionArray[0] {
 		gologger.Error().Label("OUT").Msgf("Your current pathScan v%s are outdated. Latest is %s", Version, releases[0].Version)
 		return nil
 	}
+	if oldVersionArray[0] == newVersionArray[0] && (oldVersionArray[1] < newVersionArray[1]) {
+		gologger.Error().Label("OUT").Msgf("Your current pathScan v%s are outdated. Latest is %s", Version, releases[0].Version)
+		return nil
+	}
+	if oldVersionArray[0] == newVersionArray[0] && oldVersionArray[1] == newVersionArray[1] && (oldVersionArray[2] < newVersionArray[2]) {
+		gologger.Error().Label("OUT").Msgf("Your current pathScan v%s are outdated. Latest is %s", Version, releases[0].Version)
+		return nil
+	}
+
+	//newVersion, err := strconv.Atoi(strings.Replace(strings.Replace(releases[0].Version, ".", "", -1), "v", "", 1))
+	//if err != nil {
+	//	gologger.Info().Msgf(currentMsg)
+	//	return nil
+	//}
+	//oldVersion, err := strconv.Atoi(strings.Replace(Version, ".", "", -1))
+	//if err != nil {
+	//	gologger.Info().Msgf(currentMsg)
+	//	return nil
+	//}
 	gologger.Info().Msgf(currentMsg)
 	return nil
 
@@ -213,20 +240,37 @@ func CheckMatchVersion() (error, bool) {
 		gologger.Info().Msgf(currentMsg)
 		return nil, false
 	}
-	newVersion, err := strconv.Atoi(strings.Replace(strings.Replace(releases[0].Version, ".", "", -1), "v", "", 1))
-	if err != nil {
-		gologger.Info().Msgf(currentMsg)
+	if newVersionArray := strings.Split(strings.Replace(releases[0].Version, "v", "", 1), "."); len(newVersionArray) < 3 {
 		return nil, false
 	}
-	oldVersion, err := strconv.Atoi(strings.Replace(version, ".", "", -1))
-	if err != nil {
-		gologger.Info().Msgf(currentMsg)
+	if oldVersionArray := strings.Split(version, "."); len(oldVersionArray) < 3 {
 		return nil, false
 	}
-	if newVersion > oldVersion {
+	var (
+		oldVersionArray []int
+		newVersionArray []int
+	)
+	for _, v := range strings.Split(strings.Replace(releases[0].Version, "v", "", 1), ".") {
+		i, _ := strconv.Atoi(v)
+		newVersionArray = append(newVersionArray, i)
+	}
+	for _, v := range strings.Split(version, ".") {
+		i, _ := strconv.Atoi(v)
+		oldVersionArray = append(oldVersionArray, i)
+	}
+	if oldVersionArray[0] < newVersionArray[0] {
 		gologger.Error().Label("OUT").Msgf("Your current pathScan-match %s are outdated. Latest is %s", version, releases[0].Version)
 		return nil, true
 	}
+	if oldVersionArray[0] == newVersionArray[0] && (oldVersionArray[1] < newVersionArray[1]) {
+		gologger.Error().Label("OUT").Msgf("Your current pathScan-match %s are outdated. Latest is %s", version, releases[0].Version)
+		return nil, true
+	}
+	if oldVersionArray[0] == newVersionArray[0] && oldVersionArray[1] == newVersionArray[1] && (oldVersionArray[2] < newVersionArray[2]) {
+		gologger.Error().Label("OUT").Msgf("Your current pathScan-match %s are outdated. Latest is %s", version, releases[0].Version)
+		return nil, true
+	}
+
 	gologger.Info().Msgf(currentMsg)
 	return nil, false
 

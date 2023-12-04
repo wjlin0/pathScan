@@ -726,3 +726,14 @@ func RemoveDuplicateAndEmptyStrings(arr []string) []string {
 	}
 	return result
 }
+
+// 从url中辨别协议，分离 协议 和 域名
+func GetProtocolAndHost(url string) (string, string) {
+	if strings.HasPrefix(url, "http://") {
+		return "http", strings.TrimPrefix(url, "http://")
+	}
+	if strings.HasPrefix(url, "https://") {
+		return "https", strings.TrimPrefix(url, "https://")
+	}
+	return "http|https", url
+}

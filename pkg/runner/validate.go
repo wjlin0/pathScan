@@ -3,7 +3,6 @@ package runner
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	fileutil "github.com/projectdiscovery/utils/file"
 	httputil "github.com/projectdiscovery/utils/http"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
@@ -27,8 +26,7 @@ func (o *Options) Validate() error {
 	}
 
 	if o.SkipHash != "" || o.GetHash {
-		_, err := util.GetHash([]byte("1"), o.SkipHashMethod)
-		if err != nil {
+		if _, err := util.GetHash([]byte("1"), o.SkipHashMethod); err != nil {
 			return err
 		}
 	}
@@ -56,17 +54,7 @@ func (o *Options) Validate() error {
 	}
 	var resolvers []string
 	for _, resolver := range o.Resolvers {
-		if fileutil.FileExists(resolver) {
-			chFile, err := fileutil.ReadFile(resolver)
-			if err != nil {
-				return errors.Wrapf(err, "Couldn't process resolver file \"%s\"", resolver)
-			}
-			for line := range chFile {
-				resolvers = append(resolvers, line)
-			}
-		} else {
-			resolvers = append(resolvers, resolver)
-		}
+		resolvers = append(resolvers, resolver)
 	}
 
 	o.Resolvers = resolvers
