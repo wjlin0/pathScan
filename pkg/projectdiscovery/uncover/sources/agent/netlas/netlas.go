@@ -3,7 +3,9 @@ package netlas
 import (
 	"encoding/json"
 	"errors"
+	"github.com/projectdiscovery/gologger"
 	"net/http"
+	"time"
 
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 )
@@ -26,12 +28,15 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 	}
 
 	results := make(chan sources.Result)
+	start := time.Now()
 
 	go func() {
 		defer close(results)
 
 		numberOfResults := 0
-
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		for {
 			netlasRequest := &Request{
 				Query: query.Query,

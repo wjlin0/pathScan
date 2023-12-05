@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"net/http"
+	"time"
 
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 )
@@ -25,13 +27,16 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 	if session.Keys.HunterToken == "" {
 		return nil, errors.New("empty hunter keys")
 	}
-
+	start := time.Now()
 	results := make(chan sources.Result)
 
 	go func() {
 		defer close(results)
 
 		numberOfResults := 0
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		page := 1
 		for {
 			hunterRequest := &Request{

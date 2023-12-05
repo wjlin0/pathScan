@@ -3,8 +3,10 @@ package criminalip
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"net/http"
 	"net/url"
+	"time"
 
 	"errors"
 
@@ -26,12 +28,15 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 		return nil, errors.New("empty criminalip keys")
 	}
 	results := make(chan sources.Result)
-
+	start := time.Now()
 	go func() {
 		defer close(results)
 
 		numberOfResults := 0
 		currentPage := 1
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		for {
 			criminalipRequest := &CriminalIPRequest{
 				Query:  query.Query,

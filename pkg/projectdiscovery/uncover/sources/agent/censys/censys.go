@@ -3,8 +3,10 @@ package censys
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"net/http"
 	"net/url"
+	"time"
 
 	"errors"
 
@@ -27,11 +29,14 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 		return nil, errors.New("empty censys keys")
 	}
 	results := make(chan sources.Result)
-
+	start := time.Now()
 	go func() {
 		defer close(results)
 
 		var numberOfResults int
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		nextCursor := ""
 		for {
 			censysRequest := &CensysRequest{

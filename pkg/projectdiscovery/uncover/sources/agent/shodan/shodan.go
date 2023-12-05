@@ -3,8 +3,10 @@ package shodan
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"net/http"
 	"net/url"
+	"time"
 
 	"errors"
 
@@ -26,12 +28,15 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 		return nil, errors.New("empty shodan keys")
 	}
 	results := make(chan sources.Result)
-
+	start := time.Now()
 	go func() {
 		defer close(results)
 
 		currentPage := 1
 		var numberOfResults, totalResults int
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		for {
 			shodanRequest := &ShodanRequest{
 				Query: query.Query,

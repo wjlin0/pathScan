@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Agent struct {
@@ -28,10 +30,14 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 		return nil, errors.New("empty binary keys")
 	}
 	results := make(chan sources.Result)
+	start := time.Now()
 	go func() {
 		defer close(results)
 		currentPage := 1
 		var numberOfResults, totalResults int
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		for {
 			binaryRequest := &BinaryRequest{
 				Query:    query.Query,

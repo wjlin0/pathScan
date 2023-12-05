@@ -4,6 +4,7 @@ type responseData struct {
 	Hostname string `json:"hostname"`
 	IP       string `json:"ip"`
 	Port     int    `json:"port"`
+	Domain   string `json:"domain"`
 }
 
 type pagination struct {

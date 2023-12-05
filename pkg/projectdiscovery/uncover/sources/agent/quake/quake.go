@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"io"
 	"net/http"
+	"time"
 
 	errorutil "github.com/projectdiscovery/utils/errors"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
@@ -29,19 +31,21 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 	}
 
 	results := make(chan sources.Result)
-
+	start := time.Now()
 	go func() {
 		defer close(results)
 
 		numberOfResults := 0
-
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		for {
 			quakeRequest := &Request{
 				Query:       query.Query,
 				Size:        Size,
 				Start:       numberOfResults,
 				IgnoreCache: true,
-				Include:     []string{"ip", "port", "hostname"},
+				Include:     []string{"ip", "port", "hostname", "domain"},
 			}
 			quakeResponse := agent.query(URL, session, quakeRequest, results)
 			if quakeResponse == nil {
@@ -94,7 +98,11 @@ func (agent *Agent) query(URL string, session *sources.Session, quakeRequest *Re
 		result := sources.Result{Source: agent.Name()}
 		result.IP = quakeResult.IP
 		result.Port = quakeResult.Port
-		result.Host = quakeResult.Hostname
+		host := quakeResult.Hostname
+		if host == "" {
+			host = quakeResult.Domain
+		}
+		result.Host = host
 		raw, _ := json.Marshal(result)
 		result.Raw = raw
 		results <- result

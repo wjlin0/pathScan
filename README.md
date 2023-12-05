@@ -19,6 +19,11 @@
 - 可自定义请求头,可自定义指纹识别规则
 - 通过hash,len指定跳过
 - 结果可回调处理
+# 先决条件
+> Note: 在安装 pathScan 之前，请确保安装 libpcap 用于数据包捕获的库。
+
+要在 Linux 上安装 libpcap：`sudo apt install -y libpcap-dev` ，在 Mac 上安装： `brew install libpcap`
+
 
 
 # 安装pathScan
@@ -31,28 +36,9 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.6/pathScan_v1.4.6_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.6/pathScan_v1.4.6_linux_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.8/pathScan_v1.4.8_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.4.8/pathScan_v1.4.8_linux_amd64.zip
 ```
-
-
-Docker
-
-```sh
-# 已提供docker文件自行编译
-docker build -t pathScan .
-docker run --rm --name pathScan -it pathScan  -u https://wjlin0.com -vb
-```
-
-
-自行编译
-
-```sh
-git clone https://github.com/wjlin0/pathScan.git && cd pathScan
-go install github.com/goreleaser/goreleaser@latest
-goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
-```
-
 
 
 # 用法
@@ -63,7 +49,7 @@ goreleaser release --snapshot --skip-publish --skip-docker --rm-dist
 pathScan -h
 ```
 ```text
-pathScan 1.4.6 Go 扫描、信息收集工具 
+pathScan 1.4.8 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]
@@ -75,7 +61,7 @@ Flags:
    -tr, -target-remote string  从远程加载目标
    -tc, -target-channel        从通道中加载目标
    -resume string              使用resume.cfg恢复扫描
-   -mf, -match-file string     指纹文件
+   -mf, -match-file string     指纹文件目录或文件
 
 递归:
    -r, -recursive            递归扫描
@@ -125,6 +111,14 @@ Flags:
    -vb, -verbose       详细输出模式
    -v, -version        输出版本
 
+端口扫描(测试中):
+   -n, -naabu                  端口扫描
+   -port string                端口(80,443, 100-200)
+   -tp, -top-ports string      top端口(100,200,300)
+   -shd, -skip-host-discovery  跳过主机发现
+   -no, -naabu-output string   端口扫描结果保存 支持csv格式输出
+   -nr, -naabu-rate int        端口扫描速率 (default 1000)
+
 工具:
    -clear                          清理历史任务
    -gh, -get-hash                  计算hash
@@ -138,7 +132,7 @@ Flags:
    -pa, -proxy-auth string           代理认证，以冒号分割（username:password）
    -st, -scan-target                 只进行目标存活扫描
    -nn, -not-new                     允许重定向
-   -sdl, -scan-domain-list string[]  从响应中中发现其他域名（逗号隔开，支持文件读取）
+   -sdl, -scan-domain-list string[]  从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）
    -sd, -scan-domain                 从响应中发现其他域名
 
 请求头参数:
@@ -146,8 +140,7 @@ Flags:
    -ua, -user-agent string[]     User-Agent (支持从文件中录入 -ua /tmp/user-agent.txt)
    -c, -cookie string            cookie
    -auth, -authorization string  Auth请求头
-   -header string[]              自定义请求头,以逗号隔开
-   -hf, -header-file string[]    从文件中加载自定义请求头
+   -header string[]              自定义请求头,以逗号隔开 (支持从文件中录入 -header /tmp/header.txt)
    -b, -body string              自定义请求体
 
 速率:
@@ -159,7 +152,7 @@ Flags:
 更新:
    -update             更新版本
    -um, -update-match  更新指纹识别库
-   -am, -auto-match    跳过自动更新
+   -am, -auto-match    跳过自动检查更新
 
 
 EXAMPLES:
@@ -175,7 +168,8 @@ EXAMPLES:
 
 运行 pathScan 收集子域名 指定输出:
     $ pathScan -s -sq 'example.com' -csv -o out.csv
-
+运行 pathScan 端口扫描 并指定前1000个端口:
+    $ pathScan -u example.com -n -csv -o out.csv -tp 1000
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 

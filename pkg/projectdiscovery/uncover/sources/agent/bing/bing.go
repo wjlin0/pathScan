@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -31,6 +33,7 @@ func (agent *Agent) Name() string {
 func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan sources.Result, error) {
 
 	results := make(chan sources.Result)
+	start := time.Now()
 	go func() {
 		defer close(results)
 		var (
@@ -48,6 +51,11 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 		Results = make(map[string]struct{})
 		page = 0
 		q := fmt.Sprintf("site:.%s", query.Query)
+
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
+
 		for {
 			for k, _ := range Results {
 				if k == query.Query {

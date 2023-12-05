@@ -3,8 +3,10 @@ package shodanidb
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"net/http"
 	"net/url"
+	"time"
 
 	"errors"
 
@@ -25,7 +27,7 @@ func (agent *Agent) Name() string {
 
 func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan sources.Result, error) {
 	results := make(chan sources.Result)
-
+	start := time.Now()
 	if !iputil.IsIP(query.Query) && !iputil.IsCIDR(query.Query) {
 		return nil, errors.New("only ip/cidr are accepted")
 	}
@@ -34,7 +36,8 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 		defer close(results)
 
 		shodanRequest := &ShodanRequest{Query: query.Query}
-		agent.query(URL, session, shodanRequest, results)
+		sub := agent.query(URL, session, shodanRequest, results)
+		gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), sub)
 	}()
 
 	return results, nil
@@ -49,7 +52,7 @@ func (agent *Agent) queryURL(session *sources.Session, URL string, shodanRequest
 	return session.Do(request, agent.Name())
 }
 
-func (agent *Agent) query(URL string, session *sources.Session, shodanRequest *ShodanRequest, results chan sources.Result) {
+func (agent *Agent) query(URL string, session *sources.Session, shodanRequest *ShodanRequest, results chan sources.Result) (sub []string) {
 	var query string
 	if iputil.IsIP(shodanRequest.Query) {
 		if iputil.IsIPv4(shodanRequest.Query) {
@@ -84,12 +87,15 @@ func (agent *Agent) query(URL string, session *sources.Session, shodanRequest *S
 		for _, port := range shodanResponse.Ports {
 			result.Port = port
 			results <- result
+			sub = append(sub, "")
 			for _, hostname := range shodanResponse.Hostnames {
 				result.Host = hostname
+				sub = append(sub, "")
 				results <- result
 			}
 		}
 	}
+	return
 }
 
 type ShodanRequest struct {

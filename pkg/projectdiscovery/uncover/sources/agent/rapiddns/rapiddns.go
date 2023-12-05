@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -29,10 +31,12 @@ func (agent *Agent) Name() string {
 func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan sources.Result, error) {
 
 	results := make(chan sources.Result)
+	start := time.Now()
 	go func() {
 		defer close(results)
 		request := &rapidDNS{Domain: query.Query}
-		agent.query(URL, session, request, results)
+		sub := agent.query(URL, session, request, results)
+		gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), len(sub))
 	}()
 
 	return results, nil
@@ -47,7 +51,7 @@ func (agent *Agent) queryURL(session *sources.Session, URL string, rapid *rapidD
 	return session.Do(request, agent.Name())
 }
 
-func (agent *Agent) query(URL string, session *sources.Session, rapid *rapidDNS, results chan sources.Result) {
+func (agent *Agent) query(URL string, session *sources.Session, rapid *rapidDNS, results chan sources.Result) (sub []string) {
 	var shouldIgnoreErrors bool
 	resp, err := agent.queryURL(session, URL, rapid)
 	if err != nil {
@@ -66,7 +70,7 @@ func (agent *Agent) query(URL string, session *sources.Session, rapid *rapidDNS,
 			return
 		}
 	}
-	sub := sources.MatchSubdomains(rapid.Domain, body.String(), true)
+	sub = sources.MatchSubdomains(rapid.Domain, body.String(), true)
 	for _, ra := range sub {
 		result := sources.Result{Source: agent.Name()}
 		result.Host = ra

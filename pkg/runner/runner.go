@@ -7,11 +7,13 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
+	naabuResult "github.com/projectdiscovery/naabu/v2/pkg/result"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/pkg/api"
 	"github.com/wjlin0/pathScan/pkg/common/identification"
+	"github.com/wjlin0/pathScan/pkg/common/naabu"
 	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
@@ -207,24 +209,28 @@ func (r *Runner) RunEnumeration() error {
 	var err error
 
 	startTime := time.Now()
-	outputWriter, err := writer.NewOutputWriter()
-	if err != nil {
-		return err
-	}
-	outputType := 0
 	switch {
-	case r.Cfg.Options.Csv:
-		outputType = 1
-	case r.Cfg.Options.Html:
-		outputType = 2
-	case r.Cfg.Options.Silent:
-		outputType = 3
+	case r.Cfg.Options.Naabu && !r.Cfg.Options.Subdomain:
+	default:
+		outputWriter, err := writer.NewOutputWriter()
+		if err != nil {
+			return err
+		}
+		outputType := 0
+		switch {
+		case r.Cfg.Options.Csv:
+			outputType = 1
+		case r.Cfg.Options.Html:
+			outputType = 2
+		case r.Cfg.Options.Silent:
+			outputType = 3
+		}
+		writers, err := writer.NewOutputWriters(r.Cfg.Options.Output, outputType)
+		if err == nil && writers != nil {
+			outputWriter.AddWriters(writers)
+		}
+		go outputWriter.Output(r.outputResult, outputType, r.Cfg.Options.NoColor)
 	}
-	writers, err := writer.NewOutputWriters(r.Cfg.Options.Output, outputType)
-	if err == nil && writers != nil {
-		outputWriter.AddWriters(writers)
-	}
-	go outputWriter.Output(r.outputResult, outputType, r.Cfg.Options.NoColor)
 	switch {
 	case r.Cfg.Options.API:
 		mapOpt := make(map[string]interface{})
@@ -258,7 +264,7 @@ func (r *Runner) RunEnumeration() error {
 		for c := range ch {
 			urls = append(urls, c)
 		}
-		urls = util.RemoveDuplicateStrings(urls)
+		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
 		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(r.Cfg.Options.UncoverEngine, ","), len(urls))
 
 		lenPath := len(paths)
@@ -306,10 +312,45 @@ func (r *Runner) RunEnumeration() error {
 		if lenPath <= 0 {
 			lenPath = 1
 		}
+		if r.Cfg.Options.Naabu {
+			// 端口扫描调用 naabu sdk
+			opts := r.Cfg.Options
+			var temps []string
+
+			for _, t := range util.RemoveDuplicateStrings(urls) {
+				// 判断是否为 http[s] 开头
+				if strings.HasPrefix(t, "http") {
+					// 解析 url
+					if _, host, _ := util.GetProtocolHostAndPort(t); host != "" {
+						temps = append(temps, host)
+					}
+					continue
+				}
+				temps = append(temps, t)
+			}
+			urls = []string{}
+			var rwn sync.RWMutex
+			callback := func(naabuResult *naabuResult.HostResult) {
+				for _, port := range naabuResult.Ports {
+					if strings.Contains(naabuResult.Host, ":") {
+						naabuResult.Host = strings.Split(naabuResult.Host, ":")[0]
+					}
+					rwn.Lock()
+					urls = append(urls, fmt.Sprintf("%s:%d", naabuResult.Host, port.Port))
+					rwn.Unlock()
+				}
+			}
+			naabuOpts := naabu.New(temps, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.SkipHostDiscovery, false, "", false, callback)
+			if err = naabu.Execute(naabuOpts); err != nil {
+				gologger.Info().Msgf("An error occurred: %s", err)
+			}
+		}
 		// 去重
-		urls = util.RemoveDuplicateStrings(urls)
+		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
 		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*lenPath)
+
 		// 识别Favicon
+
 		if r.Cfg.Options.Favicon {
 			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
 				proto, t := util.GetProtocolAndHost(o[0])
@@ -338,6 +379,32 @@ func (r *Runner) RunEnumeration() error {
 			proto, t := util.GetProtocolAndHost(o[0])
 			r.processRetry(t, paths, proto, ctx, r.wg)
 		}
+	case r.Cfg.Options.Naabu && !r.Cfg.Options.Subdomain:
+		// 端口扫描调用 naabu sdk
+		opts := r.Cfg.Options
+		// 处理 r.targets_
+		var hosts []string
+		for _, t := range r.targets_ {
+			// 判断是否为 http[s] 开头
+			if strings.HasPrefix(t, "http") {
+				// 解析 url
+				if _, host, _ := util.GetProtocolHostAndPort(t); host != "" {
+					hosts = append(hosts, host)
+				}
+				continue
+			}
+			hosts = append(hosts, t)
+		}
+		callback := func(naabuResult *naabuResult.HostResult) {
+			for _, port := range naabuResult.Ports {
+				gologger.Info().Msgf("Found open port %d on host %s", port.Port, naabuResult.Host)
+			}
+		}
+		naabuOpts := naabu.New(hosts, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.SkipHostDiscovery, opts.Verbose, opts.Output, opts.Csv, callback)
+		if err = naabu.Execute(naabuOpts); err != nil {
+			return err
+		}
+
 	default:
 		var urls = r.targets_
 		var paths = r.paths

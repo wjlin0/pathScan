@@ -83,8 +83,17 @@ type Options struct {
 	Favicon                     bool                        `json:"favicon"`
 	SkipBodyRegex               goflags.StringSlice         `json:"skip-body-regex"`
 	skipBodyRegex               []*regexp.Regexp
-	LoadDefaultDict             bool `json:"load-default-dict"`
-	LoadAPIDict                 bool `json:"load-api-dict"`
+	LoadDefaultDict             bool   `json:"load-default-dict"`
+	LoadAPIDict                 bool   `json:"load-api-dict"`
+	Naabu                       bool   `json:"naabu"`
+	Ports                       string `json:"ports"`
+	TopPorts                    string `json:"top-ports"`
+	SkipHostDiscovery           bool   `json:"skip-host-discovery"`
+	NaabuOutput                 string `json:"naabu-output"`
+	NaabuRate                   int    `json:"naabu-rate"`
+	NaabuThreads                int    `json:"naabu-threads"`
+	NaabuRetries                int    `json:"naabu-retries"`
+	NaabuScanType               string `json:"naabu-scan-type"`
 }
 
 func ParserOptions() *Options {
@@ -147,6 +156,15 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVarP(&options.Version, "version", "v", false, "输出版本"),
 	)
+	set.CreateGroup("Naabu", "端口扫描(测试中)",
+		set.BoolVarP(&options.Naabu, "naabu", "n", false, "端口扫描"),
+		set.StringVar(&options.Ports, "port", "", "端口(80,443, 100-200)"),
+		set.StringVarP(&options.TopPorts, "top-ports", "tp", "", "top端口(100,200,300)"),
+		set.BoolVarP(&options.SkipHostDiscovery, "skip-host-discovery", "shd", false, "跳过主机发现"),
+		set.StringVarP(&options.NaabuOutput, "naabu-output", "no", "", "端口扫描结果保存 支持csv格式输出"),
+		set.IntVarP(&options.NaabuRate, "naabu-rate", "nr", 1000, "端口扫描速率"),
+	)
+
 	set.CreateGroup("Tool", "工具",
 		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
 		set.BoolVarP(&options.GetHash, "get-hash", "gh", false, "计算hash"),
@@ -195,6 +213,8 @@ func ParserOptions() *Options {
 
 运行 pathScan 收集子域名 指定输出:
     $ pathScan -s -sq 'example.com' -csv -o out.csv
+运行 pathScan 端口扫描 并指定前1000个端口:
+    $ pathScan -u example.com -n -csv -o out.csv -tp 1000
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 `)

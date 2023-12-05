@@ -737,3 +737,34 @@ func GetProtocolAndHost(url string) (string, string) {
 	}
 	return "http|https", url
 }
+
+// GetProtocolHostAndPort 实现一个协议、host、端口分离的函数
+func GetProtocolHostAndPort(path string) (string, string, int) {
+	if strings.HasPrefix(path, "http") {
+		parse, err := url.Parse(path)
+		if err != nil {
+			return "", "", 0
+		}
+		protocol := parse.Scheme
+		host := parse.Hostname()
+		port := parse.Port()
+		if port == "" {
+			// 根据协议判断端口
+			if protocol == "http" {
+				port = "80"
+			} else {
+				port = "443"
+			}
+		}
+		portInt, _ := strconv.Atoi(port)
+		return protocol, host, portInt
+	} else {
+		host, port, err := net.SplitHostPort(path)
+		if err != nil {
+			return "", "", 0
+		}
+		portInt, _ := strconv.Atoi(port)
+		return "", host, portInt
+	}
+
+}

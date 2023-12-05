@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/projectdiscovery/gologger"
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -31,6 +34,7 @@ func (agent *Agent) Name() string {
 func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan sources.Result, error) {
 
 	results := make(chan sources.Result)
+	start := time.Now()
 	go func() {
 		defer close(results)
 		var (
@@ -41,6 +45,10 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 			page            int
 			ignoreNum       int
 		)
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
+
 		cookies, err = agent.queryCookies(session)
 		if err != nil {
 			results <- sources.Result{Source: agent.Name(), Error: errors.Wrap(err, "get google cookies error")}
@@ -66,11 +74,11 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 				Q:     q,
 				Start: page,
 			}
-			googleResponse := agent.query(session, query.Query, URL, cookies, googleReq, Results, results)
-			if len(googleResponse) == 0 || numberOfResults > query.Limit {
+			googleResponse, stop := agent.query(session, query.Query, URL, cookies, googleReq, Results, results)
+			numberOfResults += len(googleResponse)
+			if stop || numberOfResults > query.Limit {
 				break
 			}
-			numberOfResults += len(googleResponse)
 
 			for i := 0; i < len(googleResponse); i++ {
 				Results[googleResponse[i]] = struct{}{}
@@ -98,7 +106,7 @@ func (agent *Agent) queryCookies(session *sources.Session) ([]*http.Cookie, erro
 	}
 	return resp.Cookies(), nil
 }
-func (agent *Agent) query(session *sources.Session, domain string, URL string, cookies []*http.Cookie, googleRequest *googleRequest, Results map[string]struct{}, results chan sources.Result) []string {
+func (agent *Agent) query(session *sources.Session, domain string, URL string, cookies []*http.Cookie, googleRequest *googleRequest, Results map[string]struct{}, results chan sources.Result) ([]string, bool) {
 	var (
 		shouldIgnoreErrors bool
 		newSub             []string
@@ -106,7 +114,7 @@ func (agent *Agent) query(session *sources.Session, domain string, URL string, c
 	resp, err := agent.queryURL(session, URL, cookies, googleRequest)
 	if err != nil {
 		results <- sources.Result{Source: agent.Name(), Error: errors.Wrap(err, "request error")}
-		return nil
+		return nil, true
 	}
 	defer resp.Body.Close()
 	body := bytes.Buffer{}
@@ -117,27 +125,30 @@ func (agent *Agent) query(session *sources.Session, domain string, URL string, c
 		}
 		if !shouldIgnoreErrors {
 			results <- sources.Result{Source: agent.Name(), Error: err}
-			return nil
+			return nil, true
 		}
 	}
 	sub := sources.MatchSubdomains(domain, body.String(), true)
 
 	for _, google := range sub {
+
 		if _, ok := Results[google]; ok {
 			continue
 		}
 		newSub = append(newSub, google)
+		_, host, port := util.GetProtocolHostAndPort(google)
 		result := sources.Result{Source: agent.Name()}
-		result.Host = google
+		result.Host = host
+		result.Port = port
 		raw, _ := json.Marshal(result)
 		result.Raw = raw
 		results <- result
 	}
 
 	if !strings.Contains(body.String(), fmt.Sprintf("start=%d", googleRequest.Start+50)) || strings.Contains(body.String(), "302 Moved") {
-		return nil
+		return newSub, true
 	}
-	return newSub
+	return newSub, false
 }
 func (agent *Agent) queryURL(session *sources.Session, URL string, cookies []*http.Cookie, googleRequest *googleRequest) (*http.Response, error) {
 

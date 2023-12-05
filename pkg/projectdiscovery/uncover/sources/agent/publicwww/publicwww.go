@@ -4,9 +4,11 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"github.com/projectdiscovery/gologger"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 )
@@ -26,14 +28,16 @@ func (agent *Agent) Query(session *sources.Session, query *sources.Query) (chan 
 	if session.Keys.PublicwwwToken == "" {
 		return nil, errors.New("empty publicwww keys")
 	}
-
+	start := time.Now()
 	results := make(chan sources.Result)
 
 	go func() {
 		defer close(results)
 
 		numberOfResults := 0
-
+		defer func() {
+			gologger.Info().Msgf("%s took %s seconds to enumerate %v results.", agent.Name(), time.Since(start).Round(time.Second).String(), numberOfResults)
+		}()
 		for {
 			publicwwwRequest := &Request{
 				Query: query.Query,
