@@ -210,7 +210,7 @@ func (r *Runner) RunEnumeration() error {
 
 	startTime := time.Now()
 	switch {
-	case r.Cfg.Options.Naabu && !r.Cfg.Options.Subdomain:
+	case r.Cfg.Options.Naabu && (!r.Cfg.Options.Subdomain && !r.Cfg.Options.Uncover):
 	default:
 		outputWriter, err := writer.NewOutputWriter()
 		if err != nil {
@@ -264,8 +264,41 @@ func (r *Runner) RunEnumeration() error {
 		for c := range ch {
 			urls = append(urls, c)
 		}
-		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
 		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(r.Cfg.Options.UncoverEngine, ","), len(urls))
+		if r.Cfg.Options.Naabu {
+			// 端口扫描调用 naabu sdk
+			opts := r.Cfg.Options
+			var temps []string
+
+			for _, t := range util.RemoveDuplicateStrings(urls) {
+				// 判断是否为 http[s] 开头
+				if strings.HasPrefix(t, "http") {
+					// 解析 url
+					if _, host, _ := util.GetProtocolHostAndPort(t); host != "" {
+						temps = append(temps, host)
+					}
+					continue
+				}
+				temps = append(temps, t)
+			}
+			urls = []string{}
+			var rwn sync.RWMutex
+			callback := func(naabuResult *naabuResult.HostResult) {
+				for _, port := range naabuResult.Ports {
+					if strings.Contains(naabuResult.Host, ":") {
+						naabuResult.Host = strings.Split(naabuResult.Host, ":")[0]
+					}
+					rwn.Lock()
+					urls = append(urls, fmt.Sprintf("%s:%d", naabuResult.Host, port.Port))
+					rwn.Unlock()
+				}
+			}
+			naabuOpts := naabu.New(temps, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.SkipHostDiscovery, false, "", false, callback)
+			if err = naabu.Execute(naabuOpts); err != nil {
+				gologger.Info().Msgf("An error occurred: %s", err)
+			}
+		}
+		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
 
 		lenPath := len(paths)
 		if lenPath <= 0 {
@@ -379,7 +412,7 @@ func (r *Runner) RunEnumeration() error {
 			proto, t := util.GetProtocolAndHost(o[0])
 			r.processRetry(t, paths, proto, ctx, r.wg)
 		}
-	case r.Cfg.Options.Naabu && !r.Cfg.Options.Subdomain:
+	case r.Cfg.Options.Naabu && (!r.Cfg.Options.Subdomain && !r.Cfg.Options.Uncover):
 		// 端口扫描调用 naabu sdk
 		opts := r.Cfg.Options
 		// 处理 r.targets_

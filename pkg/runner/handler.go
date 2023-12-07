@@ -84,20 +84,20 @@ func (r *Runner) handlerGetTargetPath() ([]string, error) {
 	}
 	if opt.LoadAPIDict {
 		for _, path := range strings.Split(apiTxt, "\n") {
-			paths = append(paths, path)
+			paths = append(paths, strings.TrimSpace(path))
 		}
 	}
 
 	if opt.LoadDefaultDict {
 		for _, path := range strings.Split(mainTxt, "\n") {
-			paths = append(paths, path)
+			paths = append(paths, strings.TrimSpace(path))
 		}
 	}
 
 	// 如果未指定路径，则处理默认文件名
 	if len(paths) == 0 && len(r.targets_) == 1 && opt.Path == nil && opt.PathFile == nil {
 		for _, path := range strings.Split(mainTxt, "\n") {
-			paths = append(paths, path)
+			paths = append(paths, strings.TrimSpace(path))
 		}
 	}
 

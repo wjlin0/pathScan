@@ -245,7 +245,7 @@ func (r *Runner) analyze(protocol string, t result.Target, path, method string) 
 	m = make(map[string]interface{})
 	originProtocol := protocol
 	if protocol == HTTPorHTTPS {
-		protocol = HTTP
+		protocol = HTTPS
 	}
 	retried := false
 	target := t.Host

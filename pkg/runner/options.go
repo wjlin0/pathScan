@@ -160,6 +160,7 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.Naabu, "naabu", "n", false, "端口扫描"),
 		set.StringVar(&options.Ports, "port", "", "端口(80,443, 100-200)"),
 		set.StringVarP(&options.TopPorts, "top-ports", "tp", "", "top端口(100,200,300)"),
+		set.StringVarP(&options.NaabuScanType, "naabu-scan-type", "nst", "s", "端口扫描类型(SYN/CONNECT)"),
 		set.BoolVarP(&options.SkipHostDiscovery, "skip-host-discovery", "shd", false, "跳过主机发现"),
 		set.StringVarP(&options.NaabuOutput, "naabu-output", "no", "", "端口扫描结果保存 支持csv格式输出"),
 		set.IntVarP(&options.NaabuRate, "naabu-rate", "nr", 1000, "端口扫描速率"),
@@ -213,8 +214,12 @@ func ParserOptions() *Options {
 
 运行 pathScan 收集子域名 指定输出:
     $ pathScan -s -sq 'example.com' -csv -o out.csv
+
 运行 pathScan 端口扫描 并指定前1000个端口:
     $ pathScan -u example.com -n -csv -o out.csv -tp 1000
+
+运行 pathScan 收集子域名 并端口扫描:
+    $ pathScan -s -sq 'example.com' -n -port 80,443,8080 -csv -o out.csv 
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 `)
