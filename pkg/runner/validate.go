@@ -59,9 +59,13 @@ func (o *Options) Validate() error {
 		// 只允许socks5代理, 输出英文提示
 		return errors.New("naabu only support socks5 proxy")
 	}
-	if o.Proxy != "" && o.NaabuScanType == "s" {
+	if o.Naabu && o.Proxy != "" && o.NaabuScanType == "s" {
 		gologger.Warning().Msgf("Syn Scan can't be used with socks proxy: falling back to connect scan")
 		o.NaabuScanType = "c"
+	}
+	if o.Naabu && !o.Subdomain && !o.Uncover && o.NaabuOutput == "" && o.Output != "" {
+		o.NaabuOutput = o.Output
+		o.Output = ""
 	}
 
 	var resolvers []string

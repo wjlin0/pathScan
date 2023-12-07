@@ -36,8 +36,8 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.9/pathScan_v1.4.9_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.4.9/pathScan_v1.4.9_linux_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.0/pathScan_v1.5.0_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.0/pathScan_v1.5.0_linux_amd64.zip
 ```
 
 
@@ -49,12 +49,12 @@ wget https://github.com/wjlin0/pathScan/releases/download/v1.4.9/pathScan_v1.4.9
 pathScan -h
 ```
 ```text
-pathScan 1.4.9 Go 扫描、信息收集工具 
+pathScan 1.5.0 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]
 
-Flags:
+Flags:                                    
 输入:
    -u, -url string[]           目标(以逗号分割)
    -list string[]              从文件中,读取目标
@@ -111,13 +111,16 @@ Flags:
    -vb, -verbose       详细输出模式
    -v, -version        输出版本
 
-端口扫描(测试中):
-   -n, -naabu                  端口扫描
-   -port string                端口(80,443, 100-200)
-   -tp, -top-ports string      top端口(100,200,300)
-   -shd, -skip-host-discovery  跳过主机发现
-   -no, -naabu-output string   端口扫描结果保存 支持csv格式输出
-   -nr, -naabu-rate int        端口扫描速率 (default 1000)
+端口扫描:
+   -n, -naabu                       端口扫描
+   -port string                     端口(80,443, 100-200)
+   -tp, -top-ports string           top端口(100,200,300)
+   -ns, -naabu-scan-type string     端口扫描类型(SYN/CONNECT) (default "s")
+   -sn, -naabu-host-discovery       只允许主机发现
+   -Pn, -skip-host-discovery        跳过主机发现
+   -no, -naabu-output string        端口扫描结果保存 支持csv格式输出
+   -nsi, -naabu-source-ip string    端口扫描源IP
+   -nsp, -naabu-source-port string  端口扫描源端口
 
 工具:
    -clear                          清理历史任务
@@ -144,8 +147,9 @@ Flags:
    -b, -body string              自定义请求体
 
 速率:
-   -t, -thread int         线程 (default 50)
+   -t, -thread int         线程 (default 30)
    -rl, -rate-limit int    每秒允许的HTTP连接数 (default 150)
+   -nr, -naabu-rate int    端口扫描速率 (default 1000)
    -timeout int            超时时间 (default 10)
    -wt, -wait-timeout int  自定义任务结束前的等待,一般用于结束结束时间果断,导致无法发现更多目标 (default 3)
 
@@ -168,8 +172,14 @@ EXAMPLES:
 
 运行 pathScan 收集子域名 指定输出:
     $ pathScan -s -sq 'example.com' -csv -o out.csv
+
 运行 pathScan 端口扫描 并指定前1000个端口:
     $ pathScan -u example.com -n -csv -o out.csv -tp 1000
+
+运行 pathScan 收集子域名 并端口扫描:
+    $ pathScan -s -sq 'example.com' -n -port 80,443,8080 -csv -o out.csv
+
+其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 

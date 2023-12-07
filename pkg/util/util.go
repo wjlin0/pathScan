@@ -738,33 +738,83 @@ func GetProtocolAndHost(url string) (string, string) {
 	return "http|https", url
 }
 
-// GetProtocolHostAndPort 实现一个协议、host、端口分离的函数
+// GetProtocolHostAndPort
+// 返回 三个值
+// 以下是案例
+// http://[A01F::0]:8000/ -> http, [A01F::0], 8000
+// http://[A01F::0]/a -> http, [A01F::0], 80
+// https://[A01F::0]/ -> https, [A01F::0], 443
+// [A01F::0]:8000 -> http, [A01F::0], 8000
+// [A01F::0] -> http, [A01F::0], 80
+// 127.0.0.1:8000 -> http, 127.0.0.1, 8000
+// http://127.0.0.1:8000/?a=1 -> http, 127.0.0.1 8000
+// https://127.0.0.1 -> https, 127.0.0.1 443
 func GetProtocolHostAndPort(path string) (string, string, int) {
+	var (
+		protocol string = "http"
+		host     string
+		port     int
+	)
+
+	// 首先判断是否以 http:// 或 https:// 开头
 	if strings.HasPrefix(path, "http") {
 		parse, err := url.Parse(path)
 		if err != nil {
 			return "", "", 0
 		}
-		protocol := parse.Scheme
-		host := parse.Hostname()
-		port := parse.Port()
-		if port == "" {
-			// 根据协议判断端口
+		protocol = parse.Scheme
+		host = parse.Hostname()
+		port, _ = strconv.Atoi(parse.Port())
+		if port == 0 {
 			if protocol == "http" {
-				port = "80"
+				port = 80
 			} else {
-				port = "443"
+				port = 443
 			}
 		}
-		portInt, _ := strconv.Atoi(port)
-		return protocol, host, portInt
-	} else {
-		host, port, err := net.SplitHostPort(path)
-		if err != nil {
-			return "", "", 0
-		}
-		portInt, _ := strconv.Atoi(port)
-		return "", host, portInt
+		return protocol, host, port
 	}
 
+	// 判断是否有 /，如果有 /，则截取 / 前面的部分 不包含 /
+	if strings.Contains(path, "/") {
+		path = path[:strings.Index(path, "/")]
+	}
+	// 判断是否以 [ 开头，如果是，则是 ipv6
+	if strings.HasPrefix(path, "[") {
+		// 提权 host 包含 []
+		host = path[1:strings.Index(path, "]")]
+		// 判断是否有 :，如果有，则截取 : 后面的部分
+		if strings.Contains(strings.Replace(path, fmt.Sprintf("[%s]", host), "", 1), ":") {
+			port, _ = strconv.Atoi(path[len(host)+3:])
+		} else {
+			port = 80
+		}
+		return protocol, host, port
+	}
+	// 判断是否有 :，如果有，则截取 : 后面的部分
+	if strings.Contains(path, ":") {
+		host = path[:strings.Index(path, ":")]
+		port, _ = strconv.Atoi(path[strings.Index(path, ":")+1:])
+		return protocol, host, port
+	}
+	return protocol, path, 80
+}
+
+func CheckVersion(old, version string) bool {
+	oldVersionArray := strings.Split(strings.Replace(old, "v", "", 1), ".")
+	newVersionArray := strings.Split(strings.Replace(version, "v", "", 1), ".")
+	if len(oldVersionArray) < 3 || len(newVersionArray) < 3 {
+		return false
+	}
+	for i := 0; i < 3; i++ {
+		oldVersion, _ := strconv.Atoi(oldVersionArray[i])
+		newVersion, _ := strconv.Atoi(newVersionArray[i])
+		if newVersion > oldVersion {
+			return true
+		}
+		if newVersion < oldVersion {
+			return false
+		}
+	}
+	return false
 }

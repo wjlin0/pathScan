@@ -5,27 +5,44 @@ import (
 	"strings"
 )
 
-func New(host []string, scanType string, ports string, topPorts string, retries int, rate int, threads int, proxy, proxyAuth string, resolvers []string, skipHostDiscovery bool, verbose bool, output string, csv bool, callback runner.OnResultCallback) *runner.Options {
-	options := runner.Options{
-		Host:              host,
-		ScanType:          scanType,
-		OnResult:          callback,
-		Ports:             ports,
-		TopPorts:          topPorts,
-		Retries:           retries,
-		Rate:              rate,
-		Threads:           threads,
-		Proxy:             proxy,
-		ProxyAuth:         proxyAuth,
-		Resolvers:         strings.Join(resolvers, ","),
-		SkipHostDiscovery: skipHostDiscovery,
-		Verbose:           verbose,
-		Output:            output,
-		CSV:               csv,
-		Silent:            true,
+func DefaultOptions() *runner.Options {
+	return &runner.Options{
+		Timeout:       1000,
+		MetricsPort:   63636,
+		WarmUpTime:    2,
+		StatsInterval: 5,
 	}
+}
 
-	return &options
+func New(host []string, sourceIp, sourcePort, scanType string, ports string, topPorts string, retries int, rate int, threads int, proxy, proxyAuth string, resolvers []string, onlyHostDiscovery, skipHostDiscovery bool, verbose bool, output string, csv bool, silent bool, callback runner.OnResultCallback) (*runner.Options, error) {
+	opt := DefaultOptions()
+
+	opt.Host = host
+	opt.ScanType = scanType
+	opt.OnResult = callback
+	opt.Ports = ports
+	opt.TopPorts = topPorts
+	opt.Retries = retries
+	opt.Rate = rate
+	opt.Threads = threads
+	opt.Proxy = proxy
+	opt.ProxyAuth = proxyAuth
+	opt.Resolvers = strings.Join(resolvers, ",")
+	opt.SkipHostDiscovery = skipHostDiscovery
+	opt.Verbose = verbose
+	opt.Output = output
+	opt.CSV = csv
+	opt.Silent = silent
+	opt.SourceIP = sourceIp
+	opt.SourcePort = sourcePort
+	opt.OnlyHostDiscovery = onlyHostDiscovery
+
+	opt.ConfigureHostDiscovery()
+
+	if err := opt.ValidateOptions(); err != nil {
+		return nil, err
+	}
+	return opt, nil
 }
 
 func Execute(opt *runner.Options) error {

@@ -154,3 +154,50 @@ func TestRemoveDuplicateStrings(t *testing.T) {
 	strings := RemoveDuplicateStrings(test1)
 	fmt.Println(strings)
 }
+
+// TestCheckVersion 判断版本是否有新版本的测试函数
+func TestCheckVersion(t *testing.T) {
+	oldVersion := "v1.4.11"
+	var testCases = map[string]bool{
+		"v1.0.0":  false,
+		"v1.4.10": false,
+		"v1.4.11": false,
+		"v1.4.12": true,
+		"v1.5.0":  true,
+		"v2.0.0":  true,
+		"v2.0.1":  true,
+		"v2.0.2":  true,
+		"v1.3.13": false,
+		// 添加更多的测试用例...
+	}
+	for version, expectedResult := range testCases {
+		result := CheckVersion(oldVersion, version)
+		if result != expectedResult {
+			t.Errorf("错误的结果。版本: %s，期望: %v，实际: %v", version, expectedResult, result)
+		}
+	}
+}
+
+// TestGetProtocolHostAndPort 测试函数
+func TestGetProtocolHostAndPort(t *testing.T) {
+	var testCases = map[string][]interface{}{
+		"https://www.wjlin0.com:8090/path/url?a=1":          {"https", "www.wjlin0.com", 8090},
+		"https://www.wjlin0.com/path/url?a=1":               {"https", "www.wjlin0.com", 443},
+		"http://example.com":                                {"http", "example.com", 80},
+		"http://example.com:8080/path?param=value":          {"http", "example.com", 8080},
+		"https://www.google.com/search?q=url+decoding":      {"https", "www.google.com", 443},
+		"127.0.0.1:8080":                                    {"http", "127.0.0.1", 8080},
+		"127.0.0.1":                                         {"http", "127.0.0.1", 80},
+		"localhost:1234":                                    {"http", "localhost", 1234},
+		"[1234:12345:2134]:1234":                            {"http", "1234:12345:2134", 1234},
+		"http://[2001:db8::1]":                              {"http", "2001:db8::1", 80},
+		"https://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]": {"https", "2001:0db8:85a3:0000:0000:8a2e:0370:7334", 443},
+	}
+
+	for urlString, expectedResult := range testCases {
+		protocol, host, port := GetProtocolHostAndPort(urlString)
+		if protocol != expectedResult[0] || host != expectedResult[1] || port != expectedResult[2] {
+			t.Errorf("错误的结果, URL: %s，期望: %v-%v-%v, 实际: %v-%v-%v", urlString, expectedResult[0], expectedResult[1], expectedResult[2], protocol, host, port)
+		}
+	}
+}

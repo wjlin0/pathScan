@@ -206,8 +206,6 @@ func NewRunner(options *Options) (*Runner, error) {
 func (r *Runner) RunEnumeration() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
-	var err error
-
 	startTime := time.Now()
 	switch {
 	case r.Cfg.Options.Naabu && (!r.Cfg.Options.Subdomain && !r.Cfg.Options.Uncover):
@@ -285,17 +283,22 @@ func (r *Runner) RunEnumeration() error {
 			var rwn sync.RWMutex
 			callback := func(naabuResult *naabuResult.HostResult) {
 				for _, port := range naabuResult.Ports {
-					if strings.Contains(naabuResult.Host, ":") {
-						naabuResult.Host = strings.Split(naabuResult.Host, ":")[0]
-					}
 					rwn.Lock()
 					urls = append(urls, fmt.Sprintf("%s:%d", naabuResult.Host, port.Port))
 					rwn.Unlock()
 				}
+				if len(naabuResult.Ports) == 0 && naabuResult.Host != "" {
+					rwn.Lock()
+					urls = append(urls, fmt.Sprintf("%s", naabuResult.Host))
+					rwn.Unlock()
+				}
 			}
-			naabuOpts := naabu.New(temps, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.SkipHostDiscovery, false, "", false, callback)
+			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, callback)
+			if err != nil {
+				return err
+			}
 			if err = naabu.Execute(naabuOpts); err != nil {
-				gologger.Info().Msgf("An error occurred: %s", err)
+				gologger.Warning().Msgf("An error occurred: %s", err)
 			}
 		}
 		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
@@ -345,6 +348,7 @@ func (r *Runner) RunEnumeration() error {
 		if lenPath <= 0 {
 			lenPath = 1
 		}
+
 		if r.Cfg.Options.Naabu {
 			// 端口扫描调用 naabu sdk
 			opts := r.Cfg.Options
@@ -365,17 +369,22 @@ func (r *Runner) RunEnumeration() error {
 			var rwn sync.RWMutex
 			callback := func(naabuResult *naabuResult.HostResult) {
 				for _, port := range naabuResult.Ports {
-					if strings.Contains(naabuResult.Host, ":") {
-						naabuResult.Host = strings.Split(naabuResult.Host, ":")[0]
-					}
 					rwn.Lock()
 					urls = append(urls, fmt.Sprintf("%s:%d", naabuResult.Host, port.Port))
 					rwn.Unlock()
 				}
+				if len(naabuResult.Ports) == 0 && naabuResult.Host != "" {
+					rwn.Lock()
+					urls = append(urls, fmt.Sprintf("%s", naabuResult.Host))
+					rwn.Unlock()
+				}
 			}
-			naabuOpts := naabu.New(temps, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.SkipHostDiscovery, false, "", false, callback)
+			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, callback)
+			if err != nil {
+				return err
+			}
 			if err = naabu.Execute(naabuOpts); err != nil {
-				gologger.Info().Msgf("An error occurred: %s", err)
+				gologger.Warning().Msgf("An error occurred: %s", err)
 			}
 		}
 		// 去重
@@ -433,11 +442,13 @@ func (r *Runner) RunEnumeration() error {
 				gologger.Info().Msgf("Found open port %d on host %s", port.Port, naabuResult.Host)
 			}
 		}
-		naabuOpts := naabu.New(hosts, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.SkipHostDiscovery, opts.Verbose, opts.Output, opts.Csv, callback)
+		naabuOpts, err := naabu.New(hosts, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, callback)
+		if err != nil {
+			return err
+		}
 		if err = naabu.Execute(naabuOpts); err != nil {
 			return err
 		}
-
 	default:
 		var urls = r.targets_
 		var paths = r.paths
