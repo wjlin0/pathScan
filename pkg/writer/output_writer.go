@@ -3,7 +3,6 @@ package writer
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"io"
 	"os"
@@ -58,14 +57,6 @@ func (w *OutputWriter) WriteString(data string) {
 		return
 	}
 	w.Write([]byte(data))
-}
-
-// WriteJsonData writes the result taken as input in JSON format
-func (w *OutputWriter) WriteJsonData(data sources.Result) {
-	if w.findDuplicate(fmt.Sprintf("%s:%d", data.IP, data.Port)) {
-		return
-	}
-	w.Write([]byte(data.JSON()))
 }
 
 // Close closes the output writers

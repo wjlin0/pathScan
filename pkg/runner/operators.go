@@ -3,8 +3,8 @@ package runner
 import (
 	"bytes"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
-	"github.com/wjlin0/pathScan/pkg/projectdiscovery/uncover/sources"
 	"github.com/wjlin0/pathScan/pkg/util"
+	"github.com/wjlin0/uncover/sources"
 	"net"
 )
 

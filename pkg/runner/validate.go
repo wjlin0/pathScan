@@ -6,8 +6,8 @@ import (
 	"github.com/projectdiscovery/gologger"
 	httputil "github.com/projectdiscovery/utils/http"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/util"
+	"github.com/wjlin0/uncover"
 	"strings"
 )
 

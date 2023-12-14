@@ -7,23 +7,22 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/julienschmidt/httprouter v1.3.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/lqqyt2423/go-mitmproxy v1.7.1
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/fastdialer v0.0.45
+	github.com/projectdiscovery/fastdialer v0.0.47
 	github.com/projectdiscovery/goflags v0.1.29
-	github.com/projectdiscovery/gologger v1.1.11
+	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/mapcidr v1.1.16
 	github.com/projectdiscovery/naabu/v2 v2.2.0
 	github.com/projectdiscovery/nuclei/v2 v2.9.13
-	github.com/projectdiscovery/ratelimit v0.0.17
-	github.com/projectdiscovery/retryablehttp-go v1.0.37
-	github.com/projectdiscovery/utils v0.0.64
+	github.com/projectdiscovery/ratelimit v0.0.19
+	github.com/projectdiscovery/retryablehttp-go v1.0.39
+	github.com/projectdiscovery/utils v0.0.67
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.4
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
+	github.com/wjlin0/uncover v1.0.0
 	golang.org/x/net v0.18.0
 	golang.org/x/oauth2 v0.11.0
 	golang.org/x/text v0.14.0
@@ -41,8 +40,10 @@ require (
 	github.com/akrylysov/pogreb v0.10.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/alecthomas/jsonschema v0.0.0-20211022214203-8b29eab41725 // indirect
-	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
+	github.com/antchfx/htmlquery v1.3.0 // indirect
+	github.com/antchfx/xpath v1.2.3 // indirect
 	github.com/apex/log v1.9.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -53,11 +54,10 @@ require (
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
-	github.com/dsnet/compress v0.0.1 // indirect
+	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -86,7 +86,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
-	github.com/mholt/archiver v3.1.1+incompatible // indirect
+	github.com/mholt/archiver/v3 v3.5.1 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.26 // indirect
 	github.com/miekg/dns v1.1.57 // indirect
 	github.com/minio/selfupdate v0.6.1-0.20230907112617-f11e74f84ca7 // indirect
@@ -96,8 +96,7 @@ require (
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
-	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.2 // indirect
 	github.com/projectdiscovery/asnmap v1.0.6 // indirect
 	github.com/projectdiscovery/blackrock v0.0.1 // indirect
 	github.com/projectdiscovery/cdncheck v1.0.9 // indirect
@@ -107,12 +106,12 @@ require (
 	github.com/projectdiscovery/fasttemplate v0.0.2 // indirect
 	github.com/projectdiscovery/freeport v0.0.5 // indirect
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
-	github.com/projectdiscovery/hmap v0.0.26 // indirect
+	github.com/projectdiscovery/hmap v0.0.28 // indirect
 	github.com/projectdiscovery/httpx v1.3.4 // indirect
 	github.com/projectdiscovery/ipranger v0.0.22 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.6 // indirect
 	github.com/projectdiscovery/rawhttp v0.1.18 // indirect
-	github.com/projectdiscovery/retryabledns v1.0.43 // indirect
+	github.com/projectdiscovery/retryabledns v1.0.45 // indirect
 	github.com/projectdiscovery/tlsx v1.1.3 // indirect
 	github.com/projectdiscovery/uncover v1.0.7 // indirect
 	github.com/quic-go/quic-go v0.38.1 // indirect

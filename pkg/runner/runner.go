@@ -14,10 +14,10 @@ import (
 	"github.com/wjlin0/pathScan/pkg/api"
 	"github.com/wjlin0/pathScan/pkg/common/identification"
 	"github.com/wjlin0/pathScan/pkg/common/naabu"
-	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"github.com/wjlin0/pathScan/pkg/writer"
+	"github.com/wjlin0/uncover/core"
 	"golang.org/x/net/context"
 	"io"
 	"net/http"
@@ -255,7 +255,7 @@ func (r *Runner) RunEnumeration() error {
 		}
 
 		gologger.Info().Msgf("Running: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, err := uncover.GetTarget(r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.Csv, r.Cfg.Options.UncoverOutput, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
+		ch, err := core.GetTarget(r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.Csv, r.Cfg.Options.UncoverOutput, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth, "")
 		if err != nil {
 			return err
 		}
@@ -335,7 +335,7 @@ func (r *Runner) RunEnumeration() error {
 			paths = r.paths
 		)
 
-		unc, err := uncover.GetTarget(r.Cfg.Options.SubdomainLimit, "host", r.Cfg.Options.Csv, r.Cfg.Options.SubdomainOutput, r.Cfg.Options.SubdomainEngine, r.Cfg.Options.SubdomainQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth)
+		unc, err := core.GetTarget(r.Cfg.Options.SubdomainLimit, "host", r.Cfg.Options.Csv, r.Cfg.Options.SubdomainOutput, r.Cfg.Options.SubdomainEngine, r.Cfg.Options.SubdomainQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth, "")
 		if err != nil {
 			return err
 		}

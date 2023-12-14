@@ -7,8 +7,9 @@ import (
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/levels"
 	httputil "github.com/projectdiscovery/utils/http"
-	"github.com/wjlin0/pathScan/pkg/common/uncover"
 	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/uncover"
+	"github.com/wjlin0/uncover/sources"
 	"os"
 	"regexp"
 )
@@ -238,7 +239,7 @@ func ParserOptions() *Options {
 	if options.Method == nil {
 		options.Method = goflags.StringSlice{"GET"}
 	}
-
+	sources.UncoverConfigDir = defaultPathScanDir
 	return options
 }
 

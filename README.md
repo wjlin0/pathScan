@@ -36,8 +36,8 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.5.0/pathScan_v1.5.0_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.5.0/pathScan_v1.5.0_linux_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.1/pathScan_v1.5.1_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.1/pathScan_v1.5.1_linux_amd64.zip
 ```
 
 
@@ -49,12 +49,12 @@ wget https://github.com/wjlin0/pathScan/releases/download/v1.5.0/pathScan_v1.5.0
 pathScan -h
 ```
 ```text
-pathScan 1.5.0 Go 扫描、信息收集工具 
+pathScan 1.5.1 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]
 
-Flags:                                    
+Flags:
 输入:
    -u, -url string[]           目标(以逗号分割)
    -list string[]              从文件中,读取目标
@@ -72,7 +72,8 @@ Flags:
    -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
    -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
    -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
-   -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary shodan-idb anubis bing chinaz google ip138 qianxun rapiddns sitedossier] (default all)
+   -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary shodan-idb anubis-spider sitedossier-spider fofa-spider bing-spider chinaz-spider google-spider i
+p138-spider qianxun-spider rapiddns-spider] (default all)
 
 被动发现:
    -a, -api                        被动发现
@@ -178,8 +179,6 @@ EXAMPLES:
 
 运行 pathScan 收集子域名 并端口扫描:
     $ pathScan -s -sq 'example.com' -n -port 80,443,8080 -csv -o out.csv
-
-其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 
