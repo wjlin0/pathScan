@@ -137,7 +137,7 @@ func ParserOptions() *Options {
 	)
 	set.CreateGroup("Skip", "跳过",
 		set.StringSliceVarP(&options.SkipUrl, "skip-url", "su", nil, "跳过的目标(以逗号分割,支持从文件读取 -su /tmp/skip-url.txt)", goflags.FileStringSliceOptions),
-		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt)", goflags.FileNormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.SkipCode, "skip-code", "sc", nil, "跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt, 支持 5xx、300-399 )", goflags.FileNormalizedStringSliceOptions),
 		set.StringVarP(&options.SkipHash, "skip-hash", "sh", "", "跳过指定hash"),
 		set.StringSliceVarP(&options.SkipBodyLen, "skip-body-len", "sbl", nil, "跳过body固定长度(支持 100-200,即长度为100~200之间的均跳过,支持 从文件中读取 -sbl /tmp/skip-body-len.txt)", goflags.FileNormalizedStringSliceOptions),
 		set.StringSliceVarP(&options.SkipBodyRegex, "skip-body-regex", "sbr", nil, "跳过body正则匹配(以逗号分割,支持从文件读取 -sbr /tmp/skip-regex.txt)", goflags.FileCommaSeparatedStringSliceOptions),

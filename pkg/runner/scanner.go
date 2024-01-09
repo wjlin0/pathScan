@@ -33,6 +33,33 @@ func (r *Runner) CheckSkip(status int, contentLength int, body []byte) bool {
 	if _, ok := r.skipCode[strconv.Itoa(status)]; ok {
 		return true
 	}
+	// 循环递归跳过 状态码 例如 5xx 4xx 3xx 500-599 400-499 300-399
+	for c, _ := range r.skipCode {
+		if strings.Contains(c, "-") && !strings.Contains(c, "xx") {
+			split := strings.Split(c, "-")
+			if len(split) != 2 {
+				continue
+			}
+			min, err := strconv.Atoi(split[0])
+			if err != nil {
+				continue
+			}
+			max, err := strconv.Atoi(split[1])
+			if err != nil {
+				continue
+			}
+			if status >= min && status <= max {
+				return true
+			}
+		}
+		if strings.Contains(c, "xx") {
+			if strings.HasPrefix(c, strconv.Itoa(status)[:1]) {
+				return true
+			}
+		}
+
+	}
+
 	if r.Cfg.Options.SkipHash != "" {
 		bodyHash, _ := util.GetHash(body, r.Cfg.Options.SkipHashMethod)
 		if r.Cfg.Options.SkipHash == string(bodyHash) {
