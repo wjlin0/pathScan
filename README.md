@@ -28,7 +28,7 @@
 
 # 安装pathScan
 
-pathScan需要**go1.20**才能安装成功。执行一下命令
+pathScan需要**go1.21**才能安装成功。执行一下命令
 
 ```sh
 go install -v github.com/wjlin0/pathScan@latest

@@ -9,7 +9,6 @@ import (
 	httputil "github.com/projectdiscovery/utils/http"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/uncover"
-	"github.com/wjlin0/uncover/sources"
 	"os"
 	"regexp"
 )
@@ -228,6 +227,10 @@ func ParserOptions() *Options {
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 `)
+	// 判断 defaultPathScanDir 是否存在 若不存在则创建目录
+	if _, err := os.Stat(defaultPathScanDir); os.IsNotExist(err) {
+		_ = os.Mkdir(defaultPathScanDir, os.ModePerm)
+	}
 	_ = set.Parse()
 	if !options.Silent {
 		showBanner()
@@ -239,7 +242,6 @@ func ParserOptions() *Options {
 	if options.Method == nil {
 		options.Method = goflags.StringSlice{"GET"}
 	}
-	sources.UncoverConfigDir = defaultPathScanDir
 	return options
 }
 
