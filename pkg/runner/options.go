@@ -10,6 +10,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/uncover"
 	"os"
+	"path/filepath"
 	"regexp"
 )
 
@@ -231,6 +232,7 @@ func ParserOptions() *Options {
 	if _, err := os.Stat(defaultPathScanDir); os.IsNotExist(err) {
 		_ = os.Mkdir(defaultPathScanDir, os.ModePerm)
 	}
+	set.SetConfigFilePath(filepath.Join(defaultPathScanConfig, "config.yaml"))
 	_ = set.Parse()
 	if !options.Silent {
 		showBanner()

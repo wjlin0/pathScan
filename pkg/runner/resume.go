@@ -61,9 +61,9 @@ func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	}
 	resumeFolderPath := DefaultResumeFolderPath()
 	if !fileutil.FolderExists(resumeFolderPath) {
-		_ = os.MkdirAll(DefaultResumeFolderPath(), 0644)
+		_ = os.MkdirAll(DefaultResumeFolderPath(), os.ModePerm)
 	}
-	return os.WriteFile(DefaultResumeFilePath(filename), data, 0644)
+	return os.WriteFile(DefaultResumeFilePath(filename), data, os.ModePerm)
 }
 func (cfg *ResumeCfg) CleanupResumeConfig() {
 	if fileutil.FileExists(cfg.Options.ResumeCfg) {

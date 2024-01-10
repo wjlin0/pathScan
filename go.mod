@@ -11,7 +11,7 @@ require (
 	github.com/lqqyt2423/go-mitmproxy v1.7.1
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/fastdialer v0.0.52
-	github.com/projectdiscovery/goflags v0.1.29
+	github.com/projectdiscovery/goflags v0.1.34
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/mapcidr v1.1.16
 	github.com/projectdiscovery/naabu/v2 v2.2.0

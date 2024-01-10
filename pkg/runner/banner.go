@@ -37,6 +37,7 @@ var (
 	defaultPathDict               = filepath.Join(defaultPathScanDir, "dict")
 	defaultResume                 = filepath.Join(defaultPathScanDir, "resume")
 	defaultProviderConfigLocation = filepath.Join(defaultPathScanDir, "provider-config.yaml")
+	defaultPathScanConfig         = filepath.Join(defaultPathScanDir, "config.yaml")
 	PathScanMatchVersion, _       = util.GetMatchVersion(defaultMatchDir)
 )
 
