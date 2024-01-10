@@ -112,7 +112,7 @@ func NewOutputWriters(output string, outType int) (io.Writer, error) {
 	case 1:
 		if output != "" {
 			outputFolder := filepath.Dir(output)
-			if err = os.MkdirAll(outputFolder, 0700); err != nil {
+			if err = os.MkdirAll(outputFolder, os.ModePerm); err != nil {
 				return nil, err
 			}
 			outputWriter, err = NewCSVWriter(output, result.Result{})
@@ -141,7 +141,7 @@ func NewOutputWriters(output string, outType int) (io.Writer, error) {
 	default:
 		if output != "" {
 			outputFolder := filepath.Dir(output)
-			if err = os.MkdirAll(outputFolder, 0700); err != nil {
+			if err = os.MkdirAll(outputFolder, os.ModePerm); err != nil {
 				return nil, err
 			}
 			create, err := util.AppendCreate(output)

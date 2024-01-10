@@ -36,8 +36,8 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.5.1/pathScan_v1.5.1_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.5.1/pathScan_v1.5.1_linux_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.2/pathScan_v1.5.2_windows_amd64.zip
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.2/pathScan_v1.5.2_linux_amd64.zip
 ```
 
 
@@ -49,7 +49,7 @@ wget https://github.com/wjlin0/pathScan/releases/download/v1.5.1/pathScan_v1.5.1
 pathScan -h
 ```
 ```text
-pathScan 1.5.1 Go 扫描、信息收集工具 
+pathScan 1.5.2 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]

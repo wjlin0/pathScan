@@ -209,7 +209,7 @@ func calculateTemplateAbsolutePath(zipFilePath, configuredTemplateDirectory stri
 
 	templateDirectory := filepath.Join(configuredTemplateDirectory, relativeDirectoryPathWithoutZipRoot)
 
-	if err := os.MkdirAll(templateDirectory, 0755); err != nil {
+	if err := os.MkdirAll(templateDirectory, os.ModePerm); err != nil {
 		return "", false, fmt.Errorf("failed to create template folder: %s. %w", templateDirectory, err)
 	}
 
