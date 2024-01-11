@@ -350,6 +350,8 @@ func (r *Runner) RunEnumeration() error {
 				return fmt.Sprintf(`site:%s`, query)
 			case "netlas":
 				return fmt.Sprintf(`domain:%s`, query)
+			case "fofa-spider":
+				return fmt.Sprintf(`domain="%s"`, query)
 			default:
 				return query
 			}
