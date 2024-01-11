@@ -400,8 +400,8 @@ github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyC
 github.com/weppos/publicsuffix-go v0.13.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
 github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222 h1:h2JizvZl9aIj6za9S5AyrkU+OzIS4CetQthH/ejO+lg=
 github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222/go.mod h1:s41lQh6dIsDWIC1OWh7ChWJXLH0zkJ9KHZVqA7vHyuQ=
-github.com/wjlin0/uncover v1.0.4 h1:qtbR/G7nF1aKF31r1SksxrE1LbbOKchb8dXIIoz46P0=
-github.com/wjlin0/uncover v1.0.4/go.mod h1:g/dXvF8Ao6gd5MA0v3PLzR94edR7S0elVhIQQq9o5mg=
+github.com/wjlin0/uncover v1.0.5 h1:2KPmL+7CV568d42P8aauTXey8kz+mMIhBuq5cWjoHIo=
+github.com/wjlin0/uncover v1.0.5/go.mod h1:g/dXvF8Ao6gd5MA0v3PLzR94edR7S0elVhIQQq9o5mg=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 github.com/yl2chen/cidranger v1.0.2 h1:lbOWZVCG1tCRX4u24kuM1Tb4nHqWkDxwLdoS+SevawU=

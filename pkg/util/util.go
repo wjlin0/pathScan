@@ -818,3 +818,12 @@ func CheckVersion(old, version string) bool {
 	}
 	return false
 }
+
+var domainRegex = regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$`)
+
+// IsValidDomain 使用正则表达式检查字符串是否是有效的域名
+func IsValidDomain(domain string) bool {
+	// 正则表达式用于匹配标准域名结构
+
+	return domainRegex.MatchString(domain)
+}

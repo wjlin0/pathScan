@@ -17,6 +17,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"github.com/wjlin0/pathScan/pkg/writer"
+	"github.com/wjlin0/uncover"
 	"github.com/wjlin0/uncover/core"
 	"golang.org/x/net/context"
 	"io"
@@ -334,6 +335,25 @@ func (r *Runner) RunEnumeration() error {
 			urls  []string
 			paths = r.paths
 		)
+		uncover.DefaultCallback = func(query string, agent string) string {
+			if !util.IsValidDomain(query) {
+				return query
+			}
+			switch agent {
+			case "fofa":
+				return fmt.Sprintf(`domain="%s"`, query)
+			case "hunter":
+				return fmt.Sprintf(`domain.suffix="%s"`, query)
+			case "quake":
+				return fmt.Sprintf(`domain:"%s"`, query)
+			case "zoomeye":
+				return fmt.Sprintf(`site:%s`, query)
+			case "netlas":
+				return fmt.Sprintf(`domain:%s`, query)
+			default:
+				return query
+			}
+		}
 
 		unc, err := core.GetTarget(r.Cfg.Options.SubdomainLimit, "host", r.Cfg.Options.Csv, r.Cfg.Options.SubdomainOutput, r.Cfg.Options.SubdomainEngine, r.Cfg.Options.SubdomainQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth, defaultProviderConfigLocation)
 		if err != nil {
