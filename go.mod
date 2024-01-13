@@ -22,7 +22,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/tj/go-update v2.2.5-0.20200519121640-62b4b798fd68+incompatible
-	github.com/wjlin0/uncover v1.0.5
+	github.com/wjlin0/uncover v1.0.6
 	golang.org/x/net v0.18.0
 	golang.org/x/oauth2 v0.11.0
 	golang.org/x/text v0.14.0
