@@ -294,7 +294,7 @@ func (r *Runner) RunEnumeration() error {
 					rwn.Unlock()
 				}
 			}
-			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, callback)
+			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, opts.NaabuExcludeCdn, callback)
 			if err != nil {
 				return err
 			}
@@ -401,7 +401,7 @@ func (r *Runner) RunEnumeration() error {
 					rwn.Unlock()
 				}
 			}
-			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, callback)
+			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, opts.NaabuExcludeCdn, callback)
 			if err != nil {
 				return err
 			}
@@ -464,7 +464,7 @@ func (r *Runner) RunEnumeration() error {
 				gologger.Info().Msgf("Found open port %d on host %s", port.Port, naabuResult.Host)
 			}
 		}
-		naabuOpts, err := naabu.New(hosts, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, callback)
+		naabuOpts, err := naabu.New(hosts, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, opts.NaabuExcludeCdn, callback)
 		if err != nil {
 			return err
 		}

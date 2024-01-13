@@ -96,6 +96,7 @@ type Options struct {
 	NaabuSourceIP               string `json:"naabu-source-ip"`
 	NaabuSourcePort             string `json:"naabu-source-port"`
 	NaabuHostDiscovery          bool   `json:"naabu-host-discovery"`
+	NaabuExcludeCdn             bool   `json:"naabu-exclude-cdn"`
 }
 
 func ParserOptions() *Options {
@@ -168,6 +169,7 @@ func ParserOptions() *Options {
 		set.StringVarP(&options.NaabuOutput, "naabu-output", "no", "", "端口扫描结果保存 支持csv格式输出"),
 		set.StringVarP(&options.NaabuSourceIP, "naabu-source-ip", "nsi", "", "端口扫描源IP"),
 		set.StringVarP(&options.NaabuSourcePort, "naabu-source-port", "nsp", "", "端口扫描源端口"),
+		set.BoolVarP(&options.NaabuExcludeCdn, "naabu-exclude-cdn", "ne", false, "端口扫描排除cdn"),
 	)
 
 	set.CreateGroup("Tool", "工具",

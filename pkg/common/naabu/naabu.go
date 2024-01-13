@@ -14,7 +14,7 @@ func DefaultOptions() *runner.Options {
 	}
 }
 
-func New(host []string, sourceIp, sourcePort, scanType string, ports string, topPorts string, retries int, rate int, threads int, proxy, proxyAuth string, resolvers []string, onlyHostDiscovery, skipHostDiscovery bool, verbose bool, output string, csv bool, silent bool, callback runner.OnResultCallback) (*runner.Options, error) {
+func New(host []string, sourceIp, sourcePort, scanType string, ports string, topPorts string, retries int, rate int, threads int, proxy, proxyAuth string, resolvers []string, onlyHostDiscovery, skipHostDiscovery bool, verbose bool, output string, csv bool, silent bool, excludeCdn bool, callback runner.OnResultCallback) (*runner.Options, error) {
 	opt := DefaultOptions()
 
 	opt.Host = host
@@ -36,6 +36,7 @@ func New(host []string, sourceIp, sourcePort, scanType string, ports string, top
 	opt.SourceIP = sourceIp
 	opt.SourcePort = sourcePort
 	opt.OnlyHostDiscovery = onlyHostDiscovery
+	opt.ExcludeCDN = excludeCdn
 
 	opt.ConfigureHostDiscovery()
 
