@@ -735,7 +735,7 @@ func GetProtocolAndHost(url string) (string, string) {
 	if strings.HasPrefix(url, "https://") {
 		return "https", strings.TrimPrefix(url, "https://")
 	}
-	return "http|https", url
+	return "http&https", url
 }
 
 // GetProtocolHostAndPort
