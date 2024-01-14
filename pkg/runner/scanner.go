@@ -397,6 +397,8 @@ retry:
 	}{
 		"all_headers": resp.RawHeaders,
 		"body":        resp.RawData,
+		"status_code": resp.StatusCode,
+		"header":      resp.RawHeaders,
 	}
 	targetResult.Technology = r.parseTechnology(byte_)
 	if r.Cfg.Options.FindOtherDomain {

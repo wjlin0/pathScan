@@ -97,6 +97,7 @@ type Options struct {
 	NaabuSourcePort             string `json:"naabu-source-port"`
 	NaabuHostDiscovery          bool   `json:"naabu-host-discovery"`
 	NaabuExcludeCdn             bool   `json:"naabu-exclude-cdn"`
+	Debug                       bool   `json:"debug"`
 }
 
 func ParserOptions() *Options {
@@ -157,6 +158,7 @@ func ParserOptions() *Options {
 		set.BoolVar(&options.Silent, "silent", false, "简略输出"),
 		set.BoolVarP(&options.NoColor, "no-color", "nc", false, "无颜色输出"),
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
+		set.BoolVar(&options.Debug, "debug", false, "调试输出"),
 		set.BoolVarP(&options.Version, "version", "v", false, "输出版本"),
 	)
 	set.CreateGroup("Naabu", "端口扫描",
@@ -251,11 +253,16 @@ func ParserOptions() *Options {
 
 func (o *Options) configureOutput() {
 	switch {
-	case o.Verbose:
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	case o.Silent:
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	case o.NoColor:
+	case o.Debug:
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+	case o.Verbose:
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
+
+	default:
+	}
+	if o.NoColor {
 		color.NoColor = true
 	}
 }

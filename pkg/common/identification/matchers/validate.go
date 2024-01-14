@@ -31,6 +31,8 @@ func (matcher *Matcher) Validate() error {
 		expectedFields = append(commonExpectedFields, "Regex", "Part")
 	case HashMatcher:
 		expectedFields = append(commonExpectedFields, "Hash", "Part")
+	case StatusMatcher:
+		expectedFields = append(commonExpectedFields, "Status", "Part")
 	}
 	return checkFields(matcher, matcherMap, expectedFields...)
 }

@@ -77,7 +77,12 @@ type Matcher struct {
 	//     value: >
 	//       []string{"!contains(tolower(all_headers), ''strict-transport-security'')"}
 	Hash []string `yaml:"hash,omitempty" jsonschema:"title=hash to match in response"`
-
+	// description: |
+	//   Status are the acceptable status codes for the response.
+	// examples:
+	//   - value: >
+	//       []int{200, 302}
+	Status     []int  `yaml:"status,omitempty" json:"status,omitempty" jsonschema:"title=status to match,description=Status to match for the response"`
 	MatchAll   bool   `yaml:"match-all,omitempty" jsonschema:"title=match all values,description=match all matcher values ignoring condition"`
 	HashMethod string `yaml:"hash-method"`
 	Group      int    `yaml:"group,omitempty"`
@@ -91,4 +96,9 @@ type Matcher struct {
 // ResultWithMatchedSnippet returns true and the matched snippet, or false and an empty string
 func (matcher *Matcher) ResultWithMatchedSnippet(data bool, matchedSnippet []string) (bool, []string) {
 	return data, matchedSnippet
+}
+
+// Result reverts the results of the match if the matcher is of type negative.
+func (matcher *Matcher) Result(data bool) bool {
+	return data
 }

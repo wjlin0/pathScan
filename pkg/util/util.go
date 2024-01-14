@@ -292,7 +292,7 @@ var exts = []string{
 	"edu", "gov", "mil", "co",
 }
 
-func GetPartString(part string, data map[string]interface{}) (string, bool) {
+func GetPartString(part string, data map[string]interface{}) (interface{}, bool) {
 	if part == "" {
 		part = "body"
 	}

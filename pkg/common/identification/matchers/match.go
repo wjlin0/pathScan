@@ -112,3 +112,19 @@ func (matcher *Matcher) MatchHash(corpus string) (bool, []string) {
 	}
 	return false, nil
 }
+
+// MatchStatusCode matches a status code check against a corpus
+func (matcher *Matcher) MatchStatusCode(statusCode int) bool {
+	// Iterate over all the status codes accepted as valid
+	//
+	// Status codes don't support AND conditions.
+	for _, status := range matcher.Status {
+		// Continue if the status codes don't match
+		if statusCode != status {
+			continue
+		}
+		// Return on the first match.
+		return true
+	}
+	return false
+}

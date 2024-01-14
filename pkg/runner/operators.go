@@ -2,12 +2,24 @@ package runner
 
 import (
 	"bytes"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"github.com/wjlin0/uncover/sources"
 	"net"
 )
 
+func getStatusCode(data map[string]interface{}) (int, bool) {
+	statusCodeValue, ok := data["status_code"]
+	if !ok {
+		return 0, false
+	}
+	statusCode, ok := statusCodeValue.(int)
+	if !ok {
+		return 0, false
+	}
+	return statusCode, true
+}
 func Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []string) {
 	item, ok := util.GetPartString(matcher.Part, data)
 	if !ok {
@@ -15,11 +27,18 @@ func Match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []stri
 	}
 	switch matcher.GetType() {
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(types.ToString(item), data))
 	case matchers.RegexMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(types.ToString(item)))
 	case matchers.HashMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchHash(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchHash(types.ToString(item)))
+	case matchers.StatusMatcher:
+		statusCode, ok := getStatusCode(data)
+		if !ok {
+			return false, []string{}
+		}
+		return matcher.Result(matcher.MatchStatusCode(statusCode)), []string{}
+
 	}
 	return false, []string{}
 }

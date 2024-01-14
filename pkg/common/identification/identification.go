@@ -42,6 +42,7 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 	matcherCondition := operators.GetMatchersCondition()
 	for _, matcher := range operators.Matchers {
 		if isMatch, matched := match(data, matcher); isMatch { // if it's a "named" matcher with OR condition, then display it
+
 			if matcherCondition == matchers.ORCondition {
 				if matcher.Name != "" {
 					Name[matcher.Name] = matched
@@ -78,31 +79,8 @@ func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
 }
 
-var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config.yaml")
+var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config")
 
-func parsesOptions(u string) (*Options, error) {
-	options := &Options{}
-	var err error
-	if u != "" {
-		err = options.loadConfigFrom(u)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err = options.loadConfigFrom(defaultMatchConfigLocation)
-	}
-	if err != nil {
-		gologger.Debug().Msg(err.Error())
-	}
-	for _, sub := range options.SubMatch {
-		err := sub.Compile()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return options, nil
-
-}
 func (o *Options) loadConfigFrom(location string) error {
 	return fileutil.Unmarshal(fileutil.YAML, []byte(location), o)
 }
@@ -120,9 +98,6 @@ func parserOptionsByDir(dir string) ([]*Options, error) {
 			gologger.Warning().Msg(err.Error())
 			continue
 		}
-		options = append(options, o)
-	}
-	for i, o := range options {
 		var errorIndices []int
 		for j, sub := range o.SubMatch {
 			err := sub.Compile()
@@ -136,29 +111,12 @@ func parserOptionsByDir(dir string) ([]*Options, error) {
 			index := errorIndices[k]
 			o.SubMatch = append(o.SubMatch[:index], o.SubMatch[index+1:]...)
 		}
-		// 更新 options 中对应项的 SubMatch 切片
-		options[i] = o
+		options = append(options, o)
 	}
 
 	return options, nil
 }
 
 func ParserHandler(path string) ([]*Options, error) {
-	var options []*Options
-	var err error
-	switch {
-	case fileutil.FolderExists(path):
-		options, err = parserOptionsByDir(path)
-		if err != nil {
-			return nil, err
-		}
-	case fileutil.FileExists(path):
-		option, err := parsesOptions(path)
-		if err != nil {
-			return nil, err
-		}
-		options = append(options, option)
-	default:
-	}
-	return options, nil
+	return parserOptionsByDir(path)
 }

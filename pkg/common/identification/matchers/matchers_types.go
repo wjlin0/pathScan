@@ -16,13 +16,15 @@ const (
 	// name:regex
 	RegexMatcher
 	HashMatcher
+	StatusMatcher
 )
 
 // MatcherTypes is a table for conversion of matcher type from string.
 var MatcherTypes = map[MatcherType]string{
-	WordsMatcher: "word",
-	RegexMatcher: "regex",
-	HashMatcher:  "hash",
+	WordsMatcher:  "word",
+	RegexMatcher:  "regex",
+	HashMatcher:   "hash",
+	StatusMatcher: "status",
 }
 
 // GetType returns the type of the matcher

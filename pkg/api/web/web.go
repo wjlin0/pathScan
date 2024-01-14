@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/lqqyt2423/go-mitmproxy/proxy"
+	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 	"github.com/projectdiscovery/retryablehttp-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/wjlin0/pathScan/pkg/common/identification"
@@ -118,6 +119,7 @@ func (web *WebAddon) Response(f *proxy.Flow) {
 		Technology: parseTechnology(web.regexOpts, match, map[string]interface{}{
 			"all_headers": responseHeaderBuffer.Bytes(),
 			"body":        responseBodyBuffer.Bytes(),
+			"status_code": f.Response.StatusCode,
 		}),
 		ResponseBody: fmt.Sprintf("%s\r\n%s", responseHeaderBuffer.String(), responseBodyBuffer.String()),
 		RequestBody:  fmt.Sprintf("%s\r\n%s", requestBodyBuffer.String(), requestHeaderBuffer.String()),
@@ -168,11 +170,28 @@ func match(data map[string]interface{}, matcher *matchers.Matcher) (bool, []stri
 
 	switch matcher.GetType() {
 	case matchers.WordsMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(item, data))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchWords(types.ToString(item), data))
 	case matchers.RegexMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchRegex(types.ToString(item)))
 	case matchers.HashMatcher:
-		return matcher.ResultWithMatchedSnippet(matcher.MatchHash(item))
+		return matcher.ResultWithMatchedSnippet(matcher.MatchHash(types.ToString(item)))
+	case matchers.StatusMatcher:
+		status, ok := getStatusCode(data)
+		if !ok {
+			return false, []string{}
+		}
+		return matcher.Result(matcher.MatchStatusCode(status)), []string{}
 	}
 	return false, []string{}
+}
+func getStatusCode(data map[string]interface{}) (int, bool) {
+	statusCodeValue, ok := data["status_code"]
+	if !ok {
+		return 0, false
+	}
+	statusCode, ok := statusCodeValue.(int)
+	if !ok {
+		return 0, false
+	}
+	return statusCode, true
 }
