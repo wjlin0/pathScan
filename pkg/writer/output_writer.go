@@ -69,7 +69,7 @@ func (w *OutputWriter) Close() {
 	}
 }
 
-func (w *OutputWriter) Output(outputResult chan *result.Result, outType int, noColor bool) {
+func (w *OutputWriter) Output(outputResult chan *result.Result, outType int) {
 	for out := range outputResult {
 		path := out.ToString()
 		var outputStr []byte
@@ -90,18 +90,13 @@ func (w *OutputWriter) Output(outputResult chan *result.Result, outType int, noC
 
 			w.Write(outputStr)
 
-			fmt.Println(OutputToString(out, noColor))
+			fmt.Println(OutputToString(out))
 		case 3:
 			outputStr = []byte(out.ToString())
 			w.Write(outputStr)
 			fmt.Println(string(outputStr))
 		default:
-			switch {
-			case !noColor:
-				outputStr = []byte(OutputToString(out, noColor))
-			case noColor:
-				outputStr = []byte(out.ToString())
-			}
+			outputStr = []byte(OutputToString(out))
 
 			fmt.Println(string(outputStr))
 

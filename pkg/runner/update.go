@@ -4,8 +4,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/google/go-github/github"
-	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	"github.com/tj/go-update"
@@ -165,7 +165,7 @@ func CheckVersion() error {
 	if err != nil {
 		return err
 	}
-	currentMsg := fmt.Sprintf("Current pathScan version: %s %s", Version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+	currentMsg := fmt.Sprintf("Current pathScan version: %s %s", Version, fmt.Sprintf("(%s)", color.HiGreenString("latest")))
 	if len(releases) == 0 {
 		gologger.Info().Msgf(currentMsg)
 		return nil
@@ -200,7 +200,7 @@ func CheckMatchVersion() (error, bool) {
 	if err != nil {
 		return err, false
 	}
-	currentMsg := fmt.Sprintf("Current pathScan-match version: %s %s", version, fmt.Sprintf("(%s)", aurora.Colorize("latest", aurora.GreenFg|aurora.BrightFg).String()))
+	currentMsg := fmt.Sprintf("Current pathScan-match version: %s %s", version, fmt.Sprintf("(%s)", color.HiGreenString("latest")))
 	if len(releases) == 0 {
 		gologger.Info().Msgf(currentMsg)
 		return nil, false

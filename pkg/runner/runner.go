@@ -4,7 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"github.com/logrusorgru/aurora"
+	"github.com/fatih/color"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
 	naabuResult "github.com/projectdiscovery/naabu/v2/pkg/result"
@@ -74,9 +74,17 @@ func NewRunner(options *Options) (*Runner, error) {
 	// 配置输出方式
 	run.Cfg.Options.configureOutput()
 	// 验证选项是否合法
-	err = run.Cfg.Options.Validate()
-	if err != nil {
+	if err = run.Cfg.Options.ValidateFunc(); err != nil {
 		return nil, err
+	}
+	if run.Cfg.Options.Validate {
+		// 检查 pathScan-match 是否正常
+		if err := run.Cfg.Options.ValidateMatch(); err != nil {
+			gologger.Error().Msgf("pathScan-match has been tampered with: %s", err.Error())
+		} else {
+			gologger.Info().Msgf("successfully validated pathScan-match")
+		}
+		return nil, nil
 	}
 	// 初始化
 
@@ -158,7 +166,7 @@ func NewRunner(options *Options) (*Runner, error) {
 		}
 		defer resp.Body.Close()
 		hash, _ := util.GetHash(buffer.Bytes(), run.Cfg.Options.SkipHashMethod)
-		fmt.Printf("[%s] %s\n", aurora.Green(fmt.Sprintf("%s", run.Cfg.Options.SkipHashMethod)).String(), string(hash))
+		fmt.Printf("[%s] %s\n", color.GreenString(fmt.Sprintf("%s", run.Cfg.Options.SkipHashMethod)), string(hash))
 		return nil, nil
 	}
 
@@ -181,9 +189,8 @@ func NewRunner(options *Options) (*Runner, error) {
 		matchPath = defaultMatchDir
 	}
 
-	run.regOptions, err = identification.ParserHandler(matchPath)
-	if err != nil {
-		return nil, err
+	if run.regOptions, err = identification.ParserHandler(matchPath); err != nil {
+		gologger.Print().Label(color.HiYellowString("WAN")).Msgf("Failed to load pathScan-match: %s use -validate", err)
 	}
 	// 统计数目
 	regNum := 0
@@ -228,7 +235,7 @@ func (r *Runner) RunEnumeration() error {
 		if err == nil && writers != nil {
 			outputWriter.AddWriters(writers)
 		}
-		go outputWriter.Output(r.outputResult, outputType, r.Cfg.Options.NoColor)
+		go outputWriter.Output(r.outputResult, outputType)
 	}
 	switch {
 	case r.Cfg.Options.API:

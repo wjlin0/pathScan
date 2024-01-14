@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (o *Options) Validate() error {
+func (o *Options) ValidateFunc() error {
 	if o.RateLimit <= 0 && o.Threads <= 0 {
 		return errors.New("没有正确的线程次数")
 	}
@@ -71,5 +71,6 @@ func (o *Options) Validate() error {
 	}
 
 	o.Resolvers = resolvers
+
 	return nil
 }

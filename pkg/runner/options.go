@@ -5,9 +5,13 @@ import (
 	"github.com/fatih/color"
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/gologger/formatter"
 	"github.com/projectdiscovery/gologger/levels"
+	fileutil "github.com/projectdiscovery/utils/file"
 	httputil "github.com/projectdiscovery/utils/http"
+	"github.com/wjlin0/pathScan/pkg/common/identification"
 	"github.com/wjlin0/pathScan/pkg/result"
+	"github.com/wjlin0/pathScan/pkg/util"
 	"github.com/wjlin0/uncover"
 	"os"
 	"path/filepath"
@@ -98,6 +102,7 @@ type Options struct {
 	NaabuHostDiscovery          bool   `json:"naabu-host-discovery"`
 	NaabuExcludeCdn             bool   `json:"naabu-exclude-cdn"`
 	Debug                       bool   `json:"debug"`
+	Validate                    bool   `json:"validate"`
 }
 
 func ParserOptions() *Options {
@@ -188,6 +193,7 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.OnlyTargets, "scan-target", "st", false, "只进行目标存活扫描"),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "允许重定向"),
 		set.StringSliceVarP(&options.FindOtherDomainList, "scan-domain-list", "sdl", nil, "从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）", goflags.FileNormalizedOriginalStringSliceOptions),
+		set.BoolVar(&options.Validate, "validate", false, "验证指纹文件"),
 		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
 	)
 	set.CreateGroup("Header", "请求头参数",
@@ -252,17 +258,50 @@ func ParserOptions() *Options {
 }
 
 func (o *Options) configureOutput() {
-	switch {
-	case o.Silent:
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	case o.Debug:
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
-	case o.Verbose:
-		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 
-	default:
+	if o.Silent {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
+	}
+	if o.Debug {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelDebug)
+	}
+	if o.Verbose || o.Validate {
+		gologger.DefaultLogger.SetMaxLevel(levels.LevelVerbose)
 	}
 	if o.NoColor {
+		gologger.DefaultLogger.SetFormatter(formatter.NewCLI(o.NoColor))
 		color.NoColor = true
+		//_ = os.Setenv("NO_COLOR", "true")
 	}
+}
+
+func (o *Options) ValidateMatch() error {
+	var (
+		err       error
+		matchPath string
+		extension []string
+		matchOpt  identification.Options
+	)
+	matchPath = defaultMatchDir
+	if o.MatchPath != "" {
+		matchPath = o.MatchPath
+	}
+	if extension, err = util.ListFilesWithExtension(matchPath, ".yaml"); err != nil {
+		return err
+	}
+	if len(extension) == 0 {
+		return fmt.Errorf("no match file found in %s", matchPath)
+	}
+	for _, ext := range extension {
+		if err = fileutil.Unmarshal(fileutil.YAML, []byte(ext), &matchOpt); err != nil {
+			return err
+		}
+		for _, sub := range matchOpt.SubMatch {
+			if err = sub.Compile(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return err
 }

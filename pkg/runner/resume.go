@@ -3,7 +3,7 @@ package runner
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/logrusorgru/aurora"
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -103,11 +103,7 @@ func (cfg *ResumeCfg) ClearResume() {
 	// t > 5MB
 	if t >= 5242880 {
 		builder := strings.Builder{}
-		if !cfg.Options.NoColor {
-			builder.WriteString(aurora.Yellow("WRN").String())
-		} else {
-			builder.WriteString("WRN")
-		}
-		gologger.Info().Label(builder.String()).Msgf("%s is already greater than 5MB, please use - clear to clean", defaultResume)
+		builder.WriteString(color.YellowString("WRN"))
+		gologger.Print().Label(builder.String()).Msgf("%s is already greater than 5MB, please use - clear to clean", defaultResume)
 	}
 }

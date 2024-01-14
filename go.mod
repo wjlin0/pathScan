@@ -7,7 +7,6 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/lqqyt2423/go-mitmproxy v1.7.1
 	github.com/pkg/errors v0.9.1
 	github.com/projectdiscovery/fastdialer v0.0.52
@@ -82,6 +81,7 @@ require (
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
+	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect

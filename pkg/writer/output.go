@@ -3,7 +3,7 @@ package writer
 import (
 	_ "embed"
 	"fmt"
-	"github.com/logrusorgru/aurora"
+	"github.com/fatih/color"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"io"
@@ -14,77 +14,54 @@ import (
 	"strings"
 )
 
-func OutputToString(out *result.Result, nocolor bool) string {
+func OutputToString(out *result.Result) string {
 	path := out.ToString()
 	builder := &strings.Builder{}
 	statusCode := out.Status
 	builder.WriteString(path)
 	builder.WriteString(" [")
-	if !nocolor {
-		switch {
-		case statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices:
-			builder.WriteString(aurora.Green(strconv.Itoa(statusCode)).String())
-		case statusCode >= http.StatusMultipleChoices && statusCode < http.StatusBadRequest:
-			builder.WriteString(aurora.Yellow(strconv.Itoa(statusCode)).String())
-		case statusCode >= http.StatusBadRequest && statusCode < http.StatusInternalServerError:
-			builder.WriteString(aurora.Red(strconv.Itoa(statusCode)).String())
-		case statusCode >= http.StatusInternalServerError:
-			builder.WriteString(aurora.Bold(aurora.Yellow(strconv.Itoa(statusCode))).String())
-		default:
-			builder.WriteString(aurora.Bold(aurora.Yellow(strconv.Itoa(statusCode))).String())
-		}
-	} else {
-		builder.WriteString(strconv.Itoa(statusCode))
+	switch {
+	case statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices:
+		builder.WriteString(color.HiGreenString(strconv.Itoa(statusCode)))
+	case statusCode >= http.StatusMultipleChoices && statusCode < http.StatusBadRequest:
+		builder.WriteString(color.HiYellowString(strconv.Itoa(statusCode)))
+	case statusCode >= http.StatusBadRequest && statusCode < http.StatusInternalServerError:
+		builder.WriteString(color.HiRedString(strconv.Itoa(statusCode)))
+	case statusCode >= http.StatusInternalServerError:
+		builder.WriteString(color.HiRedString(strconv.Itoa(statusCode)))
+	default:
+		builder.WriteString(color.HiYellowString(strconv.Itoa(statusCode)))
 	}
 	builder.WriteRune(']')
 
 	if out.ContentLength != 0 {
 		bodyLen := int(out.ContentLength)
 		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Magenta(strconv.Itoa(bodyLen)).String())
-		} else {
-			builder.WriteString(strconv.Itoa(bodyLen))
-		}
+		builder.WriteString(color.HiWhiteString(strconv.Itoa(bodyLen)))
 		builder.WriteRune(']')
 	}
 	if out.Host != "" {
 		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Magenta(out.Host).String())
-		} else {
-			builder.WriteString(out.Host)
-		}
+		builder.WriteString(color.HiMagentaString(out.Host))
 		builder.WriteRune(']')
 	}
 	if len(out.Technology) != 0 {
 		tech := out.Technology
 		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Green(strings.Join(tech, ",")).String())
-		} else {
-			builder.WriteString(strings.Join(tech, ","))
-		}
+		builder.WriteString(color.HiCyanString(strings.Join(tech, ",")))
 		builder.WriteRune(']')
 	}
 	if out.Title != "" {
 		title := out.Title
 		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.White(title).String())
-		} else {
-			builder.WriteString(title)
-		}
+		builder.WriteString(color.HiWhiteString(title))
 		builder.WriteRune(']')
 	}
 	if out.Server != "" {
 		server := out.Server
 		builder.WriteString(" [")
-		if !nocolor {
-			builder.WriteString(aurora.Cyan(server).String())
-		} else {
-			builder.WriteString(server)
-		}
+
+		builder.WriteString(color.HiYellowString(server))
 		builder.WriteRune(']')
 	}
 	return builder.String()

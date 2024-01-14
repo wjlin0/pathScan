@@ -2,12 +2,9 @@ package identification
 
 import (
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
-	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/wjlin0/pathScan/pkg/common/identification/matchers"
 	"github.com/wjlin0/pathScan/pkg/util"
-	"path/filepath"
 )
 
 type Options struct {
@@ -79,30 +76,29 @@ func (operators *Operators) GetMatchersCondition() matchers.ConditionType {
 	return operators.matchersCondition
 }
 
-var defaultMatchConfigLocation = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan", "match-config")
-
 func (o *Options) loadConfigFrom(location string) error {
 	return fileutil.Unmarshal(fileutil.YAML, []byte(location), o)
 }
 
 func parserOptionsByDir(dir string) ([]*Options, error) {
 	var options []*Options
+	var sumErr error
 	extension, err := util.ListFilesWithExtension(dir, ".yaml")
 	if err != nil {
 		return nil, err
 	}
 	for _, ext := range extension {
 		o := &Options{}
-		err := o.loadConfigFrom(ext)
-		if err != nil {
-			gologger.Warning().Msg(err.Error())
+		e := o.loadConfigFrom(ext)
+		if e != nil {
+			sumErr = e
 			continue
 		}
 		var errorIndices []int
 		for j, sub := range o.SubMatch {
-			err := sub.Compile()
-			if err != nil {
-				gologger.Warning().Msg(err.Error())
+			err = sub.Compile()
+			if e != nil {
+				sumErr = e
 				errorIndices = append(errorIndices, j)
 			}
 		}
@@ -114,7 +110,7 @@ func parserOptionsByDir(dir string) ([]*Options, error) {
 		options = append(options, o)
 	}
 
-	return options, nil
+	return options, sumErr
 }
 
 func ParserHandler(path string) ([]*Options, error) {
