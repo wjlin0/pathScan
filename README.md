@@ -36,8 +36,11 @@ go install -v github.com/wjlin0/pathScan@latest
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
 ```sh
-wget https://github.com/wjlin0/pathScan/releases/download/v1.5.2/pathScan_v1.5.2_windows_amd64.zip
-wget https://github.com/wjlin0/pathScan/releases/download/v1.5.2/pathScan_v1.5.2_linux_amd64.zip
+# windows
+wget https://github.com/wjlin0/pathScan/releases/download/v1.5.3/pathScan_v1.5.3_windows_amd64.zip
+#linux macos
+OS=$(uname -s | tr '[:upper:]' '[:lower:]'); ARCH=$(uname -m); [ "$ARCH" = "x86_64" ] && ARCH="amd64"; rm -rf /tmp/pathScan && wget "https://github.com/wjlin0/pathScan/releases/download/v1.5.3/pathScan_v1.5.3_""$OS"_"$ARCH"".zip" -O /tmp/pathScan.zip && unzip /tmp/pathScan.zip -d /tmp/pathScan && sudo mv /tmp/pathScan/pathScan /usr/local/bin/pathScan && sudo chmod +x /usr/local/bin/pathScan && rm -rf /tmp/pathScan && pathScan
+
 ```
 
 
@@ -49,7 +52,7 @@ wget https://github.com/wjlin0/pathScan/releases/download/v1.5.2/pathScan_v1.5.2
 pathScan -h
 ```
 ```text
-pathScan 1.5.2 Go 扫描、信息收集工具 
+pathScan 1.5.3 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]
@@ -72,8 +75,7 @@ Flags:
    -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
    -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
    -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
-   -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary shodan-idb anubis-spider sitedossier-spider fofa-spider bing-spider chinaz-spider google-spider i
-p138-spider qianxun-spider rapiddns-spider] (default all)
+   -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binary shodan-idb anubis-spider sitedossier-spider fder bing-spider chinaz-spider google-spider ip138-spider qianxun-spider rapiddns-spider baidu-spider yahoo-spider] (default all)
 
 被动发现:
    -a, -api                        被动发现
@@ -91,7 +93,7 @@ p138-spider qianxun-spider rapiddns-spider] (default all)
 
 跳过:
    -su, -skip-url string[]          跳过的目标(以逗号分割,支持从文件读取 -su /tmp/skip-url.txt)
-   -sc, -skip-code string[]         跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt)
+   -sc, -skip-code string[]         跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt, 支持 5xx、300-399 )
    -sh, -skip-hash string           跳过指定hash
    -sbl, -skip-body-len string[]    跳过body固定长度(支持 100-200,即长度为100~200之间的均跳过,支持 从文件中读取 -sbl /tmp/skip-body-len.txt)
    -sbr, -skip-body-regex string[]  跳过body正则匹配(以逗号分割,支持从文件读取 -sbr /tmp/skip-regex.txt)
@@ -122,6 +124,7 @@ p138-spider qianxun-spider rapiddns-spider] (default all)
    -no, -naabu-output string        端口扫描结果保存 支持csv格式输出
    -nsi, -naabu-source-ip string    端口扫描源IP
    -nsp, -naabu-source-port string  端口扫描源端口
+   -ne, -naabu-exclude-cdn          端口扫描排除cdn
 
 工具:
    -clear                          清理历史任务
@@ -166,7 +169,7 @@ EXAMPLES:
     $ pathScan -u https://example.com/ -sc 404
 
 运行 pathScan 递归扫描 指定单个目标:
-    $ pathScan -r -u https://example.com/ -sc 404
+    $ pathScan -r -u https://example.com/ -sc 404 
 
 运行 pathScan 搜索引擎 并指定多个路径:
     $ pathScan -uc -ue fofa -uq 'app="tomcat"' -pf "/,/api/v1/user"
@@ -178,10 +181,9 @@ EXAMPLES:
     $ pathScan -u example.com -n -csv -o out.csv -tp 1000
 
 运行 pathScan 收集子域名 并端口扫描:
-    $ pathScan -s -sq 'example.com' -n -port 80,443,8080 -csv -o out.csv
+    $ pathScan -s -sq 'example.com' -n -port 80,443,8080 -csv -o out.csv 
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
-
 ```
 
 
