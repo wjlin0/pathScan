@@ -54,14 +54,12 @@ func ParserResumeCfg(filename string) (*ResumeCfg, error) {
 func (cfg *ResumeCfg) MarshalResume(filename string) error {
 	cfg.Rwm.Lock()
 	defer cfg.Rwm.Unlock()
-	//data, err := json.Marshal(cfg)
 	data, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return err
 	}
-	resumeFolderPath := DefaultResumeFolderPath()
-	if !fileutil.FolderExists(resumeFolderPath) {
-		_ = os.MkdirAll(DefaultResumeFolderPath(), os.ModePerm)
+	if resumeFolderPath := DefaultResumeFolderPath(); !fileutil.FolderExists(resumeFolderPath) {
+		_ = os.MkdirAll(resumeFolderPath, os.ModePerm)
 	}
 	return os.WriteFile(DefaultResumeFilePath(filename), data, os.ModePerm)
 }

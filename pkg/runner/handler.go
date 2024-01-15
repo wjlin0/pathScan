@@ -8,6 +8,7 @@ import (
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
 	"github.com/wjlin0/pathScan/pkg/util"
+	updateutils "github.com/wjlin0/pathScan/pkg/util/update"
 	"github.com/wjlin0/uncover/sources"
 	"net/http"
 	"os"
@@ -158,43 +159,32 @@ func (r *Runner) handlerGetTargets() ([]string, error) {
 	//}
 	return targets, nil
 }
-func InitPathScan() error {
-	if fileutil.FileExists(filepath.Join(defaultPathScanDir, ".check")) {
-		return nil
-	}
-	gologger.Info().Msg("Initializing in progress.")
+func needPathScanInit() bool {
+	return !fileutil.FileExists(filepath.Join(defaultPathScanDir, ".check"))
+}
+
+func initPathScan() error {
+
 	var err error
-	err = InitConfig()
-	if err != nil {
-		return err
+	if err = initConfig(); err != nil {
+		return fmt.Errorf("failed to initialize config: %v", err)
 	}
-	err = InitMatch()
-	if err != nil {
-		return err
+	if err = initMatch(); err != nil {
+		return fmt.Errorf("failed to initialize match: %v", err)
 	}
-	_, err = os.Create(filepath.Join(defaultPathScanDir, ".check"))
-	if err != nil {
-		return err
+	if err = os.WriteFile(filepath.Join(defaultPathScanDir, ".check"), nil, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to write .check file: %v", err)
 	}
-	gologger.Info().Msg("Initialization completed.")
 	return nil
 }
 
-func InitMatch() error {
-	if fileutil.FileExists(filepath.Join(defaultMatchDir, ".check")) {
-		return nil
+func initMatch() error {
+	if err := updateutils.GetUpdateDirFromRepoCallback(pathScanMatchRepoName, defaultMatchDir, pathScanMatchRepoName)(); err != nil {
+		return fmt.Errorf("failed to update %s: %v", pathScanMatchRepoName, err)
 	}
-	_, err := UpdateMatch()
-	if err != nil {
-		return err
-	}
-	_, err = os.Create(filepath.Join(defaultMatchDir, ".check"))
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.WriteFile(filepath.Join(defaultMatchDir, ".check"), nil, os.ModePerm)
 }
-func InitConfig() error {
+func initConfig() error {
 	// create default provider file if it doesn't exist
 	if !fileutil.FileExists(defaultProviderConfigLocation) {
 		if err := fileutil.Marshal(fileutil.YAML, []byte(defaultProviderConfigLocation), sources.Provider{}); err != nil {

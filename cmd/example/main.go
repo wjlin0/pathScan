@@ -28,6 +28,6 @@ func main() {
 		return
 	}
 	if err := run.RunEnumeration(); err != nil {
-		panic(err)
+		gologger.Fatal().Msgf("unable to run enumeration: %s", err.Error())
 	}
 }

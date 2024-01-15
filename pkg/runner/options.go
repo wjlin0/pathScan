@@ -12,6 +12,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/common/identification"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
+	updateutils "github.com/wjlin0/pathScan/pkg/util/update"
 	"github.com/wjlin0/uncover"
 	"os"
 	"path/filepath"
@@ -164,7 +165,6 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.NoColor, "no-color", "nc", false, "无颜色输出"),
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVar(&options.Debug, "debug", false, "调试输出"),
-		set.BoolVarP(&options.Version, "version", "v", false, "输出版本"),
 	)
 	set.CreateGroup("Naabu", "端口扫描",
 		set.BoolVarP(&options.Naabu, "naabu", "n", false, "端口扫描"),
@@ -195,6 +195,7 @@ func ParserOptions() *Options {
 		set.StringSliceVarP(&options.FindOtherDomainList, "scan-domain-list", "sdl", nil, "从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）", goflags.FileNormalizedOriginalStringSliceOptions),
 		set.BoolVar(&options.Validate, "validate", false, "验证指纹文件"),
 		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
+		set.CallbackVarP(GetVersionFromCallback(), "version", "v", "输出版本"),
 	)
 	set.CreateGroup("Header", "请求头参数",
 		set.StringSliceVarP(&options.Method, "method", "m", goflags.StringSlice{"GET"}, fmt.Sprintf("请求方法 %s", httputil.AllHTTPMethods()), goflags.CommaSeparatedStringSliceOptions),
@@ -212,8 +213,8 @@ func ParserOptions() *Options {
 		set.IntVarP(&options.WaitTimeout, "wait-timeout", "wt", 3, "自定义任务结束前的等待,一般用于结束结束时间果断,导致无法发现更多目标"),
 	)
 	set.CreateGroup("Update", "更新",
-		set.BoolVar(&options.UpdatePathScanVersion, "update", false, "更新版本"),
-		set.BoolVarP(&options.UpdateMatchVersion, "update-match", "um", false, "更新指纹识别库"),
+		set.CallbackVar(updateutils.GetUpdateToolCallback(pathScanRepoName, Version), "update", "更新版本"),
+		set.CallbackVarP(updateutils.GetUpdateDirFromRepoNoErrCallback(pathScanMatchRepoName, defaultMatchDir, pathScanMatchRepoName), "update-match", "um", "更新指纹识别库"),
 		set.BoolVarP(&options.SkipAutoUpdateMatch, "auto-match", "am", false, "跳过自动检查更新"),
 	)
 	set.SetCustomHelpText(`EXAMPLES:
@@ -246,10 +247,6 @@ func ParserOptions() *Options {
 	_ = set.Parse()
 	if !options.Silent {
 		showBanner()
-	}
-	if options.Version {
-		gologger.Print().Msgf("pathScan version: %s", Version)
-		os.Exit(0)
 	}
 	if options.Method == nil {
 		options.Method = goflags.StringSlice{"GET"}
@@ -304,4 +301,14 @@ func (o *Options) ValidateMatch() error {
 	}
 
 	return err
+}
+
+func GetVersionFromCallback() func() {
+	return func() {
+		showBanner()
+		gologger.Info().Msgf("PathScan Engine Version: v%s", Version)
+		gologger.Info().Msgf("PathScan Match Config Version: %s", PathScanMatchVersion)
+		gologger.Info().Msgf("PathScan Config Directory: %s", defaultPathScanDir)
+		os.Exit(0)
+	}
 }

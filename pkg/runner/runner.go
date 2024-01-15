@@ -16,6 +16,7 @@ import (
 	"github.com/wjlin0/pathScan/pkg/common/naabu"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
+	updateutils "github.com/wjlin0/pathScan/pkg/util/update"
 	"github.com/wjlin0/pathScan/pkg/writer"
 	"github.com/wjlin0/uncover"
 	"github.com/wjlin0/uncover/core"
@@ -87,49 +88,44 @@ func NewRunner(options *Options) (*Runner, error) {
 		return nil, nil
 	}
 	// 初始化
-
-	err = InitPathScan()
-	if err != nil {
-		return nil, err
-	}
-
-	// 下载字典或更新版本
-	if run.Cfg.Options.UpdatePathScanVersion || run.Cfg.Options.UpdateMatchVersion {
-		if run.Cfg.Options.UpdatePathScanVersion {
-			ok, err := UpdateVersion()
-			if err != nil && ok == false {
-				gologger.Error().Msg(err.Error())
-			}
+	if needPathScanInit() {
+		gologger.Info().Msg("initializing in progress.")
+		if err = initPathScan(); err != nil {
+			return nil, err
 		}
-		if run.Cfg.Options.UpdateMatchVersion {
-			ok, err := UpdateMatch()
-			if err != nil && ok == false {
-				gologger.Error().Msg(err.Error())
-			}
-		}
-		return nil, nil
+		PathScanMatchVersion, _ = util.GetMatchVersion(defaultMatchDir)
+		gologger.Info().Msgf("Successfully initialized pathScan-match version %s => %s (%s)", defaultPathScanDir, PathScanMatchVersion, color.HiGreenString("latest"))
+		gologger.Info().Msg("initialization completed.")
 	}
 
 	// 检查版本更新
 	if !run.Cfg.Options.Silent && !run.Cfg.Options.SkipAutoUpdateMatch {
-		err := CheckVersion()
+		latestVersion, err := updateutils.GetToolVersionCallback("", pathScanRepoName)()
 		if err != nil {
-			gologger.Error().Msg(err.Error())
+			if options.Verbose {
+				gologger.Error().Msgf("%s version check failed: %v", toolName, err.Error())
+			}
+		} else {
+			gologger.Info().Msgf("Current %s version %v %v", toolName, Version, updateutils.GetVersionDescription(Version, latestVersion))
 		}
-
-		err, ok := CheckMatchVersion()
+		psMVersion := strings.Replace(PathScanMatchVersion, "v", "", 1)
+		latestVersion, err = updateutils.GetToolVersionCallback("", pathScanMatchRepoName)()
 		if err != nil {
-			gologger.Error().Msg(err.Error())
+			if options.Verbose {
+				gologger.Error().Msgf("%s version check failed: %v", pathScanMatchRepoName, err.Error())
+			}
+		} else {
+			gologger.Info().Msgf("Current %s version %v %v", pathScanMatchRepoName, psMVersion, updateutils.GetVersionDescription(psMVersion, latestVersion))
 		}
-		if ok && err == nil {
-			ok, err = UpdateMatch()
-			if err != nil && ok == false {
-				gologger.Error().Msg(err.Error())
+		if updateutils.IsOutdated(psMVersion, latestVersion) {
+			if err = updateutils.GetUpdateDirFromRepoCallback(pathScanMatchRepoName, defaultMatchDir, pathScanMatchRepoName)(); err != nil {
+				if run.Cfg.Options.Verbose {
+					gologger.Error().Msgf("Failed to update %s: %v", pathScanMatchRepoName, err)
+				}
 			} else {
-				gologger.Info().Msgf("Successfully updated pathScan-match (%s) to %s. GoodLuck!", PathScanMatchVersion, defaultMatchDir)
+				gologger.Info().Msgf("%v sucessfully updated %v -> %v (%s)", toolName, psMVersion, latestVersion, color.HiGreenString("latest"))
 			}
 		}
-
 	}
 
 	// 清除恢复文件夹
@@ -164,7 +160,9 @@ func NewRunner(options *Options) (*Runner, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(resp.Body)
 		hash, _ := util.GetHash(buffer.Bytes(), run.Cfg.Options.SkipHashMethod)
 		fmt.Printf("[%s] %s\n", color.GreenString(fmt.Sprintf("%s", run.Cfg.Options.SkipHashMethod)), string(hash))
 		return nil, nil

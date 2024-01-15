@@ -124,14 +124,8 @@ func Unzip(p string, reader *bytes.Reader) error {
 
 }
 
-// compareAndWriteTemplates compares and returns the stats of a template update operations.
 func Nunzip(p string, zipReader *zip.Reader) error {
 
-	// We use file-checksums that are md5 hashes to store the list of files->hashes
-	// that have been downloaded previously.
-	// If the path isn't found in new update after being read from the previous checksum,
-	// it is removed. This allows us fine-grained control over the download process
-	// as well as solves a long problem with nuclei-template updates.
 	configuredTemplateDirectory := p
 	for _, zipTemplateFile := range zipReader.File {
 		templateAbsolutePath, skipFile, err := calculateTemplateAbsolutePath(zipTemplateFile.Name, configuredTemplateDirectory)
