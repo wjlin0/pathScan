@@ -7744,6 +7744,7 @@ status
 status.php
 STATUS.txt
 status.xsl
+/assets/webpack/manifest.json
 status/
 status/selfDiscovered/status
 status?full=true

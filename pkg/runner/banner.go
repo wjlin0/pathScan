@@ -12,13 +12,15 @@ const (
                __   __    ____               
    ___  ___ _ / /_ / /   / __/____ ___ _ ___ 
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.5.3
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.5.4
 /_/
 `
-	Version               = `1.5.3`
+	Version               = `1.5.4`
 	defaultResumeFileName = `resume.cfg`
 	userName              = "wjlin0"
-	repoName              = "pathScan-match"
+	pathScanMatchRepoName = "pathScan-match"
+	pathScanRepoName      = "pathScan"
+	toolName              = "pathScan"
 )
 const (
 	// HTTP defines the plain http scheme

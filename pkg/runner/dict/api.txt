@@ -143,3 +143,4 @@ v2.3/swagger-ui.html
 v2/swagger.json
 webpage/system/druid/index.html
 %20/swagger-ui.html
+/assets/webpack/manifest.json
