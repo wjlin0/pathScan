@@ -147,6 +147,11 @@ func NewRunner(options *Options) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
+	run.targets_, err = run.handlerGetTargets()
+	run.paths, err = run.handlerGetTargetPath()
+	if err != nil {
+		return nil, err
+	}
 	run.retryable = run.NewRetryableClient()
 	// 计算hash
 	if run.Cfg.Options.GetHash {
@@ -171,11 +176,6 @@ func NewRunner(options *Options) (*Runner, error) {
 	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateLimit), time.Second)
 	run.wg = new(sizedwaitgroup.SizedWaitGroup)
 	*run.wg = sizedwaitgroup.New(run.Cfg.Options.Threads)
-	run.targets_, err = run.handlerGetTargets()
-	run.paths, err = run.handlerGetTargetPath()
-	if err != nil {
-		return nil, err
-	}
 	run.headers = run.handlerHeader()
 	run.skipCode = make(map[string]struct{})
 	for _, status := range run.Cfg.Options.SkipCode {

@@ -423,7 +423,17 @@ func (r *Runner) GetDNSData(hostname string) (ips, cnames []string, err error) {
 	return
 }
 func (r *Runner) NewRetryableClient() *http.Client {
-	var retryablehttpOptions = http.DefaultOptionsSpraying
+	var retryablehttpOptions http.Options
+	switch {
+	case r.IsRunSubdomainMode() || r.IsRunUncoverMode():
+		retryablehttpOptions = http.DefaultOptionsSpraying
+	case r.IsRunPathScanMode() && len(r.paths) >= len(r.targets_):
+		retryablehttpOptions = http.DefaultOptionsSingle
+	default:
+		retryablehttpOptions = http.DefaultOptionsSpraying
+	}
+
+	//var retryablehttpOptions = http.DefaultOptionsSingle
 	retryablehttpOptions.Timeout = time.Second * time.Duration(r.Cfg.Options.Timeout)
 	retryablehttpOptions.RetryMax = r.Cfg.Options.Retries
 	return http.NewClient(http.Options{
