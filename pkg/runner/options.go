@@ -89,21 +89,10 @@ type Options struct {
 	Favicon                     bool                        `json:"favicon"`
 	SkipBodyRegex               goflags.StringSlice         `json:"skip-body-regex"`
 	skipBodyRegex               []*regexp.Regexp
-	LoadDefaultDict             bool   `json:"load-default-dict"`
-	LoadAPIDict                 bool   `json:"load-api-dict"`
-	Naabu                       bool   `json:"naabu"`
-	Ports                       string `json:"ports"`
-	TopPorts                    string `json:"top-ports"`
-	SkipHostDiscovery           bool   `json:"skip-host-discovery"`
-	NaabuOutput                 string `json:"naabu-output"`
-	NaabuRate                   int    `json:"naabu-rate"`
-	NaabuScanType               string `json:"naabu-scan-type"`
-	NaabuSourceIP               string `json:"naabu-source-ip"`
-	NaabuSourcePort             string `json:"naabu-source-port"`
-	NaabuHostDiscovery          bool   `json:"naabu-host-discovery"`
-	NaabuExcludeCdn             bool   `json:"naabu-exclude-cdn"`
-	Debug                       bool   `json:"debug"`
-	Validate                    bool   `json:"validate"`
+	LoadDefaultDict             bool `json:"load-default-dict"`
+	LoadAPIDict                 bool `json:"load-api-dict"`
+	Debug                       bool `json:"debug"`
+	Validate                    bool `json:"validate"`
 }
 
 func ParserOptions() *Options {
@@ -166,18 +155,6 @@ func ParserOptions() *Options {
 		set.BoolVarP(&options.Verbose, "verbose", "vb", false, "详细输出模式"),
 		set.BoolVar(&options.Debug, "debug", false, "调试输出"),
 	)
-	set.CreateGroup("Naabu", "端口扫描",
-		set.BoolVarP(&options.Naabu, "naabu", "n", false, "端口扫描"),
-		set.StringVar(&options.Ports, "port", "", "端口(80,443, 100-200)"),
-		set.StringVarP(&options.TopPorts, "top-ports", "tp", "", "top端口(100,200,300)"),
-		set.StringVarP(&options.NaabuScanType, "naabu-scan-type", "ns", "s", "端口扫描类型(SYN/CONNECT)"),
-		set.BoolVarP(&options.NaabuHostDiscovery, "naabu-host-discovery", "sn", false, "只允许主机发现"),
-		set.BoolVarP(&options.SkipHostDiscovery, "skip-host-discovery", "Pn", false, "跳过主机发现"),
-		set.StringVarP(&options.NaabuOutput, "naabu-output", "no", "", "端口扫描结果保存 支持csv格式输出"),
-		set.StringVarP(&options.NaabuSourceIP, "naabu-source-ip", "nsi", "", "端口扫描源IP"),
-		set.StringVarP(&options.NaabuSourcePort, "naabu-source-port", "nsp", "", "端口扫描源端口"),
-		set.BoolVarP(&options.NaabuExcludeCdn, "naabu-exclude-cdn", "ne", false, "端口扫描排除cdn"),
-	)
 
 	set.CreateGroup("Tool", "工具",
 		set.BoolVar(&options.ClearResume, "clear", false, "清理历史任务"),
@@ -208,7 +185,6 @@ func ParserOptions() *Options {
 	set.CreateGroup("Rate", "速率",
 		set.IntVarP(&options.Threads, "thread", "t", 30, "线程"),
 		set.IntVarP(&options.RateLimit, "rate-limit", "rl", 150, "每秒允许的HTTP连接数"),
-		set.IntVarP(&options.NaabuRate, "naabu-rate", "nr", 1000, "端口扫描速率"),
 		set.IntVar(&options.Timeout, "timeout", 10, "超时时间"),
 		set.IntVarP(&options.WaitTimeout, "wait-timeout", "wt", 3, "自定义任务结束前的等待,一般用于结束结束时间果断,导致无法发现更多目标"),
 	)

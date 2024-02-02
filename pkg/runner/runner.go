@@ -7,13 +7,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	naabuResult "github.com/projectdiscovery/naabu/v2/pkg/result"
 	"github.com/projectdiscovery/ratelimit"
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/pkg/api"
 	"github.com/wjlin0/pathScan/pkg/common/identification"
-	"github.com/wjlin0/pathScan/pkg/common/naabu"
 	"github.com/wjlin0/pathScan/pkg/result"
 	"github.com/wjlin0/pathScan/pkg/util"
 	updateutils "github.com/wjlin0/pathScan/pkg/util/update"
@@ -214,7 +212,6 @@ func (r *Runner) RunEnumeration() error {
 
 	startTime := time.Now()
 	switch {
-	case r.Cfg.Options.Naabu && (!r.Cfg.Options.Subdomain && !r.Cfg.Options.Uncover):
 	default:
 		outputWriter, err := writer.NewOutputWriter()
 		if err != nil {
@@ -269,44 +266,6 @@ func (r *Runner) RunEnumeration() error {
 			urls = append(urls, c)
 		}
 		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(r.Cfg.Options.UncoverEngine, ","), len(urls))
-		if r.Cfg.Options.Naabu {
-			// 端口扫描调用 naabu sdk
-			opts := r.Cfg.Options
-			var temps []string
-
-			for _, t := range util.RemoveDuplicateStrings(urls) {
-				// 判断是否为 http[s] 开头
-				if strings.HasPrefix(t, "http") {
-					// 解析 url
-					if _, host, _ := util.GetProtocolHostAndPort(t); host != "" {
-						temps = append(temps, host)
-					}
-					continue
-				}
-				temps = append(temps, t)
-			}
-			urls = []string{}
-			var rwn sync.RWMutex
-			callback := func(naabuResult *naabuResult.HostResult) {
-				for _, port := range naabuResult.Ports {
-					rwn.Lock()
-					urls = append(urls, fmt.Sprintf("%s:%d", naabuResult.Host, port.Port))
-					rwn.Unlock()
-				}
-				if len(naabuResult.Ports) == 0 && naabuResult.Host != "" {
-					rwn.Lock()
-					urls = append(urls, fmt.Sprintf("%s", naabuResult.Host))
-					rwn.Unlock()
-				}
-			}
-			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, opts.NaabuExcludeCdn, callback)
-			if err != nil {
-				return err
-			}
-			if err = naabu.Execute(naabuOpts); err != nil {
-				gologger.Warning().Msgf("An error occurred: %s", err)
-			}
-		}
 		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
 
 		lenPath := len(paths)
@@ -376,44 +335,6 @@ func (r *Runner) RunEnumeration() error {
 			lenPath = 1
 		}
 
-		if r.Cfg.Options.Naabu {
-			// 端口扫描调用 naabu sdk
-			opts := r.Cfg.Options
-			var temps []string
-
-			for _, t := range util.RemoveDuplicateStrings(urls) {
-				// 判断是否为 http[s] 开头
-				if strings.HasPrefix(t, "http") {
-					// 解析 url
-					if _, host, _ := util.GetProtocolHostAndPort(t); host != "" {
-						temps = append(temps, host)
-					}
-					continue
-				}
-				temps = append(temps, t)
-			}
-			urls = []string{}
-			var rwn sync.RWMutex
-			callback := func(naabuResult *naabuResult.HostResult) {
-				for _, port := range naabuResult.Ports {
-					rwn.Lock()
-					urls = append(urls, fmt.Sprintf("%s:%d", naabuResult.Host, port.Port))
-					rwn.Unlock()
-				}
-				if len(naabuResult.Ports) == 0 && naabuResult.Host != "" {
-					rwn.Lock()
-					urls = append(urls, fmt.Sprintf("%s", naabuResult.Host))
-					rwn.Unlock()
-				}
-			}
-			naabuOpts, err := naabu.New(temps, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, opts.NaabuExcludeCdn, callback)
-			if err != nil {
-				return err
-			}
-			if err = naabu.Execute(naabuOpts); err != nil {
-				gologger.Warning().Msgf("An error occurred: %s", err)
-			}
-		}
 		// 去重
 		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
 		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*lenPath)
@@ -447,34 +368,6 @@ func (r *Runner) RunEnumeration() error {
 		for o := range result.Rand(urls) {
 			proto, t := util.GetProtocolAndHost(o[0])
 			r.processRetry(t, paths, proto, ctx, r.wg)
-		}
-	case r.Cfg.Options.Naabu && (!r.Cfg.Options.Subdomain && !r.Cfg.Options.Uncover):
-		// 端口扫描调用 naabu sdk
-		opts := r.Cfg.Options
-		// 处理 r.targets_
-		var hosts []string
-		for _, t := range r.targets_ {
-			// 判断是否为 http[s] 开头
-			if strings.HasPrefix(t, "http") {
-				// 解析 url
-				if _, host, _ := util.GetProtocolHostAndPort(t); host != "" {
-					hosts = append(hosts, host)
-				}
-				continue
-			}
-			hosts = append(hosts, t)
-		}
-		callback := func(naabuResult *naabuResult.HostResult) {
-			for _, port := range naabuResult.Ports {
-				gologger.Info().Msgf("Found open port %d on host %s", port.Port, naabuResult.Host)
-			}
-		}
-		naabuOpts, err := naabu.New(hosts, opts.NaabuSourceIP, opts.NaabuSourcePort, opts.NaabuScanType, opts.Ports, opts.TopPorts, opts.Retries, opts.NaabuRate, opts.Threads, opts.Proxy, opts.ProxyAuth, opts.Resolvers, opts.NaabuHostDiscovery, opts.SkipHostDiscovery, opts.Verbose, opts.NaabuOutput, opts.Csv, opts.Silent, opts.NaabuExcludeCdn, callback)
-		if err != nil {
-			return err
-		}
-		if err = naabu.Execute(naabuOpts); err != nil {
-			return err
 		}
 	default:
 		var urls = r.targets_

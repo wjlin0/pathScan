@@ -3,12 +3,10 @@ package runner
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/gologger"
 	httputil "github.com/projectdiscovery/utils/http"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/wjlin0/pathScan/pkg/util"
 	"github.com/wjlin0/uncover"
-	"strings"
 )
 
 func (o *Options) ValidateFunc() error {
@@ -51,18 +49,6 @@ func (o *Options) ValidateFunc() error {
 	}
 	if o.Method == nil {
 		o.Method = []string{"GET"}
-	}
-	if o.Naabu && o.Proxy != "" && !strings.HasPrefix(o.Proxy, "socks5") {
-		// 只允许socks5代理, 输出英文提示
-		return errors.New("naabu only support socks5 proxy")
-	}
-	if o.Naabu && o.Proxy != "" && o.NaabuScanType == "s" {
-		gologger.Warning().Msgf("Syn Scan can't be used with socks proxy: falling back to connect scan")
-		o.NaabuScanType = "c"
-	}
-	if o.Naabu && !o.Subdomain && !o.Uncover && o.NaabuOutput == "" && o.Output != "" {
-		o.NaabuOutput = o.Output
-		o.Output = ""
 	}
 
 	var resolvers []string

@@ -10,6 +10,3 @@ func (r *Runner) IsRunUncoverMode() bool {
 func (r *Runner) IsRunSubdomainMode() bool {
 	return r.Cfg.Options.Subdomain
 }
-func (r *Runner) IsRunPortScanMode() bool {
-	return r.Cfg.Options.Naabu
-}
