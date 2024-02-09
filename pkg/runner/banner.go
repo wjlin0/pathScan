@@ -3,7 +3,7 @@ package runner
 import (
 	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
-	"github.com/wjlin0/pathScan/pkg/util"
+	"github.com/wjlin0/pathScan/v2/pkg/util"
 	"path/filepath"
 )
 

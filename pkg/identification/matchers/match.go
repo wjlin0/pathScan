@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/nuclei/v2/pkg/protocols/common/expressions"
-	"github.com/wjlin0/pathScan/pkg/util"
+	"github.com/wjlin0/pathScan/v2/pkg/util"
 	"strings"
 )
 

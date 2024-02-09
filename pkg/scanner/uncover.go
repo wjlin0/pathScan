@@ -6,7 +6,6 @@ import (
 	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
 	stringsutil "github.com/projectdiscovery/utils/strings"
-	"github.com/wjlin0/pathScan/pkg/writer"
 	"github.com/wjlin0/uncover/sources"
 	"path/filepath"
 	"strings"
@@ -34,7 +33,7 @@ func (scanner *Scanner) ScanUncover(resultCallback func(event string)) (<-chan s
 			case result.Error != nil:
 				gologger.Warning().Msgf("Request %s sending error: %s", result.Source, result.Error)
 			case scanner.options.CSV:
-				toString, err := writer.CSVToString(result)
+				toString := result.CSV()
 				if err != nil {
 					continue
 				}
