@@ -6,12 +6,10 @@ before:
 project_name: pathScan
 builds:
   - id: pathScan-windows
-    ldflags:
-      - -s -w
-    binary: pathScan
-    # env:
-    # - CGO_ENABLED=1 # necessary only with winpcap
-    main: ./cmd/pathScan/main.go
+    env:
+      - CGO_ENABLED=0
+    binary: '{{ .ProjectName }}'
+    main: ./cmd/pathScan/pathScan.go
     goos:
       - windows
     goarch:
@@ -19,14 +17,7 @@ builds:
       - 386
 archives:
   - format: zip
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Tag }}_
-      {{- .Os }}_
-      {{- if eq .Arch "amd64" }}amd64
-      {{- else if eq .Arch "386" }}386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
 
 checksum:
   name_template: "{{ .ProjectName }}-windows-checksums.txt"

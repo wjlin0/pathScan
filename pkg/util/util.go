@@ -443,16 +443,17 @@ func GetTrueUrl(text *url.URL) string {
 	trueURL := scheme + "://" + host
 	return trueURL
 }
-func ListFilesWithExtension(rootPath, extension string) ([]string, error) {
+func ListFilesWithExtension(rootPath string, extensions ...string) ([]string, error) {
 	var files []string
 
 	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-
-		if !d.IsDir() && filepath.Ext(d.Name()) == extension {
-			files = append(files, path)
+		for _, extension := range extensions {
+			if !d.IsDir() && filepath.Ext(d.Name()) == extension {
+				files = append(files, path)
+			}
 		}
 
 		return nil

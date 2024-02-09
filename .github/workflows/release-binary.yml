@@ -18,8 +18,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.21.x
-      - name: Install Dependences
-        run: brew install libpcap
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4
         with:
@@ -40,8 +38,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.21.x
-      - name: Install Dependences
-        run: sudo apt update && sudo apt install -y libpcap-dev
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4

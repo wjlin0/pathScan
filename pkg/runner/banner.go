@@ -15,32 +15,19 @@ const (
  / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.5.4
 /_/
 `
-	Version               = `1.5.4`
-	defaultResumeFileName = `resume.cfg`
+	Version               = `2.0.0`
 	userName              = "wjlin0"
 	pathScanMatchRepoName = "pathScan-match"
 	pathScanRepoName      = "pathScan"
 	toolName              = "pathScan"
 )
-const (
-	// HTTP defines the plain http scheme
-	HTTP = "http"
-	// HTTPS defines the secure http scheme
-	HTTPS = "https"
-	// HTTPorHTTPS defines both http and https scheme in mutual exclusion
-	HTTPorHTTPS = "http|https"
-	// HTTPandHTTPS defines both http and https scheme
-	HTTPandHTTPS = "http&https"
-)
 
 var (
-	defaultPathScanDir            = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan")
-	defaultMatchDir               = filepath.Join(defaultPathScanDir, "match-config")
-	defaultPathDict               = filepath.Join(defaultPathScanDir, "dict")
-	defaultResume                 = filepath.Join(defaultPathScanDir, "resume")
-	defaultProviderConfigLocation = filepath.Join(defaultPathScanDir, "provider-config.yaml")
-	defaultPathScanConfig         = filepath.Join(defaultPathScanDir, "config.yaml")
-	PathScanMatchVersion, _       = util.GetMatchVersion(defaultMatchDir)
+	DefaultPathScanDir            = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan")
+	DefaultMatchDir               = filepath.Join(DefaultPathScanDir, "match-config")
+	DefaultProviderConfigLocation = filepath.Join(DefaultPathScanDir, "provider-config.yaml")
+	DefaultPathScanConfig         = filepath.Join(DefaultPathScanDir, "config.yaml")
+	PathScanMatchVersion, _       = util.GetMatchVersion(DefaultMatchDir)
 )
 
 // showBanner is used to show the banner to the user

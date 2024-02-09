@@ -1,576 +1,384 @@
 package runner
 
 import (
-	"bytes"
 	_ "embed"
-	"fmt"
 	"github.com/fatih/color"
-	"github.com/projectdiscovery/fastdialer/fastdialer"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/ratelimit"
-	"github.com/projectdiscovery/retryablehttp-go"
+	fileutil "github.com/projectdiscovery/utils/file"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	"github.com/remeh/sizedwaitgroup"
-	"github.com/wjlin0/pathScan/pkg/api"
-	"github.com/wjlin0/pathScan/pkg/common/identification"
-	"github.com/wjlin0/pathScan/pkg/result"
-	"github.com/wjlin0/pathScan/pkg/util"
-	updateutils "github.com/wjlin0/pathScan/pkg/util/update"
-	"github.com/wjlin0/pathScan/pkg/writer"
-	"github.com/wjlin0/uncover"
-	"github.com/wjlin0/uncover/core"
-	"golang.org/x/net/context"
-	"io"
-	"net/http"
+	"github.com/wjlin0/pathScan/v2/pkg/input"
+	"github.com/wjlin0/pathScan/v2/pkg/output"
+	"github.com/wjlin0/pathScan/v2/pkg/scanner"
+	"github.com/wjlin0/pathScan/v2/pkg/types"
+	"github.com/wjlin0/uncover/runner"
+	proxyutils "github.com/wjlin0/utils/proxy"
+	updateutils "github.com/wjlin0/utils/update"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
-	"sync"
 	"time"
 )
 
 type Runner struct {
-	wg           *sizedwaitgroup.SizedWaitGroup
-	Cfg          *ResumeCfg
-	limiter      *ratelimit.Limiter
-	client       *http.Client
-	dialer       *fastdialer.Dialer
-	targets_     []string
-	paths        []string
-	headers      map[string]interface{}
-	skipCode     map[string]struct{}
-	regOptions   []*identification.Options
-	retryable    *retryablehttp.Client
-	outputResult chan *result.Result
+	options       *types.Options
+	targets       []*input.Target
+	scanner       *scanner.Scanner
+	outputWriter  *output.OutputWriter
+	uncoverWriter *output.OutputWriter
 }
 
-func NewRunner(options *Options) (*Runner, error) {
+func NewRunner(options *types.Options) (r *Runner, err error) {
+	r = &Runner{}
+	r.options = options
 
-	run := &Runner{}
-	var cfg *ResumeCfg
-	var err error
-	// 如果存在恢复配置，解析它并设置相应的选项
-	if options.ResumeCfg != "" {
-		cfg, err = ParserResumeCfg(options.ResumeCfg)
-		if err != nil {
-			return nil, err
-		}
-
-		// 将 ResumeCfg 字段设置为 options.ResumeCfg
-		cfg.Options.ResumeCfg = options.ResumeCfg
-	}
-	if cfg == nil {
-		run.Cfg = &ResumeCfg{
-			Rwm:           &sync.RWMutex{},
-			Options:       options,
-			ResultsCached: NewCached(),
-			OutputCached:  NewCached(),
-		}
-	} else {
-		run.Cfg = cfg
-	}
-
-	// 配置输出方式
-	run.Cfg.Options.configureOutput()
-	// 验证选项是否合法
-	if err = run.Cfg.Options.ValidateFunc(); err != nil {
+	// 初始化scanner
+	if r.scanner, err = scanner.NewScanner(options); err != nil {
 		return nil, err
 	}
-	if run.Cfg.Options.Validate {
-		// 检查 pathScan-match 是否正常
-		if err := run.Cfg.Options.ValidateMatch(); err != nil {
-			gologger.Error().Msgf("pathScan-match has been tampered with: %s", err.Error())
-		} else {
-			gologger.Info().Msgf("successfully validated pathScan-match")
-		}
-		return nil, nil
-	}
-	// 初始化
-	if needPathScanInit() {
-		gologger.Info().Msg("initializing in progress.")
-		if err = initPathScan(); err != nil {
-			return nil, err
-		}
-		PathScanMatchVersion, _ = util.GetMatchVersion(defaultMatchDir)
-		gologger.Info().Msgf("Successfully initialized pathScan-match version %s => %s (%s)", defaultPathScanDir, PathScanMatchVersion, color.HiGreenString("latest"))
-		gologger.Info().Msg("initialization completed.")
+	// 设置输出writer
+	if err = r.setEventWriter(); err != nil {
+		return nil, err
 	}
 
-	// 检查版本更新
-	if !run.Cfg.Options.Silent && !run.Cfg.Options.SkipAutoUpdateMatch {
-		latestVersion, err := updateutils.GetToolVersionCallback("", pathScanRepoName)()
+	return r, nil
+}
+func (r *Runner) Close() {
+	r.scanner.Close()
+	if r.outputWriter != nil {
+		r.outputWriter.Close()
+	}
+	if r.uncoverWriter != nil {
+		r.uncoverWriter.Close()
+	}
+
+}
+func (r *Runner) RunEnumeration() error {
+
+	var (
+		wg = sizedwaitgroup.New(r.options.Thread)
+	)
+	r.displayRunEnumeration()
+	options := r.options
+	startTime := time.Now()
+	var (
+		err                       error
+		uncoverResultCallback     func(event string)
+		outputResultEventCallback func(event output.ResultEvent)
+	)
+	if uncoverResultCallback, outputResultEventCallback, err = r.getEventCallback(); err != nil {
+		return err
+	}
+
+	switch {
+	case r.options.Uncover:
+
+		scanUncover, err := r.scanner.ScanUncover(uncoverResultCallback)
 		if err != nil {
-			if options.Verbose {
+			return err
+		}
+
+		var (
+			targets []*input.Target
+		)
+
+		for c := range scanUncover {
+			targets = append(targets, input.NewTarget(c, r.options.Method, handlerHeaders(r.options), handlerPaths(r.options), r.options.Body))
+		}
+
+		r.aliveHosts(targets)
+
+		r.showNumberOfRequests()
+
+		for _, target := range r.targets {
+			wg.Add()
+			go func(target *input.Target) {
+				defer wg.Done()
+				r.scanner.Scan(target, outputResultEventCallback)
+			}(target)
+		}
+		wg.Wait()
+	case r.options.Subdomain:
+
+		scanUncover, err := r.scanner.ScanUncover(uncoverResultCallback)
+		if err != nil {
+			return err
+		}
+		var (
+			targets []*input.Target
+		)
+
+		for c := range scanUncover {
+			targets = append(targets, input.NewTarget(c, r.options.Method, handlerHeaders(r.options), handlerPaths(r.options), r.options.Body))
+		}
+
+		r.aliveHosts(targets)
+
+		r.showNumberOfRequests()
+		for _, target := range r.targets {
+			wg.Add()
+			go func(target *input.Target) {
+				defer wg.Done()
+				r.scanner.Scan(target, outputResultEventCallback)
+			}(target)
+		}
+
+		wg.Wait()
+	default:
+		var (
+			targets []*input.Target
+		)
+		ch := input.DecomposeHost(handlerTargets(options), options.Method, handlerHeaders(options), handlerPaths(options), options.Body)
+		for c := range ch {
+			targets = append(targets, c)
+		}
+
+		r.aliveHosts(targets)
+		r.showNumberOfRequests()
+
+		for _, target := range r.targets {
+			wg.Add()
+			go func(target *input.Target) {
+				defer wg.Done()
+				r.scanner.Scan(target, outputResultEventCallback)
+			}(target)
+		}
+		wg.Wait()
+	}
+
+	gologger.Info().Msgf("This task takes %v seconds", time.Since(startTime).Seconds())
+	return nil
+}
+func (r *Runner) displayRunEnumeration() {
+
+	opts := r.options
+
+	if opts.Silent {
+		return
+	}
+
+	if !opts.DisableUpdateCheck {
+		latestVersion, err := updateutils.GetToolVersionCallback(toolName, pathScanRepoName)()
+		if err != nil {
+			if opts.Debug {
 				gologger.Error().Msgf("%s version check failed: %v", toolName, err.Error())
 			}
 		} else {
-			gologger.Info().Msgf("Current %s version %v %v", toolName, Version, updateutils.GetVersionDescription(Version, latestVersion))
+			gologger.Info().Msgf("Current %s version v%v %v", toolName, Version, updateutils.GetVersionDescription(Version, latestVersion))
 		}
+
 		psMVersion := strings.Replace(PathScanMatchVersion, "v", "", 1)
 		latestVersion, err = updateutils.GetToolVersionCallback("", pathScanMatchRepoName)()
 		if err != nil {
-			if options.Verbose {
+			if opts.Debug {
 				gologger.Error().Msgf("%s version check failed: %v", pathScanMatchRepoName, err.Error())
 			}
 		} else {
 			gologger.Info().Msgf("Current %s version %v %v", pathScanMatchRepoName, psMVersion, updateutils.GetVersionDescription(psMVersion, latestVersion))
 		}
 		if updateutils.IsOutdated(psMVersion, latestVersion) {
-			if err = updateutils.GetUpdateDirFromRepoCallback(pathScanMatchRepoName, defaultMatchDir, pathScanMatchRepoName)(); err != nil {
-				if run.Cfg.Options.Verbose {
+			if err = updateutils.GetUpdateDirFromRepoCallback(pathScanMatchRepoName, DefaultMatchDir, pathScanMatchRepoName)(); err != nil {
+				if opts.Debug {
 					gologger.Error().Msgf("Failed to update %s: %v", pathScanMatchRepoName, err)
 				}
 			} else {
 				gologger.Info().Msgf("%v sucessfully updated %v -> %v (%s)", toolName, psMVersion, latestVersion, color.HiGreenString("latest"))
 			}
 		}
-	}
 
-	// 清除恢复文件夹
-	if run.Cfg.Options.ClearResume {
-		_ = os.RemoveAll(defaultResume)
-		gologger.Info().Msgf("successfully cleaned up folder：%s", defaultResume)
-		os.Exit(0)
-	}
-
-	// 创建 HTTP 客户端、速率限制器、等待组、目标列表、目标路径列表和头部列表
-	fastOptons := fastdialer.DefaultOptions
-	fastOptons.WithDialerHistory = true
-	fastOptons.EnableFallback = true
-	if len(options.Resolvers) > 0 {
-
-		fastOptons.BaseResolvers = options.Resolvers
-	}
-	run.dialer, err = fastdialer.NewDialer(fastOptons)
-	if err != nil {
-		return nil, err
-	}
-	run.targets_, err = run.handlerGetTargets()
-	run.paths, err = run.handlerGetTargetPath()
-	if err != nil {
-		return nil, err
-	}
-	run.retryable = run.NewRetryableClient()
-	// 计算hash
-	if run.Cfg.Options.GetHash {
-		uri := run.Cfg.Options.Url[0]
-		resp, err := run.retryable.Get(uri)
-		if err != nil {
-			return nil, err
-		}
-		buffer := bytes.Buffer{}
-		_, err = io.Copy(&buffer, resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		defer func(Body io.ReadCloser) {
-			_ = Body.Close()
-		}(resp.Body)
-		hash, _ := util.GetHash(buffer.Bytes(), run.Cfg.Options.SkipHashMethod)
-		fmt.Printf("[%s] %s\n", color.GreenString(fmt.Sprintf("%s", run.Cfg.Options.SkipHashMethod)), string(hash))
-		return nil, nil
-	}
-
-	run.limiter = ratelimit.New(context.Background(), uint(run.Cfg.Options.RateLimit), time.Second)
-	run.wg = new(sizedwaitgroup.SizedWaitGroup)
-	*run.wg = sizedwaitgroup.New(run.Cfg.Options.Threads)
-	run.headers = run.handlerHeader()
-	run.skipCode = make(map[string]struct{})
-	for _, status := range run.Cfg.Options.SkipCode {
-		run.skipCode[status] = struct{}{}
-	}
-	// 加载正则匹配规则
-	matchPath := run.Cfg.Options.MatchPath
-	if matchPath == "" {
-		matchPath = defaultMatchDir
-	}
-
-	if run.regOptions, err = identification.ParserHandler(matchPath); err != nil {
-		gologger.Print().Label(color.HiYellowString("WAN")).Msgf("Failed to load pathScan-match: %s use -validate", err)
-	}
-	// 统计数目
-	regNum := 0
-	for _, rOptions := range run.regOptions {
-		regNum += len(rOptions.SubMatch)
-	}
-	if run.Cfg.Options.SkipBodyRegex != nil {
-		for _, r := range run.Cfg.Options.SkipBodyRegex {
-			compile, err := regexp.Compile(r)
-			if err != nil {
-				return nil, err
-			}
-			run.Cfg.Options.skipBodyRegex = append(run.Cfg.Options.skipBodyRegex, compile)
+	} else {
+		gologger.Info().Msgf("Current %s version v%v ", toolName, Version)
+		if PathScanMatchVersion != "" {
+			gologger.Info().Msgf("Current %s version %v ", pathScanMatchRepoName, PathScanMatchVersion)
 		}
 	}
-	gologger.Info().Msgf("pathScan-match templates loaded for current scan: %d", regNum)
-	run.outputResult = make(chan *result.Result)
-	return run, nil
+
+	if types.ProxyURL != "" {
+		// 展示代理
+		parse, _ := url.Parse(types.ProxyURL)
+		if parse.Scheme == proxyutils.HTTPS || parse.Scheme == proxyutils.HTTP {
+			gologger.Info().Msgf("Using %s as proxy server", parse.String())
+		}
+
+		if parse.Scheme == proxyutils.SOCKS5 {
+			gologger.Info().Msgf("Using %s as socket proxy server", parse.String())
+		}
+	}
+	if !opts.DisableScanMatch {
+		gologger.Info().Msgf("PathScan-match templates loaded for current scan: %d", r.scanner.CountOperators())
+	}
+
 }
-
-func (r *Runner) RunEnumeration() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
-	startTime := time.Now()
-	switch {
-	default:
-		outputWriter, err := writer.NewOutputWriter()
-		if err != nil {
-			return err
+func (r *Runner) showNumberOfRequests() {
+	num := 0
+	for _, target := range r.targets {
+		tmpNum := 0
+		if target.Scheme == input.HTTPandHTTPS {
+			tmpNum = 2 * len(target.Paths) * len(target.Methods)
+		} else {
+			tmpNum = len(target.Paths) * len(target.Methods)
 		}
-		outputType := 0
+		if sliceutil.Contains(target.Paths, "/") && !r.options.DisableScanMatch {
+			tmpNum += r.scanner.CountOperatorsRequest()
+		}
+
+		num += tmpNum
+
+	}
+
+	gologger.Info().Msgf("Total number of Requests: %d", num)
+}
+func (r *Runner) getEventCallback() (uncoverEvent func(event string), pathScanEvent func(event output.ResultEvent), err error) {
+	options := r.options
+
+	uncoverEvent = func(event string) {
+		r.uncoverWriter.WriteString(event)
+	}
+
+	pathScanEvent = func(event output.ResultEvent) {
 		switch {
-		case r.Cfg.Options.Csv:
-			outputType = 1
-		case r.Cfg.Options.Html:
-			outputType = 2
-		case r.Cfg.Options.Silent:
-			outputType = 3
+		case r.options.CSV:
+			gologger.Print().Msgf(event.CSV())
+			r.outputWriter.WriteCSVData(event)
+		case r.options.HTML:
+			gologger.Print().Msg(event.EventToStdout())
+			r.outputWriter.WriteHTMLData(event)
+		case r.options.Silent:
+			r.outputWriter.WriteString(event.String())
+		default:
+			r.outputWriter.WriteString(event.EventToStdout())
 		}
-		writers, err := writer.NewOutputWriters(r.Cfg.Options.Output, outputType)
-		if err == nil && writers != nil {
-			outputWriter.AddWriters(writers)
-		}
-		go outputWriter.Output(r.outputResult, outputType)
 	}
-	switch {
-	case r.Cfg.Options.API:
-		mapOpt := make(map[string]interface{})
-		mapOpt["proxy-api-server"] = r.Cfg.Options.ProxyServerAddr
-		mapOpt["proxy-api-cert-path"] = r.Cfg.Options.ProxyServerCaPath
-		mapOpt["proxy-api-large-body"] = r.Cfg.Options.ProxyServerStremLargeBodies
-		mapOpt["proxy-api-allow-hosts"] = []string(r.Cfg.Options.ProxyServerAllowHosts)
-		mapOpt["proxy"] = r.Cfg.Options.Proxy
-		mapOpt["proxy-auth"] = r.Cfg.Options.ProxyAuth
-		mapOpt["output"] = r.outputResult
-		mapOpt["regexOpts"] = r.regOptions
-		opt, err := api.New(mapOpt)
-		if err != nil {
-			return err
-		}
-		return opt.Start()
-	case r.Cfg.Options.Uncover:
-		var (
-			urls  []string
-			paths = r.paths
-		)
-		if len(paths) == 0 {
-			paths = []string{"/"}
-		}
-
-		gologger.Info().Msgf("Running: %s", strings.Join(r.Cfg.Options.UncoverEngine, ","))
-		ch, err := core.GetTarget(r.Cfg.Options.UncoverLimit, r.Cfg.Options.UncoverField, r.Cfg.Options.Csv, r.Cfg.Options.UncoverOutput, r.Cfg.Options.UncoverEngine, r.Cfg.Options.UncoverQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth, defaultProviderConfigLocation)
-		if err != nil {
-			return err
-		}
-		for c := range ch {
-			urls = append(urls, c)
-		}
-		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(r.Cfg.Options.UncoverEngine, ","), len(urls))
-		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
-
-		lenPath := len(paths)
-		if lenPath <= 0 {
-			lenPath = 1
-		}
-		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*lenPath)
-		// 识别Favicon
-		if r.Cfg.Options.Favicon {
-			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
-				proto, t := util.GetProtocolAndHost(o[0])
-				_url, err := url.Parse(fmt.Sprintf("%s://%s", proto, t))
-				if err != nil {
-					continue
-				}
-				t = _url.Host
-				r.process(t, o[1], proto, []string{"GET"}, ctx, r.wg)
-			}
-		}
-		for out := range result.Rand(urls, paths) {
-			path := out[1]
-			proto, t := util.GetProtocolAndHost(out[0])
-			r.process(t, path, proto, r.Cfg.Options.Method, ctx, r.wg)
-		}
-		r.wg.Wait()
-		cancel()
-	case r.Cfg.Options.Subdomain:
-
-		var (
-			err   error
-			urls  []string
-			paths = r.paths
-		)
-		uncover.DefaultCallback = func(query string, agent string) string {
-			if !util.IsValidDomain(query) {
-				return query
-			}
-			switch agent {
-			case "fofa":
-				return fmt.Sprintf(`domain="%s"`, query)
-			case "hunter":
-				return fmt.Sprintf(`domain.suffix="%s"`, query)
-			case "quake":
-				return fmt.Sprintf(`domain:"%s"`, query)
-			case "zoomeye":
-				return fmt.Sprintf(`site:%s`, query)
-			case "netlas":
-				return fmt.Sprintf(`domain:%s`, query)
-			case "fofa-spider":
-				return fmt.Sprintf(`domain="%s"`, query)
-			default:
-				return query
-			}
-		}
-
-		unc, err := core.GetTarget(r.Cfg.Options.SubdomainLimit, "host", r.Cfg.Options.Csv, r.Cfg.Options.SubdomainOutput, r.Cfg.Options.SubdomainEngine, r.Cfg.Options.SubdomainQuery, r.Cfg.Options.Proxy, r.Cfg.Options.ProxyAuth, defaultProviderConfigLocation)
-		if err != nil {
-			return err
-		}
-		for u := range unc {
-			urls = append(urls, u)
-		}
-		gologger.Info().Msgf("Successfully requested cyberspace mapping( %s ) and collected %d domain names", strings.Join(r.Cfg.Options.SubdomainEngine, ","), len(urls))
-
-		lenPath := len(paths)
-		if lenPath <= 0 {
-			lenPath = 1
-		}
-
-		// 去重
-		urls = util.RemoveDuplicateStrings(append(urls, r.targets_...))
-		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*lenPath)
-
-		// 识别Favicon
-
-		if r.Cfg.Options.Favicon {
-			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
-				proto, t := util.GetProtocolAndHost(o[0])
-				_url, err := url.Parse(fmt.Sprintf("%s://%s", proto, t))
-				if err != nil {
-					continue
-				}
-				t = _url.Host
-				r.process(t, o[1], proto, []string{"GET"}, ctx, r.wg)
-			}
-		}
-
-		out := result.Rand(urls, paths)
-		for o := range out {
-			proto, t := util.GetProtocolAndHost(o[0])
-			r.process(t, o[1], proto, r.Cfg.Options.Method, ctx, r.wg)
-		}
-		r.wg.Wait()
-		cancel()
-	case r.Cfg.Options.RecursiveRun:
-		gologger.Info().Msgf("Start recursive scanning, scanning depth %d", r.Cfg.Options.RecursiveRunTimes)
-		var paths = r.paths
-		var urls = r.targets_
-
-		for o := range result.Rand(urls) {
-			proto, t := util.GetProtocolAndHost(o[0])
-			r.processRetry(t, paths, proto, ctx, r.wg)
-		}
-	default:
-		var urls = r.targets_
-		var paths = r.paths
-		if r.Cfg.Options.OnlyTargets {
-			paths = []string{"/"}
-		}
-		// 识别Favicon
-		if r.Cfg.Options.Favicon {
-			for o := range result.Rand(urls, []string{"/favicon.ico"}) {
-				proto, t := util.GetProtocolAndHost(o[0])
-				_url, err := url.Parse(fmt.Sprintf("%s://%s", proto, t))
-				if err != nil {
-					continue
-				}
-				t = _url.Host
-				r.process(t, o[1], proto, []string{"GET"}, ctx, r.wg)
-			}
-		}
-
-		gologger.Info().Msgf("This task will issue requests of over %d", len(urls)*len(paths))
-		out := result.Rand(urls, paths)
-		for o := range out {
-			proto, t := util.GetProtocolAndHost(o[0])
-			r.process(t, o[1], proto, r.Cfg.Options.Method, ctx, r.wg)
-		}
-		time.Sleep(time.Duration(r.Cfg.Options.WaitTimeout) * time.Second)
-		r.wg.Wait()
-		cancel()
+	if options.ResultEventCallback != nil {
+		pathScanEvent = options.ResultEventCallback
 	}
-	r.Close()
-	r.Cfg.ClearResume()
 
-	gologger.Info().Msgf("This task takes %v seconds", time.Since(startTime).Seconds())
+	return
+}
+func (r *Runner) setEventWriter() (err error) {
+	var (
+		outputWriter  *output.OutputWriter
+		uncoverWriter *output.OutputWriter
+		uncoverFile   *os.File
+	)
+
+	outputWriter, err = output.NewOutputWriter()
+	if err != nil {
+		return err
+	}
+	if !(r.options.HTML || r.options.CSV) {
+		outputWriter.AddWriters(os.Stdout)
+	}
+	if r.options.Output != "" {
+		switch {
+		case r.options.CSV:
+			csvWriter, err := output.NewCSVWriter(r.options.Output)
+			if err != nil {
+				return err
+			}
+			outputWriter.AddWriters(csvWriter)
+		case r.options.HTML:
+			htmlWriter, err := output.NewHTMLWriter(r.options.Output)
+			if err != nil {
+				return err
+			}
+			outputWriter.AddWriters(htmlWriter)
+		}
+	}
+
+	if uncoverWriter, err = output.NewOutputWriter(); err != nil {
+		return err
+	}
+
+	f := func(path string) error {
+
+		switch {
+		case r.options.CSV:
+			csvWriter, err := runner.NewCSVWriter(path)
+			if err != nil {
+				return err
+			}
+			uncoverWriter.AddWriters(csvWriter)
+		default:
+
+			if uncoverFile, err = fileutil.OpenOrCreateFile(path); err != nil {
+				return err
+			}
+
+			uncoverWriter.AddWriters(uncoverFile)
+		}
+		return nil
+	}
+
+	if r.options.SubdomainOutput != "" {
+		if err = f(r.options.SubdomainOutput); err != nil {
+			return err
+		}
+
+	}
+	if r.options.UncoverOutput != "" {
+		if err = f(r.options.UncoverOutput); err != nil {
+			return err
+		}
+	}
+
+	r.outputWriter = outputWriter
+	r.uncoverWriter = uncoverWriter
+
 	return nil
+
 }
-func (r *Runner) Close() {
-	func() {
-		r.dialer.Close()
-		r.limiter.Stop()
-		close(r.outputResult)
-	}()
-}
-func (r *Runner) processRetry(t string, paths []string, protocol string, ctx context.Context, wg *sizedwaitgroup.SizedWaitGroup) {
-	protocols := []string{protocol}
-	if protocol == HTTPandHTTPS {
-		protocols = []string{HTTPS, HTTP}
+
+func (r *Runner) aliveHosts(targets []*input.Target) {
+	if r.options.DisableAliveCheck {
+		gologger.Info().Msgf("Skipping alive check on input host")
+		r.targets = targets
+		return
 	}
-	targets := []string{t}
-	wg2 := sizedwaitgroup.New(3)
-	for _, protocol := range protocols {
-		for _, t := range targets {
-			wg2.Add()
-			go func(protocol string, target string, paths []string) {
-				defer wg2.Done()
-				// 初始化目录结构层次目标
-				targetsMap := make(map[int][]string)
-				targetsMap[0] = append(targetsMap[0], target)
-				backslashesNum := 0
-				i := 0
-				parse, err := url.Parse(fmt.Sprintf("%s://%s", protocol, target))
-				if err == nil {
-					if strings.Trim(parse.Path, "/") != "" {
-						backslashesNum = strings.Count(strings.Trim(parse.Path, "/"), "/") + 1
-					}
-				}
-			retries:
-				for _, t := range targetsMap[i] {
-					for _, path := range util.RemoveDuplicateStrings(paths) {
-						wg.Add()
-						go func(target string, protocol string, path string) {
-							defer wg.Done()
-							mapResult, err := r.analyze(protocol, result.Target{Host: target}, path, r.Cfg.Options.Method[0])
-							if err != nil {
-								gologger.Warning().Msgf("An error occurred: %s", err)
-								return
-							}
-							if mapResult == nil || mapResult["result"] == nil || mapResult["check"] == nil {
-								return
-							}
-							check := mapResult["check"].(bool)
-							targetResult := mapResult["result"].(*result.Result)
-							if check {
-								return
-							}
-							if r.Cfg.Options.ResultBack != nil {
-								r.Cfg.Options.ResultBack(targetResult)
-								return
-							}
-							r.outputResult <- targetResult
-							if r.Cfg.Options.FindOtherDomain && targetResult.Links != nil {
-								for _, link := range targetResult.Links {
-									go func(proto string, target string) {
-										r.process(target, "", proto, []string{"GET"}, ctx, wg)
-									}(util.GetProtocolAndHost(link))
-								}
-							}
-							// 判断 是否目录
-							ok1 := (targetResult.Status == 301) && !strings.HasSuffix(path, "/") && strings.Contains(targetResult.Header["Location"][0], fmt.Sprintf("%s/", targetResult.Path))
-							ok2 := targetResult.Status == 200 && strings.HasSuffix(path, "/")
-							if !(ok1 || ok2) || (strings.Contains(path, "%5C") || strings.Contains(path, "..")) {
-								return
-							}
+	disableCheck := true
 
-							target = targetResult.HTTPurl.Host
-							path = targetResult.Path
-							if !strings.HasSuffix(path, "/") {
-								path = fmt.Sprintf("%s/", path)
-							}
-							//fmt.Println("[+]", target, path)
-							l := strings.Count(strings.Trim(path, "/"), "/")
-							if l+1-backslashesNum > r.Cfg.Options.RecursiveRunTimes {
-								return
-							}
-							joinPath, err := url.JoinPath(target, path)
-							if err != nil {
-								target = strings.TrimRight(target, "/")
-								if !strings.HasPrefix(path, "/") {
-									path = fmt.Sprintf("/%s", path)
-								}
-								joinPath = fmt.Sprintf("%s%s", target, path)
-							}
-							r.Cfg.Rwm.Lock()
-							targetsMap[l+1-backslashesNum] = append(targetsMap[l+1-backslashesNum], joinPath)
-							r.Cfg.Rwm.Unlock()
-						}(t, protocol, path)
-					}
-				}
-				wg.Wait()
-
-				targetsMap[i+1] = util.RemoveDuplicateStrings(targetsMap[i+1])
-				if i+1 <= r.Cfg.Options.RecursiveRunTimes && len(targetsMap[i+1]) > 0 {
-					i++
-					goto retries
-				}
-				count := 0
-				for c, v := range targetsMap {
-					if c == 0 {
-						continue
-					}
-					count += len(util.RemoveDuplicateStrings(v))
-				}
-				gologger.Info().Msgf("%s has completed %d rounds of scanning and found a total of %d directories", target, r.Cfg.Options.RecursiveRunTimes, count)
-				for c, v := range targetsMap {
-					if c == 0 {
-						continue
-					}
-					for _, vv := range util.RemoveDuplicateStrings(v) {
-						gologger.Info().Msgf("%s://%s", protocol, vv)
-					}
-				}
-				return
-
-			}(protocol, t, paths)
-
+	for _, target := range targets {
+		if target.Scheme == input.HTTPorHTTPS {
+			disableCheck = false
+			break
 		}
 	}
-	wg2.Wait()
-}
-func (r *Runner) process(t, path string, protocol string, methods []string, ctx context.Context, wg *sizedwaitgroup.SizedWaitGroup) {
-	protocols := []string{protocol}
-	if protocol == HTTPandHTTPS {
-		protocols = []string{HTTPS, HTTP}
+
+	if disableCheck {
+		r.targets = targets
+		return
 	}
-	for target := range r.targets(t) {
-		for _, method := range methods {
-			for _, proto := range protocols {
-				wg.Add()
-				go func(target result.Target, path, protocol, method string) {
 
-					defer wg.Done()
+	gologger.Info().Msgf("Running check alive on input host")
 
-					mapResult, err := r.analyze(protocol, target, path, method)
-					if err != nil {
-						gologger.Warning().Msgf("An error occurred: %s", err)
-						return
-					}
+	var (
+		alives []*input.Target
+	)
 
-					if mapResult == nil || mapResult["result"] == nil || mapResult["check"] == nil {
-						return
-					}
-					check := mapResult["check"].(bool)
-					targetResult := mapResult["result"].(*result.Result)
-					if check {
-						return
-					}
-					if r.Cfg.Options.ResultBack != nil {
-						r.Cfg.Options.ResultBack(targetResult)
-					}
-					r.outputResult <- targetResult
-					if !r.Cfg.Options.FindOtherDomain || targetResult.Links == nil {
-						return
-					}
-					for _, link := range targetResult.Links {
-						go func(proto string, target string) {
-							r.process(target, "", proto, []string{"GET"}, ctx, wg)
-						}(util.GetProtocolAndHost(link))
-					}
+	wg := sizedwaitgroup.New(-1)
 
-				}(target, path, proto, method)
+	for _, target := range targets {
+		if target.Scheme != input.HTTPorHTTPS {
+			r.scanner.Lock()
+			alives = append(alives, target)
+			r.scanner.Unlock()
+			return
+		}
+		wg.Add()
+		go func(target *input.Target) {
+			defer wg.Done()
+			if alive := r.scanner.Alive(target); alive != nil {
+				r.scanner.Lock()
+				alives = append(alives, alive)
+				r.scanner.Unlock()
 			}
-		}
+		}(target)
 	}
+	wg.Wait()
+
+	r.targets = alives
+
+	gologger.Info().Msgf("Found %d URL of alive hosts", len(r.targets))
 
 	return
 }

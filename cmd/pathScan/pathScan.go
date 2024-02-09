@@ -3,11 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
-	"github.com/wjlin0/pathScan/pkg/runner"
-	"github.com/wjlin0/pathScan/pkg/util"
+	"github.com/wjlin0/pathScan/v2/pkg/runner"
 	"os"
 	"os/signal"
-	"path/filepath"
 )
 
 func main() {
@@ -24,12 +22,6 @@ func main() {
 	go func() {
 		for range c {
 			gologger.Info().Msg("ctrl+c press: exiting")
-			filename := util.RandStr(30) + ".cfg"
-			fmt.Println(filepath.Join(runner.DefaultResumeFolderPath(), filename))
-			err := run.Cfg.MarshalResume(filename)
-			if err != nil {
-				gologger.Error().Msgf("unable to create resume file: %s", err.Error())
-			}
 			run.Close()
 			os.Exit(-1)
 		}
@@ -37,4 +29,5 @@ func main() {
 	if err := run.RunEnumeration(); err != nil {
 		gologger.Fatal().Msgf("unable to run enumeration: %s", err.Error())
 	}
+	run.Close()
 }

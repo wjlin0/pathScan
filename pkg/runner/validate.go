@@ -1,62 +1,145 @@
 package runner
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/pkg/errors"
+	errorutil "github.com/projectdiscovery/utils/errors"
+	fileutil "github.com/projectdiscovery/utils/file"
 	httputil "github.com/projectdiscovery/utils/http"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/wjlin0/pathScan/pkg/util"
-	"github.com/wjlin0/uncover"
+	"github.com/wjlin0/pathScan/v2/pkg/types"
+	proxyutils "github.com/wjlin0/utils/proxy"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
-func (o *Options) ValidateFunc() error {
-	if o.RateLimit <= 0 && o.Threads <= 0 {
-		return errors.New("没有正确的线程次数")
-	}
-	if o.Timeout <= 0 {
-		return errors.New("时间不能小于0")
-	}
-	for _, m := range o.Method {
-		if !stringsutil.ContainsAny(m, httputil.AllHTTPMethods()...) {
-			return fmt.Errorf("error method %s", m)
-		}
+func ValidateRunEnumeration(options *types.Options) error {
+	var (
+		err error
+	)
+
+	// loading the proxy server list from file or cli and test the connectivity
+	if err = loadProxyServers(options); err != nil {
+		return err
 	}
 
-	if o.SkipHash != "" || o.GetHash {
-		if _, err := util.GetHash([]byte("1"), o.SkipHashMethod); err != nil {
+	for _, m := range options.Method {
+		if !stringsutil.ContainsAny(m, httputil.AllHTTPMethods()...) {
+			return fmt.Errorf("not supported method: %s", m)
+		}
+	}
+	for i, _ := range options.Method {
+		options.Method[i] = strings.ToUpper(options.Method[i])
+	}
+	if !sliceutil.ContainsItems(httputil.AllHTTPMethods(), options.Method) {
+		return fmt.Errorf("not supported method: %s", options.Method)
+	}
+	if options.SkipHash != "" || options.GetHash {
+		if _, err = util.GetHash([]byte("1"), options.SkipHashMethod); err != nil {
 			return err
 		}
 	}
-	if o.GetHash && len(o.Url) == 0 {
-		return errors.New("get hash need url")
+	if options.GetHash && len(options.URL) == 0 {
+		return errors.New("get-hash need url")
 	}
-	if (o.Csv && o.Html) || (o.Csv && o.Silent) || (o.Html && o.Silent) {
-		// 英文提示
-		return errors.New("csv, html and silent cannot be used at the same time")
+
+	if (options.CSV && options.HTML) || (options.CSV && options.Silent) || (options.HTML && options.Silent) {
+		return errors.New("silent output can't be used with csv or html")
 	}
-	if o.Subdomain && len(o.SubdomainQuery) < 1 {
+
+	if options.Subdomain && options.Uncover {
+		return errors.New("subdomain and uncover can't be used at the same time")
+	}
+
+	if options.Subdomain && len(options.SubdomainQuery) < 1 {
 		return errors.New("subdomain need subdomain-query")
 	}
-	if o.Subdomain && o.Path == nil {
-		o.Path = []string{"/"}
-	}
-	if o.Subdomain && o.SubdomainEngine == nil {
-		o.SubdomainEngine = uncover.AllAgents()
+
+	if options.Uncover && len(options.UncoverQuery) < 1 {
+		return errors.New("uncover need uncover-query")
 	}
 
-	if o.Uncover && o.UncoverEngine == nil {
-		o.UncoverEngine = []string{"fofa"}
-	}
-	if o.Method == nil {
-		o.Method = []string{"GET"}
+	f := func(path string) (output string, err error) {
+		file, err := os.Stat(path)
+		output = path
+		if err == nil && file.IsDir() {
+			output = filepath.Join(output, "output."+options.OutputType())
+		} else if os.IsNotExist(err) {
+			err = fileutil.CreateFolder(filepath.Dir(output))
+			if err != nil {
+				return "", err
+			}
+		}
+
+		return output, nil
 	}
 
-	var resolvers []string
-	for _, resolver := range o.Resolvers {
-		resolvers = append(resolvers, resolver)
+	if options.Output != "" {
+		if options.Output, err = f(options.Output); err != nil {
+			return err
+		}
 	}
 
-	o.Resolvers = resolvers
+	if options.SubdomainOutput != "" {
 
+		if options.SubdomainOutput, err = f(options.SubdomainOutput); err != nil {
+			return err
+		}
+	}
+
+	if options.UncoverOutput != "" {
+		if options.UncoverOutput, err = f(options.UncoverOutput); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func loadProxyServers(options *types.Options) error {
+	var (
+		file       *os.File
+		err        error
+		aliveProxy string
+		proxyURL   *url.URL
+	)
+
+	if len(options.Proxy) == 0 {
+		return nil
+	}
+	proxyList := []string{}
+	for _, p := range options.Proxy {
+		if fileutil.FileExists(p) {
+			if file, err = os.Open(p); err != nil {
+				return fmt.Errorf("could not open proxy file: %w", err)
+			}
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				if proxy := scanner.Text(); strings.TrimSpace(proxy) == "" {
+					continue
+				} else {
+					proxyList = append(proxyList, proxy)
+				}
+
+			}
+		} else {
+			proxyList = append(proxyList, p)
+		}
+	}
+	aliveProxy, err = proxyutils.GetAnyAliveProxy(options.HttpTimeout, proxyList...)
+	if err != nil {
+		return err
+	}
+	proxyURL, err = url.Parse(aliveProxy)
+	if err != nil {
+		return errorutil.WrapfWithNil(err, "failed to parse proxy got %v", err)
+	}
+	types.ProxyURL = proxyURL.String()
 	return nil
 }

@@ -1,12 +1,12 @@
 package runner
 
 func (r *Runner) IsRunPathScanMode() bool {
-	return (len(r.paths) > 0 && len(r.targets_) > 0 && !r.Cfg.Options.Uncover && !r.Cfg.Options.Subdomain) || r.Cfg.Options.RecursiveRun
+	return len(r.targets) > 1 && !r.options.Uncover && !r.options.Subdomain
 }
 
 func (r *Runner) IsRunUncoverMode() bool {
-	return r.Cfg.Options.Uncover
+	return r.options.Uncover
 }
 func (r *Runner) IsRunSubdomainMode() bool {
-	return r.Cfg.Options.Subdomain
+	return r.options.Subdomain
 }

@@ -1,4 +1,4 @@
-package runner
+package scanner
 
 import (
 	"bytes"
@@ -12,8 +12,6 @@ import (
 	"regexp"
 	"strings"
 )
-
-// Credits: https://gist.github.com/zhangbaohe/c691e1da5bbdc7f41ca5
 
 // Decodegbk converts GBK to UTF-8
 func Decodegbk(s []byte) ([]byte, error) {
@@ -55,7 +53,7 @@ func DecodeKorean(s []byte) ([]byte, error) {
 
 var reContentType *regexp.Regexp = regexp.MustCompile(`(?im)\s*charset="(.*?)"|charset=(.*?)"\s*`)
 
-// ExtractTitle from a response
+// DecodeData ExtractTitle from a response
 func DecodeData(data []byte, headers http.Header) ([]byte, error) {
 	// Non UTF-8
 	if contentTypes, ok := headers["Content-Type"]; ok {
