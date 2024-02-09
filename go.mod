@@ -1,8 +1,5 @@
 module github.com/wjlin0/pathScan/v2
 
-//replace github.com/wjlin0/utils => /Users/wjl/Desktop/project/code/utils
-replace github.com/wjlin0/uncover => /Users/wjl/Desktop/project/code/uncover
-
 go 1.21
 
 require (
@@ -27,7 +24,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/stretchr/testify v1.8.4
 	github.com/wjlin0/pathScan v1.5.4
-	github.com/wjlin0/uncover v1.0.8
+	github.com/wjlin0/uncover v1.0.9
 	github.com/wjlin0/utils v0.0.5
 	golang.org/x/net v0.18.0
 	golang.org/x/oauth2 v0.11.0
