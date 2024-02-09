@@ -298,6 +298,7 @@ func (r *Runner) setEventWriter() (err error) {
 			if err != nil {
 				return err
 			}
+
 			uncoverWriter.AddWriters(csvWriter)
 		default:
 

@@ -381,8 +381,8 @@ github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222 h1:h2Jiz
 github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222/go.mod h1:s41lQh6dIsDWIC1OWh7ChWJXLH0zkJ9KHZVqA7vHyuQ=
 github.com/wjlin0/pathScan v1.5.0 h1:BryByF4FTbiUfuH7Cn3TPnklug/KydY+qNsDV9NyhYY=
 github.com/wjlin0/pathScan v1.5.0/go.mod h1:JjFg5C1DySORlhtNhnfN+X3qEQ4thWauKR+uS8HCl8M=
-github.com/wjlin0/uncover v1.0.9 h1:8h8doWaFGd0dkWEQ81MIHbMPsInaoIETWyHkE0hYJn8=
-github.com/wjlin0/uncover v1.0.9/go.mod h1:8s6slnc8d8WcboPbAmy3lK/uRhgujrMQYyAP+lmttVY=
+github.com/wjlin0/uncover v1.1.0 h1:d6d0z2TFOxyw3ajYpM9Kav2DBlqmSQzgQaxCPPcDwic=
+github.com/wjlin0/uncover v1.1.0/go.mod h1:8s6slnc8d8WcboPbAmy3lK/uRhgujrMQYyAP+lmttVY=
 github.com/wjlin0/utils v0.0.5 h1:cZEc6AYKg0iZsnrLh+Fq94NSiLhczahwf4dBPgPd+Jo=
 github.com/wjlin0/utils v0.0.5/go.mod h1:WqBW4L8ZnURF+uwxcF306dltiIFiKhchlMecrfzJzKY=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=

@@ -21,7 +21,7 @@ require (
 	github.com/projectdiscovery/utils v0.0.77
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/stretchr/testify v1.8.4
-	github.com/wjlin0/uncover v1.0.9
+	github.com/wjlin0/uncover v1.1.0
 	github.com/wjlin0/utils v0.0.5
 	golang.org/x/net v0.18.0
 	golang.org/x/text v0.14.0
