@@ -12,10 +12,10 @@ const (
                __   __    ____               
    ___  ___ _ / /_ / /   / __/____ ___ _ ___ 
   / _ \/ _  // __// _ \ _\ \ / __// _  // _ \
- / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/  v1.5.4
+ / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/
 /_/
 `
-	Version               = `2.0.0`
+	Version               = `2.0.1`
 	userName              = "wjlin0"
 	pathScanMatchRepoName = "pathScan-match"
 	pathScanRepoName      = "pathScan"

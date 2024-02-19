@@ -11,14 +11,14 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/minio/selfupdate v0.6.1-0.20230907112617-f11e74f84ca7
 	github.com/pkg/errors v0.9.1
-	github.com/projectdiscovery/fastdialer v0.0.56
+	github.com/projectdiscovery/fastdialer v0.0.57
 	github.com/projectdiscovery/goflags v0.1.38
 	github.com/projectdiscovery/gologger v1.1.12
 	github.com/projectdiscovery/mapcidr v1.1.16
 	github.com/projectdiscovery/nuclei/v2 v2.9.13
 	github.com/projectdiscovery/ratelimit v0.0.19
-	github.com/projectdiscovery/retryablehttp-go v1.0.45
-	github.com/projectdiscovery/utils v0.0.77
+	github.com/projectdiscovery/retryablehttp-go v1.0.46
+	github.com/projectdiscovery/utils v0.0.78
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/stretchr/testify v1.8.4
 	github.com/wjlin0/uncover v1.1.0
@@ -100,11 +100,11 @@ require (
 	github.com/projectdiscovery/dsl v0.0.21 // indirect
 	github.com/projectdiscovery/fasttemplate v0.0.2 // indirect
 	github.com/projectdiscovery/gostruct v0.0.1 // indirect
-	github.com/projectdiscovery/hmap v0.0.36 // indirect
+	github.com/projectdiscovery/hmap v0.0.37 // indirect
 	github.com/projectdiscovery/httpx v1.3.4 // indirect
 	github.com/projectdiscovery/networkpolicy v0.0.7 // indirect
 	github.com/projectdiscovery/rawhttp v0.1.18 // indirect
-	github.com/projectdiscovery/retryabledns v1.0.53 // indirect
+	github.com/projectdiscovery/retryabledns v1.0.54 // indirect
 	github.com/projectdiscovery/tlsx v1.1.3 // indirect
 	github.com/quic-go/quic-go v0.38.1 // indirect
 	github.com/refraction-networking/utls v1.5.4 // indirect
