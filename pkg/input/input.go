@@ -69,7 +69,7 @@ func NewTarget(target string, methods []string, headers map[string]interface{}, 
 	if strings.Contains(host, "/") {
 		index := strings.Index(host, "/")
 		magicPath = host[index:]
-		host = host[:index-1]
+		host = host[:index]
 	}
 
 	// 处理 每个path 的正确性,并去重
