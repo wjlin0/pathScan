@@ -27,15 +27,15 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 ```
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
-- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.1/pathScan_2.0.1_macOS_arm64.zip)
+- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.2/pathScan_2.0.2_macOS_arm64.zip)
 
-- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.1/pathScan_2.0.1_macOS_amd64.zip)
+- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.2/pathScan_2.0.2_macOS_amd64.zip)
 
-- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.1/pathScan_2.0.1_linux_amd64.zip)
+- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.2/pathScan_2.0.2_linux_amd64.zip)
 
-- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.1/pathScan_2.0.1_windows_amd64.zip)
+- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.2/pathScan_2.0.2_windows_amd64.zip)
 
-- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.1/pathScan_2.0.1_windows_386.zip)
+- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.2/pathScan_2.0.2_windows_386.zip)
 
 
 # 用法
@@ -44,7 +44,7 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 pathScan -h
 ```
 ```yaml
-pathScan 2.0.1 Go 扫描、信息收集工具
+pathScan 2.0.2 Go 扫描、信息收集工具
 
 Usage:
   pathScan [flags]
