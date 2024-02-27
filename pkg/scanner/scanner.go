@@ -446,6 +446,8 @@ func (scanner *Scanner) scanByOperators(requestOrigin *retryablehttp.Request, re
 					data["body"] = resp.RawData
 					data["status_code"] = resp.StatusCode
 					data["header"] = resp.RawHeaders
+					data["response"] = resp.Raw
+					data["raw"] = resp.Raw
 					execute, b := operator.Execute(data, match)
 					if b && !(len(execute) == 1 && execute[0] == "") {
 						scanner.Lock()

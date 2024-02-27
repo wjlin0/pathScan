@@ -83,9 +83,19 @@ func (r *Runner) RunEnumeration() error {
 		)
 
 		for c := range scanUncover {
-			targets = append(targets, input.NewTarget(c, r.options.Method, handlerHeaders(r.options), handlerPaths(r.options), r.options.Body))
+			target := input.NewTarget(c, r.options.Method, handlerHeaders(r.options), handlerPaths(r.options), r.options.Body)
+			found := false
+		out:
+			for _, t := range targets {
+				if t.IsDuplicate(target) {
+					found = true
+					break out
+				}
+			}
+			if !found {
+				targets = append(targets, target)
+			}
 		}
-
 		r.aliveHosts(targets)
 
 		r.showNumberOfRequests()
@@ -109,7 +119,19 @@ func (r *Runner) RunEnumeration() error {
 		)
 
 		for c := range scanUncover {
-			targets = append(targets, input.NewTarget(c, r.options.Method, handlerHeaders(r.options), handlerPaths(r.options), r.options.Body))
+			target := input.NewTarget(c, r.options.Method, handlerHeaders(r.options), handlerPaths(r.options), r.options.Body)
+			found := false
+		out3:
+			for _, t := range targets {
+				if t.IsDuplicate(target) {
+					found = true
+					break out3
+				}
+			}
+			if !found {
+				targets = append(targets, target)
+			}
+
 		}
 
 		r.aliveHosts(targets)
@@ -130,9 +152,19 @@ func (r *Runner) RunEnumeration() error {
 		)
 		ch := input.DecomposeHost(handlerTargets(options), options.Method, handlerHeaders(options), handlerPaths(options), options.Body)
 		for c := range ch {
-			targets = append(targets, c)
-		}
+			found := false
+		out2:
+			for _, target := range targets {
+				if target.IsDuplicate(c) {
+					found = true
+					break out2
+				}
+			}
+			if !found {
+				targets = append(targets, c)
+			}
 
+		}
 		r.aliveHosts(targets)
 		r.showNumberOfRequests()
 

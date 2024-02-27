@@ -71,6 +71,16 @@ func NewTarget(target string, methods []string, headers map[string]interface{}, 
 		magicPath = host[index:]
 		host = host[:index]
 	}
+	// 如果 host中有 端口号 且不是ipv6
+	if strings.Contains(host, ":") && !strings.Contains(host, "]") {
+		port := strings.Split(host, ":")[1]
+		if port == "80" && scheme == HTTP {
+			host = strings.Split(host, ":")[0]
+		}
+		if port == "443" && scheme == HTTPS {
+			host = strings.Split(host, ":")[0]
+		}
+	}
 
 	// 处理 每个path 的正确性,并去重
 	var newPaths []string
@@ -174,4 +184,25 @@ func (target *Target) Clone() *Target {
 		Paths:   target.Paths,
 		Body:    target.Body,
 	}
+}
+
+// IsDuplicate 判断target是否是重复的
+func (target *Target) IsDuplicate(target2 *Target) bool {
+
+	if target.Host != target2.Host {
+		return false
+	}
+	if target.Scheme != target2.Scheme {
+		return false
+	}
+	if !sliceutil.Equal(target.Methods, target2.Methods) {
+		return false
+	}
+	if !sliceutil.Equal(target.Paths, target2.Paths) {
+		return false
+	}
+	if target.Body != target2.Body {
+		return false
+	}
+	return true
 }

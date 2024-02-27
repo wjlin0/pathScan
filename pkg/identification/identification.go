@@ -1,6 +1,7 @@
 package identification
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -74,7 +75,11 @@ func (operators *Operators) Execute(data map[string]interface{}, match MatchFunc
 
 			if matcherCondition == matchers.ORCondition {
 				if matcher.Name != "" {
-					Name[matcher.Name] = matched
+					if !matcher.Alias || matched == nil {
+						Name[matcher.Name] = []string{fmt.Sprintf("%s:%s", operators.Name, matcher.Name)}
+					} else {
+						Name[matcher.Name] = matched
+					}
 				} else {
 					Name[operators.Name] = []string{operators.Name}
 				}
