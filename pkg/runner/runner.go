@@ -215,6 +215,7 @@ func (r *Runner) displayRunEnumeration() {
 				}
 			} else {
 				gologger.Info().Msgf("%v sucessfully updated %v -> %v (%s)", toolName, psMVersion, latestVersion, color.HiGreenString("latest"))
+				r.scanner.MergeOperators()
 			}
 		}
 

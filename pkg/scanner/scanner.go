@@ -173,6 +173,11 @@ func (scanner *Scanner) CountOperators() int {
 	return len(scanner.operators)
 }
 
+func (scanner *Scanner) MergeOperators() {
+	operators, _ := identification.NewOptions(scanner.options.MatchPath)
+	scanner.operators = operators
+}
+
 func (scanner *Scanner) Close() {
 	scanner.dialer.Close()
 	scanner.rateLimiter.Stop()
