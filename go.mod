@@ -16,7 +16,7 @@ require (
 	github.com/projectdiscovery/retryablehttp-go v1.0.52
 	github.com/projectdiscovery/utils v0.0.84
 	github.com/remeh/sizedwaitgroup v1.0.0
-	github.com/wjlin0/uncover v1.1.1
+	github.com/wjlin0/uncover v1.1.2
 	github.com/wjlin0/utils v0.0.8
 	golang.org/x/net v0.22.0
 	golang.org/x/text v0.14.0

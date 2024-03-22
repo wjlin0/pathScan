@@ -11,6 +11,7 @@ import (
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/wjlin0/pathScan/v2/pkg/types"
 	"github.com/wjlin0/pathScan/v2/pkg/util"
+	"github.com/wjlin0/uncover"
 	proxyutils "github.com/wjlin0/utils/proxy"
 	"net/url"
 	"os"
@@ -95,6 +96,17 @@ func ValidateRunEnumeration(options *types.Options) error {
 	if options.UncoverOutput != "" {
 		if options.UncoverOutput, err = f(options.UncoverOutput); err != nil {
 			return err
+		}
+	}
+
+	if options.Uncover {
+		if sliceutil.ContainsItems(uncover.DestructAgents(), options.UncoverEngine) {
+			return errors.New("uncover can't use only destruct agents")
+		}
+	}
+	if options.Subdomain {
+		if sliceutil.ContainsItems(uncover.DestructAgents(), options.SubdomainEngine) {
+			return errors.New("uncover can't use destruct agents")
 		}
 	}
 

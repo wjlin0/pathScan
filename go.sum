@@ -399,8 +399,8 @@ github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyC
 github.com/weppos/publicsuffix-go v0.13.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
 github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222 h1:h2JizvZl9aIj6za9S5AyrkU+OzIS4CetQthH/ejO+lg=
 github.com/weppos/publicsuffix-go v0.30.2-0.20230730094716-a20f9abcc222/go.mod h1:s41lQh6dIsDWIC1OWh7ChWJXLH0zkJ9KHZVqA7vHyuQ=
-github.com/wjlin0/uncover v1.1.1 h1:wSrY13ZNxsTCnkYIhrAzG0sOIs1hpYJypV2IWD56TdM=
-github.com/wjlin0/uncover v1.1.1/go.mod h1:Q7B5c6oL8+RUxVf+7cSI1OKKTQcjHtQWYrHWnjzct6E=
+github.com/wjlin0/uncover v1.1.2 h1:g/K1dwVB/PT/IB80DwuUSU0mGqOOHtU+FbV4r8Uq41M=
+github.com/wjlin0/uncover v1.1.2/go.mod h1:z2z3uUBefmjOcIppBoN3mCLDNhN4PUECwbQOELNwg00=
 github.com/wjlin0/utils v0.0.8 h1:xy9xzycwgeg7PONmBmU2+h2LuSnWqd23n36BNjCCECQ=
 github.com/wjlin0/utils v0.0.8/go.mod h1:MX73+JHTNwbTxx7RvWy/NFEeo8O0xFWa5QhY5ds3tnQ=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=

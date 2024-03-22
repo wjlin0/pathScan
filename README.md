@@ -27,15 +27,15 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 ```
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
-- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.4/pathScan_2.0.4_macOS_arm64.zip)
+- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_macOS_arm64.zip)
 
-- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.4/pathScan_2.0.4_macOS_amd64.zip)
+- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_macOS_amd64.zip)
 
-- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.4/pathScan_2.0.4_linux_amd64.zip)
+- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_linux_amd64.zip)
 
-- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.4/pathScan_2.0.4_windows_amd64.zip)
+- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_windows_amd64.zip)
 
-- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.4/pathScan_2.0.4_windows_386.zip)
+- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_windows_386.zip)
 
 
 # 用法
@@ -44,7 +44,7 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 pathScan -h
 ```
 ```yaml
-pathScan 2.0.4 Go 扫描、信息收集工具
+pathScan 2.0.5 Go 扫描、信息收集工具
 
 Usage:
   pathScan [flags]
@@ -65,7 +65,7 @@ Flags:
   -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
   -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
   -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
-  -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binaryedge github fullhunt zone0 shodan-idb anubis-sitedossier-spider fofa-spider bing-spider chinaz-spider google-spider ip138-spider qianxun-spider rapiddns-spider baidu-spider yahoo-spider] (default all)
+  -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binaryedge github fullhunt zone0 shodan-idb anubis-sitedossier-spider fofa-spider bing-spider chinaz-spider google-spider ip138-spider qianxun-spider rapiddns-spider baidu-spider yahoo-spider zoomeye-spider] (default all)
 
 引擎搜索模式:
   -uc, -uncover                  启用打开搜索引擎

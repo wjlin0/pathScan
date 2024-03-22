@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/projectdiscovery/gologger"
 	folderutil "github.com/projectdiscovery/utils/folder"
+	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
+	"github.com/wjlin0/uncover"
 	"github.com/wjlin0/uncover/sources"
 	"path/filepath"
 	"strings"
@@ -128,7 +130,9 @@ func (scanner *Scanner) rebaseUncover() {
 			if service.Keys.BinaryedgeToken == "" {
 				continue
 			}
-
+		}
+		if sliceutil.Contains(uncover.DestructAgents(), agent.Name()) {
+			continue
 		}
 
 		agents = append(agents, agent)

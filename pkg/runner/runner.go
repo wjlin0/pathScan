@@ -240,6 +240,15 @@ func (r *Runner) displayRunEnumeration() {
 	if !opts.DisableScanMatch {
 		gologger.Info().Msgf("PathScan-match templates loaded for current scan: %d", r.scanner.CountOperators())
 	}
+	// 输出 uncoverEngine uncoverQuery
+	if opts.Uncover {
+		gologger.Info().Msgf("Uncover engine: %s", opts.UncoverEngine)
+		gologger.Info().Msgf("Uncover query: %s", opts.UncoverQuery)
+	}
+	if opts.Subdomain {
+		gologger.Info().Msgf("Subdomain engine: %s", opts.SubdomainEngine)
+		gologger.Info().Msgf("Subdomain query: %s", opts.SubdomainQuery)
+	}
 
 }
 func (r *Runner) showNumberOfRequests() {
