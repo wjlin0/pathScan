@@ -325,6 +325,12 @@ func (r *Runner) setEventWriter() (err error) {
 				return err
 			}
 			outputWriter.AddWriters(htmlWriter)
+		default:
+			if file, err := fileutil.OpenOrCreateFile(r.options.Output); err != nil {
+				return err
+			} else {
+				outputWriter.AddWriters(file)
+			}
 		}
 	}
 
@@ -378,19 +384,6 @@ func (r *Runner) aliveHosts(targets []*input.Target) {
 		r.targets = targets
 		return
 	}
-	disableCheck := true
-
-	for _, target := range targets {
-		if target.Scheme == input.HTTPorHTTPS {
-			disableCheck = false
-			break
-		}
-	}
-
-	if disableCheck {
-		r.targets = targets
-		return
-	}
 
 	gologger.Info().Msgf("Running check alive on input host")
 
@@ -401,18 +394,12 @@ func (r *Runner) aliveHosts(targets []*input.Target) {
 	wg := sizedwaitgroup.New(-1)
 
 	for _, target := range targets {
-		if target.Scheme != input.HTTPorHTTPS {
-			r.scanner.Lock()
-			alives = append(alives, target)
-			r.scanner.Unlock()
-			return
-		}
 		wg.Add()
 		go func(target *input.Target) {
 			defer wg.Done()
 			if alive := r.scanner.Alive(target); alive != nil {
 				r.scanner.Lock()
-				alives = append(alives, alive)
+				alives = append(alives, alive...)
 				r.scanner.Unlock()
 			}
 		}(target)

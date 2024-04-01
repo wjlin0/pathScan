@@ -131,7 +131,7 @@ func ParserOptions() *types.Options {
 		gologger.Fatal().Msgf("init pathScan error: %s", err.Error())
 	}
 
-	set.SetConfigFilePath(filepath.Join(DefaultPathScanConfig, "config.yaml"))
+	set.SetConfigFilePath(filepath.Join(DefaultPathScanConfig))
 
 	_ = set.Parse()
 

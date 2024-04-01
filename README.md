@@ -27,15 +27,15 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 ```
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
-- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_macOS_arm64.zip)
+- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.6/pathScan_2.0.6_macOS_arm64.zip)
 
-- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_macOS_amd64.zip)
+- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.6/pathScan_2.0.6_macOS_amd64.zip)
 
-- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_linux_amd64.zip)
+- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.6/pathScan_2.0.6_linux_amd64.zip)
 
-- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_windows_amd64.zip)
+- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.6/pathScan_2.0.6_windows_amd64.zip)
 
-- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.5/pathScan_2.0.5_windows_386.zip)
+- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.6/pathScan_2.0.6_windows_386.zip)
 
 
 # 用法
@@ -44,7 +44,7 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 pathScan -h
 ```
 ```yaml
-pathScan 2.0.5 Go 扫描、信息收集工具
+pathScan 2.0.6 Go 扫描、信息收集工具
 
 Usage:
   pathScan [flags]
@@ -145,6 +145,7 @@ EXAMPLES:
   $ pathScan -sq example.com -silent | nuclei
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
+
 
 ```
 ## 提供API KEY 配置
@@ -312,7 +313,8 @@ func main() {
 pathScan 支持默认配置文件位于下面两个路径，它允许您在配置文件中定义任何标志并设置默认值以包括所有扫描。
 - $HOME/.config/pathScan/config.yaml
 - $HOME/.config/pathScan/provider-config.yaml
-
+# 更多用法
+- https://www.wjlin0.com/archives/1711956620976
 # 感谢
 
 - [projectdiscovery.io](https://projectdiscovery.io/#/)

@@ -29,6 +29,7 @@ type ResultEvent struct {
 	Technology    []string            `json:"technology" csv:"technology"`
 	ResponseBody  string              `json:"response" csv:"-"`
 	RequestBody   string              `json:"request" csv:"-"`
+	OriginRequest bool                `json:"originRequest" csv:"originRequest"`
 	Links         []string            `json:"-" csv:"-"`
 	Header        map[string][]string `json:"-" csv:"-"`
 }

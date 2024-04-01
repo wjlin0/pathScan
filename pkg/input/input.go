@@ -54,6 +54,8 @@ func NewTarget(target string, methods []string, headers map[string]interface{}, 
 			scheme = HTTP
 		case HTTPS:
 			scheme = HTTPS
+		case HTTPandHTTPS:
+			scheme = HTTPandHTTPS
 		default:
 			scheme = HTTPorHTTPS
 		}

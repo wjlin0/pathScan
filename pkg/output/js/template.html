@@ -136,6 +136,9 @@
       <a-descriptions-item label="响应包" :span="3">
         <pre style="white-space: pre-line;">{{ text.response }}</pre>
       </a-descriptions-item>
+      <a-descriptions-item label="是否为原始请求" :span="3">
+        <pre style="white-space: pre-line;">{{ text.originRequest }}</pre>
+      </a-descriptions-item>
     </a-descriptions>
   </a-table>
 </a-row>
@@ -226,6 +229,19 @@
           });
         }
       }},
+    { title: '是否为原始请求', dataIndex: 'originRequest', key: 'originRequest',scopedSlots: {filterDropdown: 'filterDropdown', filterIcon: 'filterIcon', customRender: 'customRender',} ,
+      onFilter: (value, record) =>
+              record.originRequest
+                      .toString()
+                      .toLowerCase()
+                      .includes(value.toLowerCase()),
+      onFilterDropdownVisibleChange: visible => {
+        if (visible) {
+          setTimeout(() => {
+            this.searchInput.focus();
+          });
+        }
+      }},
     { title: '指纹', dataIndex: 'technology', key: 'technology',scopedSlots: { customRender: 'technology' } },
   ];
 
@@ -241,7 +257,8 @@
     { title: '状态码', dataIndex: 'status', key: 'status' },
     { title: '指纹', dataIndex: 'technology', key: 'technology',},
     { title: '请求包',dataIndex: 'request',key: 'request',},
-    { title: '响应包',dataIndex: 'response',key: 'response',}
+    { title: '响应包',dataIndex: 'response',key: 'response',},
+    {title: "是否为原始请求",dataIndex: 'originRequest',key: 'originRequest'},
   ];
 
   const innerData = data;

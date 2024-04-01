@@ -288,6 +288,7 @@ retry:
 
 	if path == "/" && !scanner.options.DisableScanMatch {
 		tech = append(tech, scanner.scanByOperators(request, resp, callback)...)
+		event.OriginRequest = true
 	}
 
 	event.Technology = sliceutil.Dedupe(tech)
@@ -499,10 +500,10 @@ func (scanner *Scanner) CountOperatorsRequest() int {
 	return count
 }
 
-func (scanner *Scanner) Alive(target *input.Target) *input.Target {
+func (scanner *Scanner) Alive(target *input.Target) []*input.Target {
 	var (
-		Schemes     []string
-		aliveTarget = target.Clone()
+		Schemes      []string
+		aliveTargets []*input.Target
 	)
 	if target.Scheme == input.HTTPandHTTPS {
 		Schemes = []string{"https", "http"}
@@ -510,7 +511,7 @@ func (scanner *Scanner) Alive(target *input.Target) *input.Target {
 		Schemes = []string{target.Scheme}
 	}
 	for _, scheme := range Schemes {
-
+		aliveTarget := target.Clone()
 		originProtocol := scheme
 		if scheme == input.HTTPorHTTPS {
 			scheme = input.HTTPS
@@ -546,9 +547,10 @@ func (scanner *Scanner) Alive(target *input.Target) *input.Target {
 			continue
 		}
 		aliveTarget.Scheme = scheme
-		return aliveTarget
+		aliveTargets = append(aliveTargets, aliveTarget)
 	}
-	return nil
+
+	return aliveTargets
 }
 
 func (scanner *Scanner) checkEventSkip(event output.ResultEvent) bool {
