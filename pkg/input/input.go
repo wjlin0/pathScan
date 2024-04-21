@@ -89,6 +89,9 @@ func NewTarget(target string, methods []string, headers map[string]interface{}, 
 	for _, path := range paths {
 
 		if magicPath != "" && path != "/" {
+			if !strings.HasPrefix(path, "/") {
+				path = "/" + path
+			}
 			path = magicPath + path
 		} else if magicPath != "" && path == "/" {
 			path = magicPath
