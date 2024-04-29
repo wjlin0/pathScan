@@ -123,7 +123,7 @@ func ParserOptions() *types.Options {
     $ pathScan -ue fofa -uq 'app="tomcat"' -silent
 
 运行 pathScan 指纹探测：
-	$ pathScan -op -u https://example.com
+    $ pathScan -op -u https://example.com
 
 运行 pathScan 收集子域名 并配合 nuclei 进行自动化漏洞扫描:
     $ pathScan -sq example.com -silent | nuclei
