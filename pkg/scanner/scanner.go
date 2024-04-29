@@ -300,7 +300,7 @@ func (scanner *Scanner) ScanAutoSkipOutput(target *input.Target, writer func(eve
 
 				scanner.Lock()
 				if resp_, ok := fuzzyStatusResponse[event.Status]; ok && resp_ == nil {
-					fuzzyStatusResponse[event.Status] = resp_
+					fuzzyStatusResponse[event.Status] = resp
 				}
 				scanner.Unlock()
 				if scanner.checkEventSkip(event) {
