@@ -34,8 +34,17 @@ func ParserOptions() *types.Options {
 	set.CreateGroup("Dict", "扫描字典",
 		set.StringSliceVarP(&options.Path, "path", "ps", nil, "路径(以逗号分割)", goflags.CommaSeparatedStringSliceOptions),
 		set.StringSliceVarP(&options.PathList, "path-list", "pl", nil, "从文件中,读取路径", goflags.FileStringSliceOptions),
-		set.BoolVarP(&options.LoadDefaultDict, "load-default-dict", "ldd", false, "目标超过一个时，是否加载默认字典"),
 		set.BoolVarP(&options.LoadAPIDict, "load-api-dict", "lad", false, "是否加载api字典"),
+	)
+	set.CreateGroup("AutoPathScan", "自动过滤扫描路径模式（默认）",
+		set.StringSliceVarP(&options.BlackStatus, "black-status", "bs", goflags.StringSlice{"400", "410"}, "黑名单状态码(以逗号分割,支持从文件读取 -bs /tmp/skip-code.txt, 支持 5xx、300-399 )", goflags.FileNormalizedStringSliceOptions),
+		set.BoolVarP(&options.DisableAutoPathScan, "disable-auto-path-scan", "daps", false, "禁用自动过滤扫描路径模式"),
+		set.StringSliceVarP(&options.WafStatus, "waf-status", "ws", goflags.StringSlice{"493", "418"}, "WAF状态码(以逗号分割,支持从文件读取 -ws /tmp/skip-code.txt, 支持 5xx、300-399 ）", goflags.FileNormalizedStringSliceOptions),
+		set.StringSliceVarP(&options.FuzzyStatus, "fuzzy-status", "fs", goflags.StringSlice{"403", "404", "500", "501", "502", "503"}, "模糊状态码(以逗号分割,支持从文件读取 -fs /tmp/skip-code.txt, 支持 5xx、300-399 )", goflags.FileNormalizedStringSliceOptions),
+	)
+	set.CreateGroup("Operator", "指纹识别模式",
+		set.BoolVarP(&options.Operator, "operator", "op", false, "是否启用模版规则"),
+		set.StringVarP(&options.MatchPath, "match-file", "mf", "", "指纹文件目录或文件"),
 	)
 	set.CreateGroup("Subdomain", "子域名收集模式",
 		set.BoolVarP(&options.Subdomain, "sub", "s", false, "子域名收集"),
@@ -75,17 +84,13 @@ func ParserOptions() *types.Options {
 		set.BoolVarP(&options.GetHash, "get-hash", "gh", false, "计算hash"),
 		set.StringVarP(&options.SkipHashMethod, "skip-hash-method", "shm", "sha256", "指定hash的方法（sha256,md5,sha1）"),
 	)
-	set.CreateGroup("Matcher", "模版规则",
-		set.BoolVar(&options.Validate, "validate", false, "验证指纹文件"),
-		set.StringVarP(&options.MatchPath, "match-file", "mf", "", "指纹文件目录或文件"),
-		set.BoolVarP(&options.DisableScanMatch, "disable-scan-match", "dsm", false, "禁用指纹识别"),
-	)
 	set.CreateGroup("Config", "配置",
 		set.BoolVar(&options.DisableStdin, "no-stdin", false, "disable stdin processing"),
 		set.IntVarP(&options.RetryMax, "retries", "rs", defaultRetries, "重试"),
 		set.StringSliceVarP(&options.Proxy, "proxy", "p", nil, "代理", goflags.FileCommaSeparatedStringSliceOptions),
 		set.StringSliceVar(&options.Resolvers, "resolvers", nil, "自定义DNS列表( 文件或逗号隔开 )", goflags.FileNormalizedStringSliceOptions),
 		set.BoolVarP(&options.ErrUseLastResponse, "not-new", "nn", false, "允许重定向"),
+		set.BoolVar(&options.Validate, "validate", false, "验证指纹文件"),
 		set.BoolVarP(&options.DisableAliveCheck, "disable-alive-check", "dac", false, "跳过活跃检查"),
 		set.StringSliceVarP(&options.FindOtherDomainList, "scan-domain-list", "sdl", nil, "从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）", goflags.FileNormalizedOriginalStringSliceOptions),
 		set.BoolVarP(&options.FindOtherDomain, "scan-domain", "sd", false, "从响应中发现其他域名"),
@@ -111,14 +116,14 @@ func ParserOptions() *types.Options {
 	)
 	set.SetCustomHelpText(`EXAMPLES:
 
-运行 pathScan 扫描路径, 指定单个目标 跳过 4xx 5xx 输出:
-    $ pathScan -u https://example.com/ -sc 4xx,5xx
+运行 pathScan 扫描路径, 指定单个目标:
+    $ pathScan -u https://example.com/ 
 
 运行 pathScan 搜索引擎:
-    $ pathScan -ue fofa -uq 'app="tomcat"'
+    $ pathScan -ue fofa -uq 'app="tomcat"' -silent
 
-运行 pathScan 收集子域名 指定输出:
-    $ pathScan -sq example.com -csv -o out.csv
+运行 pathScan 指纹探测：
+	$ pathScan -op -u https://example.com
 
 运行 pathScan 收集子域名 并配合 nuclei 进行自动化漏洞扫描:
     $ pathScan -sq example.com -silent | nuclei

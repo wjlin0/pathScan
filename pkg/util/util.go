@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/go-dedup/simhash"
 	"github.com/projectdiscovery/gologger"
 	http "github.com/projectdiscovery/retryablehttp-go"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -241,6 +242,12 @@ func MatchString(reg, str string) bool {
 	compile := regexp.MustCompile(reg)
 	return compile.MatchString(str)
 }
+
+func GetSimhash(data []byte) uint64 {
+	sh := simhash.NewSimhash()
+	return sh.GetSimhash(sh.NewWordFeatureSet(data))
+}
+
 func GetHash(body []byte, method string) ([]byte, error) {
 	var h hash.Hash
 	switch method {

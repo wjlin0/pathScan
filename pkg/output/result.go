@@ -29,7 +29,6 @@ type ResultEvent struct {
 	Technology    []string            `json:"technology" csv:"technology"`
 	ResponseBody  string              `json:"response" csv:"-"`
 	RequestBody   string              `json:"request" csv:"-"`
-	OriginRequest bool                `json:"originRequest" csv:"originRequest"`
 	Links         []string            `json:"-" csv:"-"`
 	Header        map[string][]string `json:"-" csv:"-"`
 }
@@ -54,6 +53,9 @@ func (tr ResultEvent) EventToStdout() string {
 	builder := &strings.Builder{}
 	statusCode := tr.Status
 	builder.WriteString(path)
+	builder.WriteString(" [")
+	builder.WriteString(color.HiYellowString(tr.Method))
+	builder.WriteRune(']')
 	builder.WriteString(" [")
 
 	switch {
@@ -184,4 +186,19 @@ func (tr ResultEvent) CSVHeader() ([]byte, error) {
 func (tr ResultEvent) HTML() string {
 	marshal, _ := json.Marshal(tr)
 	return fmt.Sprintf("data.push(%s);", marshal)
+}
+
+func (tr ResultEvent) ContentLengthString() string {
+	// 将长度转换为大小
+	if tr.ContentLength < 1024 {
+		return fmt.Sprintf("%dB", tr.ContentLength)
+	}
+	if tr.ContentLength < 1024*1024 {
+		return fmt.Sprintf("%dKB", int(tr.ContentLength)/1024)
+	}
+	if tr.ContentLength < 1024*1024*1024 {
+		return fmt.Sprintf("%dMB", int(tr.ContentLength)/(1024*1024))
+	}
+	return fmt.Sprintf("%dGB", int(tr.ContentLength)/(1024*1024*1024))
+
 }

@@ -2,10 +2,11 @@ package runner
 
 import (
 	_ "embed"
+	"fmt"
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
 	fileutil "github.com/projectdiscovery/utils/file"
-	sliceutil "github.com/projectdiscovery/utils/slice"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/v2/pkg/input"
 	"github.com/wjlin0/pathScan/v2/pkg/output"
@@ -14,6 +15,7 @@ import (
 	"github.com/wjlin0/uncover/runner"
 	proxyutils "github.com/wjlin0/utils/proxy"
 	updateutils "github.com/wjlin0/utils/update"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -59,7 +61,6 @@ func (r *Runner) RunEnumeration() error {
 		wg = sizedwaitgroup.New(r.options.Thread)
 	)
 	r.displayRunEnumeration()
-	options := r.options
 	startTime := time.Now()
 	var (
 		err                       error
@@ -146,33 +147,32 @@ func (r *Runner) RunEnumeration() error {
 		}
 
 		wg.Wait()
-	default:
-		var (
-			targets []*input.Target
-		)
-		ch := input.DecomposeHost(handlerTargets(options), options.Method, handlerHeaders(options), handlerPaths(options), options.Body)
-		for c := range ch {
-			found := false
-		out2:
-			for _, target := range targets {
-				if target.IsDuplicate(c) {
-					found = true
-					break out2
-				}
-			}
-			if !found {
-				targets = append(targets, c)
-			}
-
+	case r.options.Operator:
+		if r.scanner.CountOperatorsRequest() == 0 {
+			return errors.New("you've selected operator mode but no operators are loaded")
 		}
-		r.aliveHosts(targets)
-		r.showNumberOfRequests()
+		r.getTarget()
+		for _, target := range r.targets {
+			wg.Add()
+			go func(target *input.Target) {
+				defer wg.Done()
+				r.scanner.ScanOperators(target, outputResultEventCallback)
+			}(target)
+		}
+		wg.Wait()
+	default:
+		r.getTarget()
+
+		callbackScan := r.scanner.ScanAutoSkipOutput
+		if r.DisableAutoPathScan() {
+			callbackScan = r.scanner.Scan
+		}
 
 		for _, target := range r.targets {
 			wg.Add()
 			go func(target *input.Target) {
 				defer wg.Done()
-				r.scanner.Scan(target, outputResultEventCallback)
+				callbackScan(target, outputResultEventCallback)
 			}(target)
 		}
 		wg.Wait()
@@ -180,6 +180,29 @@ func (r *Runner) RunEnumeration() error {
 
 	gologger.Info().Msgf("This task takes %v seconds", time.Since(startTime).Seconds())
 	return nil
+}
+func (r *Runner) getTarget() {
+	var (
+		targets []*input.Target
+	)
+	options := r.options
+	ch := input.DecomposeHost(handlerTargets(options), options.Method, handlerHeaders(options), handlerPaths(options), options.Body)
+	for c := range ch {
+		found := false
+	out1:
+		for _, target := range targets {
+			if target.IsDuplicate(c) {
+				found = true
+				break out1
+			}
+		}
+		if !found {
+			targets = append(targets, c)
+		}
+
+	}
+	r.aliveHosts(targets)
+	r.showNumberOfRequests()
 }
 func (r *Runner) displayRunEnumeration() {
 
@@ -237,8 +260,9 @@ func (r *Runner) displayRunEnumeration() {
 			gologger.Info().Msgf("Using %s as socket proxy server", parse.String())
 		}
 	}
-	if !opts.DisableScanMatch {
-		gologger.Info().Msgf("PathScan-match templates loaded for current scan: %d", r.scanner.CountOperators())
+	if opts.Operator {
+		gologger.Info().Msgf("Running in operator mode. Loaded %d operators", r.scanner.CountOperators())
+
 	}
 	// 输出 uncoverEngine uncoverQuery
 	if opts.Uncover {
@@ -253,21 +277,25 @@ func (r *Runner) displayRunEnumeration() {
 }
 func (r *Runner) showNumberOfRequests() {
 	num := 0
-	for _, target := range r.targets {
-		tmpNum := 0
-		if target.Scheme == input.HTTPandHTTPS {
-			tmpNum = 2 * len(target.Paths) * len(target.Methods)
-		} else {
-			tmpNum = len(target.Paths) * len(target.Methods)
+	switch {
+	case r.IsRunOperatorMode():
+		for _, _ = range r.targets {
+			num += r.scanner.CountOperatorsRequest()
 		}
-		if sliceutil.Contains(target.Paths, "/") && !r.options.DisableScanMatch {
-			tmpNum += r.scanner.CountOperatorsRequest()
-		}
+	default:
+		for _, target := range r.targets {
+			tmpNum := 0
+			if target.Scheme == input.HTTPandHTTPS {
+				tmpNum = 2 * len(target.Paths) * len(target.Methods)
+			} else {
+				tmpNum = len(target.Paths) * len(target.Methods)
+			}
 
-		num += tmpNum
+			num += tmpNum
+
+		}
 
 	}
-
 	gologger.Info().Msgf("Total number of Requests: %d", num)
 }
 func (r *Runner) getEventCallback() (uncoverEvent func(event string), pathScanEvent func(event output.ResultEvent), err error) {
@@ -287,6 +315,36 @@ func (r *Runner) getEventCallback() (uncoverEvent func(event string), pathScanEv
 			r.outputWriter.WriteHTMLData(event)
 		case r.options.Silent:
 			r.outputWriter.WriteString(event.String())
+		case r.IsRunPathScanMode():
+			builder := strings.Builder{}
+			// 写入当前时间 [19:29:29]
+			builder.WriteString(time.Now().Format("[15:04:05] "))
+			// 写入状态码
+			builder.WriteString(fmt.Sprintf("%d - ", event.Status))
+
+			builder.WriteString(fmt.Sprintf("%6s - ", event.ContentLengthString()))
+
+			builder.WriteString(fmt.Sprintf("%s", event.String()))
+			if event.Title != "" {
+				builder.WriteString(fmt.Sprintf(" - %s", event.Title))
+			}
+
+			statusCode := event.Status
+			put := ""
+			switch {
+			case statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices:
+				put = color.HiGreenString(builder.String())
+			case statusCode >= http.StatusMultipleChoices && statusCode < http.StatusBadRequest:
+				put = color.HiYellowString(builder.String())
+			case statusCode >= http.StatusBadRequest && statusCode < http.StatusInternalServerError:
+				put = color.HiMagentaString(builder.String())
+			case statusCode >= http.StatusInternalServerError:
+				put = color.HiRedString(builder.String())
+			default:
+				put = color.HiYellowString(builder.String())
+			}
+
+			r.outputWriter.WriteString(put)
 		default:
 			r.outputWriter.WriteString(event.EventToStdout())
 		}
@@ -379,9 +437,24 @@ func (r *Runner) setEventWriter() (err error) {
 }
 
 func (r *Runner) aliveHosts(targets []*input.Target) {
-	if r.options.DisableAliveCheck {
+	if r.DisableAliveCheck() {
 		gologger.Info().Msgf("Skipping alive check on input host")
+		var targetsChangle []*input.Target
+		for _, target := range targets {
+			temp := target.Clone()
+			if target.Scheme == input.HTTPorHTTPS {
+				temp.Scheme = input.HTTPS
+			} else if target.Scheme == input.HTTPandHTTPS {
+				t := target.Clone()
+				t.Scheme = input.HTTP
+				temp.Scheme = input.HTTPS
+				targetsChangle = append(targetsChangle, t)
+			}
+			targetsChangle = append(targetsChangle, temp)
+		}
+
 		r.targets = targets
+
 		return
 	}
 

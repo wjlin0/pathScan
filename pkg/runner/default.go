@@ -73,11 +73,6 @@ func DefaultOptions(options *types.Options) {
 		options.Path = []string{"/"}
 	}
 
-	// 如果是 silent 模式 则 不使用 scan match
-	if options.Silent {
-		options.DisableScanMatch = true
-	}
-
 	if options.Subdomain {
 		options.UncoverField = "host"
 		options.FindOtherDomain = true

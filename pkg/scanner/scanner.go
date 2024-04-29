@@ -12,7 +12,6 @@ import (
 	"github.com/projectdiscovery/retryablehttp-go"
 	"github.com/projectdiscovery/utils/generic"
 	httputil "github.com/projectdiscovery/utils/http"
-	sliceutil "github.com/projectdiscovery/utils/slice"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/wjlin0/pathScan/v2/pkg/identification"
@@ -114,7 +113,6 @@ func NewScanner(options *types.Options) (*Scanner, error) {
 	client = retryablehttp.NewClient(clientOptions)
 
 	operators, _ = identification.NewOptions(options.MatchPath)
-
 	for _, skip := range options.SkipBodyRegex {
 		regex, err := regexp.Compile(skip)
 		if err != nil {
@@ -199,7 +197,7 @@ func (scanner *Scanner) Scan(target *input.Target, writer func(event output.Resu
 				wg.Add()
 				go func(target *input.Target, scheme, method, path string) {
 					defer wg.Done()
-					event, err := scanner.scanURL(target, scheme, method, path, writer)
+					event, err := scanner.scanURL(target, scheme, method, path)
 					if err != nil {
 						gologger.Debug().Msgf("Could not scan %s %s://%s%s: %s", method, scheme, target.Host, path, err)
 						return
@@ -239,8 +237,130 @@ func (scanner *Scanner) Scan(target *input.Target, writer func(event output.Resu
 
 	wg.Wait()
 }
+func (scanner *Scanner) ScanAutoSkipOutput(target *input.Target, writer func(event output.ResultEvent)) {
+	var (
+		Schemes []string
+		wg      = sizedwaitgroup.New(-1)
+	)
+	if target.Scheme == input.HTTPandHTTPS {
+		Schemes = []string{"https", "http"}
+	} else {
+		Schemes = []string{target.Scheme}
+	}
+	for _, scheme := range Schemes {
+		// 请求 / 路径 和 随机请求一个路径确定过滤规则
+		wg.Add()
+		wg.Add()
+		var (
+			err       error
+			randResp  *Response
+			indexResp *Response
+			success   = true
+		)
+		go func() {
+			defer wg.Done()
+			randResp, _, err = scanner.scanURLReturnResp(target.Clone(), scheme, "GET", fmt.Sprintf("/%s", util.RandStr(20)))
+			if err != nil {
+				scanner.Lock()
+				success = false
+				scanner.Unlock()
+			}
+		}()
 
-func (scanner *Scanner) scanURL(target *input.Target, scheme, method, path string, callback func(event output.ResultEvent)) (event output.ResultEvent, err error) {
+		go func() {
+			defer wg.Done()
+			var (
+				event output.ResultEvent
+			)
+			indexResp, event, err = scanner.scanURLReturnResp(target.Clone(), scheme, "GET", fmt.Sprintf("/"))
+			if err != nil {
+				scanner.Lock()
+				success = false
+				scanner.Unlock()
+			}
+			writer(event)
+		}()
+		wg.Wait()
+		if !success {
+			continue
+		}
+		fuzzyStatusResponse := make(map[int]*Response)
+		for _, status := range checkStatus(scanner.options.FuzzyStatus) {
+			fuzzyStatusResponse[status] = nil
+		}
+		for _, path := range target.Paths {
+			wg.Add()
+			go func(target *input.Target, scheme, method, path string) {
+				defer wg.Done()
+				resp, event, err := scanner.scanURLReturnResp(target, scheme, method, path)
+				if err != nil {
+					gologger.Debug().Msgf("Could not scan %s %s://%s%s: %s", method, scheme, target.Host, path, err)
+					return
+				}
+
+				scanner.Lock()
+				if resp_, ok := fuzzyStatusResponse[event.Status]; ok && resp_ == nil {
+					fuzzyStatusResponse[event.Status] = resp_
+				}
+				scanner.Unlock()
+				if scanner.checkEventSkip(event) {
+
+					return
+				}
+
+				var (
+					ok   bool
+					base *Response
+				)
+				scanner.Lock()
+				base, ok = fuzzyStatusResponse[event.Status]
+				scanner.Unlock()
+				if !ok {
+					if event.Status == randResp.StatusCode {
+						base = randResp
+					} else if event.Status == indexResp.StatusCode {
+						base = indexResp
+					}
+				}
+				if base == nil {
+					base = randResp
+				}
+				if scanner.autoSkip(resp, base) {
+					return
+				}
+				writer(event)
+				if !scanner.options.FindOtherDomain {
+					return
+				}
+
+				for _, link := range event.Links {
+					if scanner.IsSkipURL(link) || scanner.findDuplicate(method+link) {
+						continue
+					}
+					scheme, host := util.GetProtocolAndHost(link)
+					target = &input.Target{
+						Host:    host,
+						Scheme:  scheme,
+						Methods: []string{method},
+						Paths:   []string{"/"},
+						Body:    "",
+					}
+					wg.Add()
+					go func() {
+						wg.Done()
+						scanner.Scan(target, writer)
+					}()
+
+				}
+			}(target, scheme, "GET", path)
+		}
+
+	}
+
+	wg.Wait()
+}
+
+func (scanner *Scanner) scanURL(target *input.Target, scheme, method, path string) (event output.ResultEvent, err error) {
 
 	originProtocol := scheme
 	if scheme == input.HTTPorHTTPS {
@@ -284,17 +404,54 @@ retry:
 	if err != nil {
 		return output.ResultEvent{}, err
 	}
-	var tech []string
-
-	if path == "/" && !scanner.options.DisableScanMatch {
-		tech = append(tech, scanner.scanByOperators(request, resp, callback)...)
-		event.OriginRequest = true
-	}
-
-	event.Technology = sliceutil.Dedupe(tech)
 
 	return event, nil
 
+}
+func (scanner *Scanner) scanURLReturnResp(target *input.Target, scheme, method, path string) (resp *Response, event output.ResultEvent, err error) {
+	originProtocol := scheme
+	if scheme == input.HTTPorHTTPS {
+		scheme = input.HTTPS
+	}
+	retried := false
+retry:
+	var (
+		request *retryablehttp.Request
+	)
+	URL := scheme + "://" + target.Host + path
+	if scanner.IsSkipURL(URL) {
+		gologger.Debug().Msgf("skipping %s", URL)
+		return
+	}
+	if scanner.findDuplicate(method + "|" + URL) {
+		return
+	}
+	if request, err = target.NewRequest(method, URL); err != nil {
+		return nil, output.ResultEvent{}, err
+	}
+
+	scanner.rateLimiter.Take()
+
+	resp, err = scanner.do(request)
+
+	if err != nil {
+		if !retried && originProtocol == input.HTTPorHTTPS {
+			if scheme == input.HTTPS {
+				scheme = input.HTTP
+			} else {
+				scheme = input.HTTPS
+			}
+			retried = true
+			goto retry
+		}
+		return nil, output.ResultEvent{}, err
+	}
+
+	event, err = scanner.getEvent(request, resp)
+	if err != nil {
+		return nil, output.ResultEvent{}, err
+	}
+	return resp, event, nil
 }
 
 type Response struct {
@@ -306,6 +463,16 @@ type Response struct {
 	StatusCode    int
 	ContentLength int
 	Data          []byte
+	*Hashes
+}
+type Hashes struct {
+	BodyMd5       string `json:"body-md5"`
+	HeaderMd5     string `json:"header-md5"`
+	RawMd5        string `json:"raw-md5"`
+	BodySimhash   uint64 `json:"body-simhash"`
+	HeaderSimhash uint64 `json:"header-simhash"`
+	RawSimhash    uint64 `json:"raw-simhash"`
+	BodyMmh3      string `json:"body-mmh3"`
 }
 
 func (scanner *Scanner) do(request *retryablehttp.Request) (resp *Response, err error) {
@@ -389,6 +556,17 @@ getResponse:
 	// fill metrics
 	resp.StatusCode = httpresp.StatusCode
 	resp.Response = httpresp
+	// 计算hash
+	resp.Hashes = &Hashes{}
+	hash, _ := util.GetHash(respbody, "md5")
+	resp.BodyMd5 = string(hash)
+	hash, _ = util.GetHash([]byte(resp.Raw), "md5")
+	resp.RawMd5 = string(hash)
+	hash, _ = util.GetHash([]byte(resp.RawHeaders), "md5")
+	resp.HeaderMd5 = string(hash)
+	resp.BodySimhash = util.GetSimhash(respbody)
+	resp.HeaderSimhash = util.GetSimhash([]byte(resp.RawHeaders))
+	resp.RawSimhash = util.GetSimhash([]byte(resp.Raw))
 	return resp, nil
 }
 
@@ -553,90 +731,84 @@ func (scanner *Scanner) Alive(target *input.Target) []*input.Target {
 	return aliveTargets
 }
 
-func (scanner *Scanner) checkEventSkip(event output.ResultEvent) bool {
-	if event.URL == "" {
-		return true
-	}
-	if scanner.options.SkipOutputIsEmpty() {
-		return false
-	}
-	if sliceutil.Contains(scanner.options.SkipCode, strconv.Itoa(event.Status)) {
-		return true
-	}
+// ScanOperators scans the target for operators
+func (scanner *Scanner) ScanOperators(target *input.Target, callback func(event output.ResultEvent)) {
+	var (
+		wg       = sizedwaitgroup.New(-1)
+		requests = make(map[string]map[string]interface{})
+		result   []string
+	)
+	URL := fmt.Sprintf("%s://%s", target.Scheme, target.Host)
+	for _, operator := range scanner.operators {
+		for _, req := range operator.Request {
+			for _, path := range req.Path {
+				h := fmt.Sprintf("%s-%s-%s-%s", URL+path, req.Method, req.Header, req.Body)
+				if _, ok := requests[h]; ok {
+					requests[h]["operators"] = append(requests[h]["operators"].([]*identification.Operators), operator)
+					continue
+				}
+				requests[h] = make(map[string]interface{})
+				requests[h]["operators"] = make([]*identification.Operators, 0)
+				requests[h]["request"], _ = retryablehttp.NewRequest(req.Method, URL+path, req.Body)
+				for k, v := range req.Header {
+					requests[h]["request"].(*retryablehttp.Request).Header.Set(k, v.(string))
+				}
+				if ok := requests[h]["request"].(*retryablehttp.Request).Header.Get("User-Agent"); ok == "" {
+					requests[h]["request"].(*retryablehttp.Request).Header.Set("User-Agent", uarand.GetRandom())
+				}
+				requests[h]["operators"] = append(requests[h]["operators"].([]*identification.Operators), operator)
 
-	// 循环递归跳过 状态码 例如 5xx 4xx 3xx 500-599 400-499 300-399
-	for _, status := range scanner.options.SkipCode {
-
-		if strings.Contains(status, "-") && !strings.Contains(status, "xx") {
-			split := strings.Split(status, "-")
-			if len(split) != 2 {
-				continue
-			}
-			minStatus, err := strconv.Atoi(split[0])
-			if err != nil {
-				continue
-			}
-			maxStatus, err := strconv.Atoi(split[1])
-			if err != nil {
-				continue
-			}
-			if event.Status >= minStatus && event.Status <= maxStatus {
-				return true
-			}
-		}
-		if strings.Contains(status, "xx") {
-			if strings.HasPrefix(status, strconv.Itoa(event.Status)[:1]) {
-				return true
 			}
 		}
 
 	}
+	// requests operator
+	for _, requestAndOperator := range requests {
 
-	if scanner.options.SkipHash != "" {
-		bodyHash, _ := util.GetHash([]byte(event.RequestBody), scanner.options.SkipHashMethod)
-		if scanner.options.SkipHash == string(bodyHash) {
-			return true
-		}
+		wg.Add()
+
+		go func(request *retryablehttp.Request, operators []*identification.Operators) {
+			defer wg.Done()
+			var (
+				err  error
+				resp *Response
+			)
+
+			if resp, err = scanner.do(request); err != nil {
+				gologger.Debug().Msg(err.Error())
+				return
+			}
+			data := make(map[string]interface{})
+			data["all_headers"] = resp.RawHeaders
+			data["body"] = resp.RawData
+			data["status_code"] = resp.StatusCode
+			data["header"] = resp.RawHeaders
+			data["response"] = resp.Raw
+			data["raw"] = resp.Raw
+			for _, operator := range operators {
+
+				execute, b := operator.Execute(data, match)
+				if b && !(len(execute) == 1 && execute[0] == "") {
+					scanner.Lock()
+					result = append(result, execute...)
+					scanner.Unlock()
+
+					if event, err := scanner.getEvent(request, resp); err == nil {
+						event.Technology = execute
+						callback(event)
+					}
+
+					if operator.StopAtFirstMatch {
+						return
+					}
+				}
+			}
+
+		}(requestAndOperator["request"].(*retryablehttp.Request), requestAndOperator["operators"].([]*identification.Operators))
 	}
-	// 跳过长度逻辑处理
-	for _, l := range scanner.options.SkipBodyLen {
-		switch strings.Count(l, "-") {
-		case 1:
-			split := strings.Split(l, "-")
-			if len(split) != 2 {
-				continue
-			}
-			minLength, err := strconv.Atoi(split[0])
-			if err != nil {
-				continue
-			}
-			maxLength, err := strconv.Atoi(split[1])
-			if err != nil {
-				continue
-			}
-			if event.ContentLength >= minLength && event.ContentLength <= maxLength {
-				return true
-			}
-		case 0:
-			atoi, err := strconv.Atoi(l)
-			if err != nil {
-				continue
-			}
-			if atoi == event.ContentLength {
-				return true
-			}
-		default:
-			continue
-		}
+	wg.Wait()
 
-	}
+	wg.Wait()
 
-	for _, l := range scanner.skipBodyRegex {
-		// 匹配body
-		if l.Match([]byte(event.ResponseBody)) {
-			return true
-		}
-	}
-
-	return false
+	return
 }

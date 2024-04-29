@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"bytes"
+	"github.com/go-dedup/simhash"
 	stringsutil "github.com/projectdiscovery/utils/strings"
 	"golang.org/x/text/encoding/korean"
 	"golang.org/x/text/encoding/simplifiedchinese"
@@ -85,4 +86,9 @@ func DecodeData(data []byte, headers http.Header) ([]byte, error) {
 
 	// return as is
 	return data, nil
+}
+
+// 通过response 的simhash值判断是否重复
+func (resp *Response) bodyDuplicate(response *Response, i uint8) bool {
+	return simhash.Compare(resp.BodySimhash, response.BodySimhash) < i
 }

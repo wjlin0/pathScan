@@ -3,8 +3,10 @@ package types
 import (
 	"github.com/projectdiscovery/goflags"
 	fileutil "github.com/projectdiscovery/utils/file"
+	folderutil "github.com/projectdiscovery/utils/folder"
 	"github.com/wjlin0/pathScan/v2/pkg/input"
 	"github.com/wjlin0/pathScan/v2/pkg/output"
+	"path/filepath"
 )
 
 type Options struct {
@@ -53,21 +55,29 @@ type Options struct {
 	FindOtherDomain     bool                            `json:"find-other-domain"`
 	DisableStdin        bool                            `json:"disable-stdin"`
 	DisableUpdateCheck  bool                            `json:"disable-update-check"`
-	DisableScanMatch    bool                            `json:"disable-scan-match"`
 	SubdomainLimit      int                             `json:"subdomain-limit"`
 	SubdomainQuery      goflags.StringSlice             `json:"subdomain-query"`
 	SubdomainEngine     goflags.StringSlice             `json:"subdomain-engine"`
 	SubdomainOutput     string                          `json:"subdomain-output"`
 	Resolvers           goflags.StringSlice             `json:"resolvers"`
 	SkipBodyRegex       goflags.StringSlice             `json:"skip-body-regex"`
-	LoadDefaultDict     bool                            `json:"load-default-dict"`
+	BlackStatus         goflags.StringSlice             `json:"black-status"`
 	LoadAPIDict         bool                            `json:"load-api-dict"`
 	Debug               bool                            `json:"debug"`
 	Validate            bool                            `json:"validate"`
 	Stdin               bool                            `json:"stdin"`
-	URLs                []*input.Target
-	DisableAliveCheck   bool `json:"skip-alive-check"`
+	Operator            bool                            `json:"operator"`
+	URLs                []*input.Target                 `json:"-"`
+	DisableAliveCheck   bool                            `json:"skip-alive-check"`
+	WafStatus           goflags.StringSlice             `json:"waf-status"`
+	FuzzyStatus         goflags.StringSlice             `json:"fuzzy-status"`
+	DisableAutoPathScan bool                            `json:"disable-auto-path-scan"`
 }
+
+var (
+	DefaultPathScanDir = filepath.Join(folderutil.HomeDirOrDefault("."), ".config", "pathScan")
+	DefaultMatchDir    = filepath.Join(DefaultPathScanDir, "match-config")
+)
 
 var DefaultOptions = &Options{
 	RateLimit:      100,
@@ -79,6 +89,7 @@ var DefaultOptions = &Options{
 	Method:         []string{"GET"},
 	Stdin:          fileutil.HasStdin(),
 	Path:           []string{"/"},
+	MatchPath:      DefaultMatchDir,
 }
 
 func (o *Options) CountURL() int {
@@ -99,5 +110,5 @@ func (o *Options) OutputType() string {
 }
 
 func (o *Options) IsPathEmpty() bool {
-	return len(o.Path) == 0 && len(o.PathList) == 0 && !o.LoadDefaultDict && !o.LoadAPIDict
+	return len(o.Path) == 0 && len(o.PathList) == 0 && !o.LoadAPIDict
 }

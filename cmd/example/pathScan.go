@@ -13,7 +13,6 @@ func main() {
 	options := types.DefaultOptions
 	options.URL = []string{"wjlin0.com"}
 	options.DisableAliveCheck = true
-	options.DisableScanMatch = true
 	options.DisableUpdateCheck = true
 
 	options.ResultEventCallback = func(result output.ResultEvent) {

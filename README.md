@@ -27,15 +27,15 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 ```
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
-- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.0.7/pathScan_2.0.7_macOS_arm64.zip)
+- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_macOS_arm64.zip)
 
-- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.7/pathScan_2.0.7_macOS_amd64.zip)
+- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_macOS_amd64.zip)
 
-- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.7/pathScan_2.0.7_linux_amd64.zip)
+- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_linux_amd64.zip)
 
-- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.0.7/pathScan_2.0.7_windows_amd64.zip)
+- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_windows_amd64.zip)
 
-- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.0.7/pathScan_2.0.7_windows_386.zip)
+- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_windows_386.zip)
 
 
 # 用法
@@ -44,7 +44,7 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 pathScan -h
 ```
 ```yaml
-pathScan 2.0.7 Go 扫描、信息收集工具
+pathScan 2.1.0 Go 扫描、信息收集工具
 
 Usage:
   pathScan [flags]
@@ -57,8 +57,17 @@ Flags:
 扫描字典:
   -ps, -path string[]       路径(以逗号分割)
   -pl, -path-list string[]  从文件中,读取路径
-  -ldd, -load-default-dict  目标超过一个时，是否加载默认字典
   -lad, -load-api-dict      是否加载api字典
+
+自动过滤扫描路径模式（默认）:
+  -bs, -black-status string[]     黑名单状态码(以逗号分割,支持从文件读取 -bs /tmp/skip-code.txt, 支持 5xx、300-399 ) (default ["400", "410"])
+  -daps, -disable-auto-path-scan  禁用自动过滤扫描路径模式
+  -ws, -waf-status string[]       WAF状态码(以逗号分割,支持从文件读取 -ws /tmp/skip-code.txt, 支持 5xx、300-399 ） (default ["493", "418"])
+  -fs, -fuzzy-status string[]     模糊状态码(以逗号分割,支持从文件读取 -fs /tmp/skip-code.txt, 支持 5xx、300-399 ) (default ["403", "404", "500", "501", "502", "503"])
+
+指纹识别模式:
+  -op, -operator           是否启用模版规则
+  -mf, -match-file string  指纹文件目录或文件
 
 子域名收集模式:
   -s, -sub                   子域名收集
@@ -95,17 +104,13 @@ Flags:
   -gh, -get-hash                  计算hash
   -shm, -skip-hash-method string  指定hash的方法（sha256,md5,sha1） (default "sha256")
 
-模版规则:
-  -validate                  验证指纹文件
-  -mf, -match-file string    指纹文件目录或文件
-  -dsm, -disable-scan-match  禁用指纹识别
-
 配置:
   -no-stdin                         disable stdin processing
   -rs, -retries int                 重试
   -p, -proxy string[]               代理
   -resolvers string[]               自定义DNS列表( 文件或逗号隔开 )
   -nn, -not-new                     允许重定向
+  -validate                         验证指纹文件
   -dac, -disable-alive-check        跳过活跃检查
   -sdl, -scan-domain-list string[]  从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）
   -sd, -scan-domain                 从响应中发现其他域名
@@ -132,22 +137,21 @@ Flags:
 
 EXAMPLES:
 
-运行 pathScan 扫描路径, 指定单个目标 跳过 4xx 5xx 输出:
-  $ pathScan -u https://example.com/ -sc 4xx,5xx
+运行 pathScan 扫描路径, 指定单个目标:
+  $ pathScan -u https://example.com/
 
 运行 pathScan 搜索引擎:
-  $ pathScan -ue fofa -uq 'app="tomcat"'
+  $ pathScan -ue fofa -uq 'app="tomcat"' -silent
 
-运行 pathScan 收集子域名 指定输出:
-  $ pathScan -sq example.com -csv -o out.csv
+  运行 pathScan 指纹探测：
+  $ pathScan -op -u https://example.com
 
 运行 pathScan 收集子域名 并配合 nuclei 进行自动化漏洞扫描:
   $ pathScan -sq example.com -silent | nuclei
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
-
-
 ```
+
 ## 提供API KEY 配置
 
 默认的提供程序配置文件应位于`$HOME/.config/pathScan/provider-config.yaml`，并具有以下内容作为示例
@@ -276,7 +280,6 @@ func main() {
 	options := types.DefaultOptions
 	options.URL = []string{"wjlin0.com"}
 	options.DisableAliveCheck = true
-	options.DisableScanMatch = true
 	options.DisableUpdateCheck = true
 
 	options.ResultEventCallback = func(result output.ResultEvent) {

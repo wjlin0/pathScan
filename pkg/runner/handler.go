@@ -66,14 +66,8 @@ func handlerPaths(opts *types.Options) []string {
 		}
 	}
 
-	if opts.LoadDefaultDict {
-		for _, path := range strings.Split(mainTxt, "\n") {
-			paths = append(paths, strings.TrimSpace(path))
-		}
-	}
-
 	// 如果未指定路径，则处理默认文件名
-	if len(paths) == 0 && len(handlerTargets(opts)) == 1 && opts.Path == nil && opts.PathList == nil {
+	if len(paths) == 0 && !opts.Operator && !opts.Subdomain && !opts.Uncover && opts.Path == nil && opts.PathList == nil {
 		for _, path := range strings.Split(mainTxt, "\n") {
 			paths = append(paths, strings.TrimSpace(path))
 		}

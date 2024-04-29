@@ -36,6 +36,8 @@ type Target struct {
 	Paths []string `json:"paths,omitempty"`
 	// Body is the body of the host input on which match was found (if applicable).
 	Body string `json:"body,omitempty"`
+	// BasePath is the base path of the host input on which match was found (if applicable).
+	BasePath string `json:"base-path"`
 }
 
 func NewTarget(target string, methods []string, headers map[string]interface{}, paths []string, body string) *Target {
@@ -118,12 +120,13 @@ func NewTarget(target string, methods []string, headers map[string]interface{}, 
 	}
 
 	return &Target{
-		Host:    host,
-		Scheme:  scheme,
-		Methods: methods,
-		Headers: headers,
-		Paths:   newPaths,
-		Body:    body,
+		Host:     host,
+		Scheme:   scheme,
+		Methods:  methods,
+		BasePath: magicPath,
+		Headers:  headers,
+		Paths:    newPaths,
+		Body:     body,
 	}
 
 }
