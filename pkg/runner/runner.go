@@ -315,7 +315,7 @@ func (r *Runner) getEventCallback() (uncoverEvent func(event string), pathScanEv
 			r.outputWriter.WriteHTMLData(event)
 		case r.options.Silent:
 			r.outputWriter.WriteString(event.String())
-		case r.IsRunPathScanMode():
+		case r.IsRunPathScanMode() && !r.options.DisableAutoPathScan:
 			builder := strings.Builder{}
 			// 写入当前时间 [19:29:29]
 			builder.WriteString(time.Now().Format("[15:04:05] "))
@@ -327,6 +327,9 @@ func (r *Runner) getEventCallback() (uncoverEvent func(event string), pathScanEv
 			builder.WriteString(fmt.Sprintf("%s", event.String()))
 			if event.Title != "" {
 				builder.WriteString(fmt.Sprintf(" - %s", event.Title))
+			}
+			if location, ok := event.Header["Location"]; ok && strings.Join(location, "") != "" {
+				builder.WriteString(fmt.Sprintf(" -> %s", strings.Join(location, "")))
 			}
 
 			statusCode := event.Status

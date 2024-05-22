@@ -93,8 +93,12 @@ func DefaultOptions(options *types.Options) {
 			return fmt.Sprintf(`site:%s`, query)
 		case "netlas":
 			return fmt.Sprintf(`domain:%s`, query)
+		case "daydaymap":
+			return fmt.Sprintf(`domain="%s"`, query)
 		case "fofa-spider":
 			return fmt.Sprintf(`domain="%s"`, query)
+		case "zoomeye-spider":
+			return fmt.Sprintf(`site:%s`, query)
 		default:
 			return query
 		}

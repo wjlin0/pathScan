@@ -27,15 +27,15 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 ```
 下载准备运行的[二进制文件](https://github.com/wjlin0/pathScan/releases/latest)
 
-- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_macOS_arm64.zip)
+- [macOS-arm64](https://github.com/wjlin0/pathScan/releases/download/v2.1.1/pathScan_2.1.1_macOS_arm64.zip)
 
-- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_macOS_amd64.zip)
+- [macOS-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.1/pathScan_2.1.1_macOS_amd64.zip)
 
-- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_linux_amd64.zip)
+- [linux-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.1/pathScan_2.1.1_linux_amd64.zip)
 
-- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_windows_amd64.zip)
+- [windows-amd64](https://github.com/wjlin0/pathScan/releases/download/v2.1.1/pathScan_2.1.1_windows_amd64.zip)
 
-- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.1.0/pathScan_2.1.0_windows_386.zip)
+- [windows-386](https://github.com/wjlin0/pathScan/releases/download/v2.1.1/pathScan_2.1.1_windows_386.zip)
 
 
 # 用法
@@ -44,110 +44,110 @@ go install -v github.com/wjlin0/pathScan/v2/cmd/pathScan@latest
 pathScan -h
 ```
 ```yaml
-pathScan 2.1.0 Go 扫描、信息收集工具
+pathScan 2.1.1 Go 扫描、信息收集工具 
 
 Usage:
   pathScan [flags]
 
 Flags:
 输入:
-  -u, -url string[]  目标(以逗号分割)
-  -list string[]     从文件中,读取目标
+   -u, -url string[]  目标(以逗号分割)
+   -list string[]     从文件中,读取目标
 
 扫描字典:
-  -ps, -path string[]       路径(以逗号分割)
-  -pl, -path-list string[]  从文件中,读取路径
-  -lad, -load-api-dict      是否加载api字典
+   -ps, -path string[]       路径(以逗号分割)
+   -pl, -path-list string[]  从文件中,读取路径
+   -lad, -load-api-dict      是否加载api字典
 
 自动过滤扫描路径模式（默认）:
-  -bs, -black-status string[]     黑名单状态码(以逗号分割,支持从文件读取 -bs /tmp/skip-code.txt, 支持 5xx、300-399 ) (default ["400", "410"])
-  -daps, -disable-auto-path-scan  禁用自动过滤扫描路径模式
-  -ws, -waf-status string[]       WAF状态码(以逗号分割,支持从文件读取 -ws /tmp/skip-code.txt, 支持 5xx、300-399 ） (default ["493", "418"])
-  -fs, -fuzzy-status string[]     模糊状态码(以逗号分割,支持从文件读取 -fs /tmp/skip-code.txt, 支持 5xx、300-399 ) (default ["403", "404", "500", "501", "502", "503"])
+   -bs, -black-status string[]     黑名单状态码(以逗号分割,支持从文件读取 -bs /tmp/skip-code.txt, 支持 5xx、300-399 ) (default ["400", "410"])
+   -daps, -disable-auto-path-scan  禁用自动过滤扫描路径模式
+   -ws, -waf-status string[]       WAF状态码(以逗号分割,支持从文件读取 -ws /tmp/skip-code.txt, 支持 5xx、300-399 ） (default ["493", "418"])
+   -fs, -fuzzy-status string[]     模糊状态码(以逗号分割,支持从文件读取 -fs /tmp/skip-code.txt, 支持 5xx、300-399 ) (default ["403", "404", "500", "501", "502", "503"])
 
 指纹识别模式:
-  -op, -operator           是否启用模版规则
-  -mf, -match-file string  指纹文件目录或文件
+   -op, -operator           是否启用模版规则
+   -mf, -match-file string  指纹文件目录或文件
 
 子域名收集模式:
-  -s, -sub                   子域名收集
-  -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
-  -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
-  -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
-  -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binaryedge github fullhunt zone0 shodan-idb anubis-sitedossier-spider fofa-spider bing-spider chinaz-spider google-spider ip138-spider qianxun-spider rapiddns-spider baidu-spider yahoo-spider zoomeye-spider] (default all)
+   -s, -sub                   子域名收集
+   -sq, -sub-query string[]   需要收集的域名 (支持从文件中录入 -sq /tmp/sub-query.txt)
+   -sl, -sub-limit int        每个搜索引擎返回的至少不超过数 (default 1000)
+   -so, -sub-output string    子域名搜索结果保存 支持csv格式输出
+   -se, -sub-engine string[]  子域名搜索引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binaryedge github fullhunt zone0 daydaymap shodan-ids-spider sitedossier-spider fofa-spider bing-spider chinaz-spider google-spider ip138-spider qianxun-spider rapiddns-spider baidu-spider yahoo-spider zoomeye-spider] (default all)
 
 引擎搜索模式:
-  -uc, -uncover                  启用打开搜索引擎
-  -uq, -uncover-query string[]   搜索查询
-  -ue, -uncover-engine string[]  支持的引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binaryedge github fullhunt zone0] (default fofa)
-  -uf, -uncover-field string     引擎返回字段 (ip,port,host) (default "host")
-  -ul, -uncover-limit int        发现要返回的结果 (default 100)
-  -uo, -uncover-output string    搜索引擎查询结果保存 支持csv格式输出
+   -uc, -uncover                  启用打开搜索引擎
+   -uq, -uncover-query string[]   搜索查询
+   -ue, -uncover-engine string[]  支持的引擎 [shodan censys fofa quake hunter zoomeye netlas criminalip publicwww hunterhow binaryedge github fullhunt zone0 daydaymap] (default)
+   -uf, -uncover-field string     引擎返回字段 (ip,port,host) (default "host")
+   -ul, -uncover-limit int        发现要返回的结果 (default 100)
+   -uo, -uncover-output string    搜索引擎查询结果保存 支持csv格式输出
 
 跳过:
-  -su, -skip-url string[]          跳过的目标(以逗号分割,支持从文件读取 -su /tmp/skip-url.txt)
-  -sc, -skip-code string[]         跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt, 支持 5xx、300-399 )
-  -sh, -skip-hash string           跳过指定hash
-  -sbl, -skip-body-len string[]    跳过body固定长度(支持 100-200,即长度为100~200之间的均跳过,支持 从文件中读取 -sbl /tmp/skip-body-len.txt)
-  -sbr, -skip-body-regex string[]  跳过body正则匹配(以逗号分割,支持从文件读取 -sbr /tmp/skip-regex.txt)
+   -su, -skip-url string[]          跳过的目标(以逗号分割,支持从文件读取 -su /tmp/skip-url.txt)
+   -sc, -skip-code string[]         跳过状态码(以逗号分割,支持从文件读取 -sc /tmp/skip-code.txt, 支持 5xx、300-399 )
+   -sh, -skip-hash string           跳过指定hash
+   -sbl, -skip-body-len string[]    跳过body固定长度(支持 100-200,即长度为100~200之间的均跳过,支持 从文件中读取 -sbl /tmp/skip-body-len.txt)
+   -sbr, -skip-body-regex string[]  跳过body正则匹配(以逗号分割,支持从文件读取 -sbr /tmp/skip-regex.txt)
 
 输出:
-  -o, -output string  输出文件路径（可忽略）
-  -csv                csv格式输出
-  -html               html格式输出
-  -silent             简略输出
-  -nc, -no-color      无颜色输出
-  -vb, -verbose       详细输出模式
-  -debug              调试输出
+   -o, -output string  输出文件路径（可忽略）
+   -csv                csv格式输出
+   -html               html格式输出
+   -silent             简略输出
+   -nc, -no-color      无颜色输出
+   -vb, -verbose       详细输出模式
+   -debug              调试输出
 
 工具:
-  -gh, -get-hash                  计算hash
-  -shm, -skip-hash-method string  指定hash的方法（sha256,md5,sha1） (default "sha256")
+   -gh, -get-hash                  计算hash
+   -shm, -skip-hash-method string  指定hash的方法（sha256,md5,sha1） (default "sha256")
 
 配置:
-  -no-stdin                         disable stdin processing
-  -rs, -retries int                 重试
-  -p, -proxy string[]               代理
-  -resolvers string[]               自定义DNS列表( 文件或逗号隔开 )
-  -nn, -not-new                     允许重定向
-  -validate                         验证指纹文件
-  -dac, -disable-alive-check        跳过活跃检查
-  -sdl, -scan-domain-list string[]  从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）
-  -sd, -scan-domain                 从响应中发现其他域名
-  -v, -version                      输出版本
+   -no-stdin                         disable stdin processing
+   -rs, -retries int                 重试
+   -p, -proxy string[]               代理
+   -resolvers string[]               自定义DNS列表( 文件或逗号隔开 )
+   -nn, -not-new                     允许重定向
+   -validate                         验证指纹文件
+   -dac, -disable-alive-check        跳过活跃检查
+   -sdl, -scan-domain-list string[]  从响应中中发现其他域名（逗号隔开，支持文件读取 -sdl /tmp/otherDomain.txt）
+   -sd, -scan-domain                 从响应中发现其他域名
+   -v, -version                      输出版本
 
 请求头参数:
-  -m, -method string[]          请求方法 [GET HEAD POST PUT PATCH DELETE CONNECT OPTIONS TRACE] (default ["GET"])
-  -ua, -user-agent string[]     User-Agent (支持从文件中录入 -ua /tmp/user-agent.txt)
-  -c, -cookie string            cookie
-  -auth, -authorization string  Auth请求头
-  -header string[]              自定义请求头,以逗号隔开 (支持从文件中录入 -header /tmp/header.txt)
-  -b, -body string              自定义请求体
+   -m, -method string[]          请求方法 [GET HEAD POST PUT PATCH DELETE CONNECT OPTIONS TRACE] (default ["GET"])
+   -ua, -user-agent string[]     User-Agent (支持从文件中录入 -ua /tmp/user-agent.txt)
+   -c, -cookie string            cookie
+   -auth, -authorization string  Auth请求头
+   -header string[]              自定义请求头,以逗号隔开 (支持从文件中录入 -header /tmp/header.txt)
+   -b, -body string              自定义请求体
 
 速率:
-  -t, -thread int       线程 (default 50)
-  -rl, -rate-limit int  每秒允许的HTTP连接数 (default 150)
-  -http-timeout int     HTTP请求超时时间 (default 15)
+   -t, -thread int       线程 (default 50)
+   -rl, -rate-limit int  每秒允许的HTTP连接数 (default 150)
+   -http-timeout int     HTTP请求超时时间 (default 15)
 
 更新:
-  -update                      更新版本
-  -um, -update-match           更新指纹识别库
-  -duc, -disable-update-check  跳过自动检查更新
+   -update                      更新版本
+   -um, -update-match           更新指纹识别库
+   -duc, -disable-update-check  跳过自动检查更新
 
 
 EXAMPLES:
 
 运行 pathScan 扫描路径, 指定单个目标:
-  $ pathScan -u https://example.com/
+    $ pathScan -u https://example.com/ 
 
 运行 pathScan 搜索引擎:
-  $ pathScan -ue fofa -uq 'app="tomcat"' -silent
+    $ pathScan -ue fofa -uq 'app="tomcat"' -silent
 
-  运行 pathScan 指纹探测：
-  $ pathScan -op -u https://example.com
+运行 pathScan 指纹探测：
+    $ pathScan -op -u https://example.com
 
 运行 pathScan 收集子域名 并配合 nuclei 进行自动化漏洞扫描:
-  $ pathScan -sq example.com -silent | nuclei
+    $ pathScan -sq example.com -silent | nuclei
 
 其他文档可在以下网址获得: https://github.com/wjlin0/pathScan/
 ```
@@ -203,6 +203,9 @@ binaryedge:
 zone0:
   - ZONE0_API_KEY_1
   - ZONE0_API_KEY_2
+daydaymap:
+    - DAYDAYMAP_API_KEY_1
+    - DAYDAYMAP_API_KEY_2
 ```
 
 当在配置文件中为同一提供程序指定了多个密钥/凭据时，每次执行都将使用随机密钥。
@@ -226,6 +229,7 @@ export HUNTERHOW_API_KEY=xxx
 export PUBLICWWW_API_KEY=xxx
 export CRIMINALIP_API_KEY=xxx
 export ZOOE0_API_KEY=xxx
+export DAYDAYMAP_API_KEY=xxx
 ```
 
 所需的API密钥可以通过在以下平台上注册获得
@@ -240,6 +244,7 @@ export ZOOE0_API_KEY=xxx
  - [Publicwww](https://publicwww.com/profile/signup.html) 
  - [binary](https://app.binaryedge.io/login)
  - [fullhunt](https://fullhunt.io/)
+ - [daydaymao](https://www.daydaymap.com/)
 
 
 

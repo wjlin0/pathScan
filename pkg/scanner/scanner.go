@@ -749,7 +749,11 @@ func (scanner *Scanner) ScanOperators(target *input.Target, callback func(event 
 				}
 				requests[h] = make(map[string]interface{})
 				requests[h]["operators"] = make([]*identification.Operators, 0)
-				requests[h]["request"], _ = retryablehttp.NewRequest(req.Method, URL+path, req.Body)
+				if req_, err := retryablehttp.NewRequest(req.Method, URL+path, req.Body); err != nil {
+					continue
+				} else {
+					requests[h]["request"] = req_
+				}
 				for k, v := range req.Header {
 					requests[h]["request"].(*retryablehttp.Request).Header.Set(k, v.(string))
 				}
@@ -806,8 +810,6 @@ func (scanner *Scanner) ScanOperators(target *input.Target, callback func(event 
 
 		}(requestAndOperator["request"].(*retryablehttp.Request), requestAndOperator["operators"].([]*identification.Operators))
 	}
-	wg.Wait()
-
 	wg.Wait()
 
 	return

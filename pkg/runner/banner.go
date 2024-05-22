@@ -15,7 +15,7 @@ const (
  / .__/\_,_/ \__//_//_//___/ \__/ \_,_//_//_/
 /_/
 `
-	Version               = `2.1.0`
+	Version               = `2.1.1`
 	userName              = "wjlin0"
 	pathScanMatchRepoName = "pathScan-match"
 	pathScanRepoName      = "pathScan"

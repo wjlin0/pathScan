@@ -56,7 +56,7 @@ func ParserOptions() *types.Options {
 
 	set.CreateGroup("Uncover", "引擎搜索模式",
 		set.BoolVarP(&options.Uncover, "uncover", "uc", false, "启用打开搜索引擎"),
-		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.CommaSeparatedStringSliceOptions),
+		set.StringSliceVarP(&options.UncoverQuery, "uncover-query", "uq", nil, "搜索查询", goflags.StringSliceOptions),
 		set.StringSliceVarP(&options.UncoverEngine, "uncover-engine", "ue", nil, fmt.Sprintf("支持的引擎 %s (default fofa)", uncover.UncoverAgents()), goflags.NormalizedStringSliceOptions),
 		set.StringVarP(&options.UncoverField, "uncover-field", "uf", "host", "引擎返回字段 (ip,port,host)"),
 		set.IntVarP(&options.UncoverLimit, "uncover-limit", "ul", defaultUncoverLimit, "发现要返回的结果"),

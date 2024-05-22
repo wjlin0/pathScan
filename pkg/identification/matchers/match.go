@@ -74,7 +74,11 @@ func (matcher *Matcher) MatchRegex(corpus string) (bool, []string) {
 		if !(matcher.Group <= 0) && (len(currentMatches)-1 >= matcher.Group) {
 
 			if matcher.Alias {
-				currentMatches = []string{fmt.Sprintf("%s:%s", matcher.Name, currentMatches[matcher.Group])}
+				if currentMatches[matcher.Group] != "" {
+					currentMatches = []string{fmt.Sprintf("%s:%s", matcher.Name, currentMatches[matcher.Group])}
+				} else {
+					currentMatches = []string{fmt.Sprintf("%s", matcher.Name)}
+				}
 			} else {
 				currentMatches = []string{currentMatches[matcher.Group]}
 			}
