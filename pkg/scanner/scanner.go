@@ -451,6 +451,15 @@ retry:
 	if err != nil {
 		return nil, output.ResultEvent{}, err
 	}
+	if event.Status == 400 && event.Title == "400 The plain HTTP request was sent to HTTPS port]" {
+		retried = true
+		if scheme == input.HTTP {
+			scheme = input.HTTPS
+		} else {
+			scheme = input.HTTP
+		}
+		goto retry
+	}
 	return resp, event, nil
 }
 
