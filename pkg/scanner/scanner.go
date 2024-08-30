@@ -374,10 +374,10 @@ retry:
 	URL := scheme + "://" + target.Host + path
 	if scanner.IsSkipURL(URL) {
 		gologger.Debug().Msgf("skipping %s", URL)
-		return
+		return output.ResultEvent{}, fmt.Errorf("skipping %s", URL)
 	}
 	if scanner.findDuplicate(method + "|" + URL) {
-		return
+		return output.ResultEvent{}, fmt.Errorf("skipping %s", URL)
 	}
 	if request, err = target.NewRequest(method, URL); err != nil {
 		return output.ResultEvent{}, err
@@ -404,6 +404,11 @@ retry:
 	if err != nil {
 		return output.ResultEvent{}, err
 	}
+	if event.Status == 400 && strings.Contains(event.Title, "The plain HTTP request was sent to HTTPS port") {
+		retried = true
+		scheme = input.HTTPS
+		goto retry
+	}
 
 	return event, nil
 
@@ -421,10 +426,10 @@ retry:
 	URL := scheme + "://" + target.Host + path
 	if scanner.IsSkipURL(URL) {
 		gologger.Debug().Msgf("skipping %s", URL)
-		return
+
 	}
 	if scanner.findDuplicate(method + "|" + URL) {
-		return
+		return nil, output.ResultEvent{}, fmt.Errorf("skipping %s", URL)
 	}
 	if request, err = target.NewRequest(method, URL); err != nil {
 		return nil, output.ResultEvent{}, err
@@ -451,13 +456,9 @@ retry:
 	if err != nil {
 		return nil, output.ResultEvent{}, err
 	}
-	if event.Status == 400 && event.Title == "400 The plain HTTP request was sent to HTTPS port]" {
+	if event.Status == 400 && strings.Contains(event.Title, "The plain HTTP request was sent to HTTPS port") {
 		retried = true
-		if scheme == input.HTTP {
-			scheme = input.HTTPS
-		} else {
-			scheme = input.HTTP
-		}
+		scheme = input.HTTPS
 		goto retry
 	}
 	return resp, event, nil

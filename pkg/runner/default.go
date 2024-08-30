@@ -74,7 +74,6 @@ func DefaultOptions(options *types.Options) {
 	}
 
 	if options.Subdomain {
-		options.UncoverField = "host"
 		options.FindOtherDomain = true
 	}
 
